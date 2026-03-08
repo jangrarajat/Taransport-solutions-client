@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
-  Truck, FileText, Fuel, BarChart3, Menu, X,
+  Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound,
   ChevronLeft, ChevronRight, Plus, LogOut,
-  TrendingUp, Wallet, Receipt, Search
+  TrendingUp, Wallet, Receipt, Search, User as UserIcon, Settings, FileSpreadsheet
 } from "lucide-react";
 import axios from "axios";
 import { refreshToken } from "../api/api";
 import { useNavigate } from "react-router-dom";
+import * as XLSX from 'xlsx';
 
 // Components
 import BiltyTable from "../components/BiltyTable";
@@ -16,6 +17,58 @@ import ExpenseTable from "../components/ExpenseTable";
 import AddExpenseModal from "../components/AddExpenseModal";
 import SuccessToster from "../components/toster/SuccessToster";
 import Pricing from "../components/Pricing";
+import FrightTable from "../components/FrightTable";
+
+// --- Profile Edit Modal Component ---
+const ProfileModal = ({ isOpen, onClose, user, showNotification }) => {
+  const [formData, setFormData] = useState({
+    name: user?.name || "",
+    companyName: user?.companyName || "",
+    email: user?.email || ""
+  });
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.put(`http://localhost:5000/user/update-profile`, formData, { withCredentials: true });
+      if (res.data.success) {
+        localStorage.setItem("transportUser", JSON.stringify(res.data.user));
+        showNotification(true, "Profile Updated Successfully! ✨");
+        onClose();
+        window.location.reload();
+      }
+    } catch (error) {
+      showNotification(false, error.response?.data?.message || "Update failed");
+    }
+  };
+
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <form onSubmit={handleUpdate} className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-300">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-black uppercase tracking-tighter underline decoration-blue-500 decoration-4">My Profile</h2>
+          <X onClick={onClose} className="cursor-pointer text-slate-400 hover:text-slate-900" />
+        </div>
+        <div className="space-y-4 font-bold text-xs uppercase tracking-widest text-slate-900">
+          <div>
+            <label className="text-slate-400">Owner Name</label>
+            <input className="w-full border border-slate-200 p-3 rounded-xl mt-1 outline-none focus:border-blue-500" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-slate-400">Company Name</label>
+            <input className="w-full border border-slate-200 p-3 rounded-xl mt-1 outline-none focus:border-blue-500" value={formData.companyName} onChange={(e) => setFormData({ ...formData, companyName: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-slate-400">Email Address</label>
+            <input className="w-full border border-slate-200 p-3 rounded-xl mt-1 outline-none focus:border-blue-500" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+          </div>
+        </div>
+        <button className="w-full bg-slate-900 text-white py-4 rounded-2xl mt-8 font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">Save Changes</button>
+      </form>
+    </div>
+  );
+};
 
 function Home() {
   const navigate = useNavigate();
@@ -26,6 +79,7 @@ function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [isExModalOpen, setIsExModalOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
 
   const [biltyData, setBiltyData] = useState([]);
@@ -37,9 +91,10 @@ function Home() {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [exTitle, setExTitle] = useState("");
   const [dashFilter, setDashFilter] = useState("month");
   const [searchTerm, setSearchTerm] = useState("");
+
+  const user = JSON.parse(localStorage.getItem("transportUser")) || {};
 
   const showNotification = (success, msg) => {
     setToast({ show: true, success, msg, id: Date.now() });
@@ -50,7 +105,6 @@ function Home() {
     try {
       const response = await axios.get(`http://localhost:5000/user/dashbord?filter=${dashFilter}`, { withCredentials: true });
       if (response.data.success) setDashData(response.data.data);
-      console.log(response.data)
     } catch (error) {
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
@@ -84,151 +138,136 @@ function Home() {
         setPumpData(response.data.pumpData);
         setTotalPages(response.data.totalPage);
       }
-    } catch (error) {
-      if (error.response?.status === 401) {
-        const isRefreshed = await refreshToken();
-        if (isRefreshed) getPetrolPumps(page);
-      }
-    } finally { setLoading(false); }
+    } catch (error) { if (error.response?.status === 401) { const isRefreshed = await refreshToken(); if (isRefreshed) getPetrolPumps(page); } }
+    finally { setLoading(false); }
   }, [selectedYear, selectedMonth]);
 
   const getExpenses = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const response = await axios.get(`http://localhost:5000/persnol/get-expantion?page=${page}&title=${exTitle}&month=${selectedMonth}&year=${selectedYear}&search=${searchTerm}`, { withCredentials: true });
+      const response = await axios.get(`http://localhost:5000/persnol/get-expantion?page=${page}&month=${selectedMonth}&year=${selectedYear}&search=${searchTerm}`, { withCredentials: true });
+      console.log(response.data.expantions)
       if (response.data.success) {
         setExpenseData(response.data.expantions);
         setTotalPages(response.data.totalPage);
+        setCurrentPage(response.data.page);
       }
-    } catch (error) {
-      if (error.response?.status === 401) {
-        const isRefreshed = await refreshToken();
-        if (isRefreshed) getExpenses(page);
-      }
-    } finally { setLoading(false); }
-  }, [selectedYear, selectedMonth, exTitle, searchTerm]);
+    } catch (error) { if (error.response?.status === 401) { const isRefreshed = await refreshToken(); if (isRefreshed) getExpenses(page); } }
+    finally { setLoading(false); }
+  }, [selectedYear, selectedMonth, searchTerm]);
 
-  const handleUpdatePayment = async (id, currentStatus) => {
-    const newStatus = currentStatus === "payed" ? "unpayed" : "payed";
+  // Fix: Petrol Pump Status Update URL according to backend route
+  const handleUpdatePumpPayment = async (pumpId, currentStatus) => {
     try {
-      const response = await axios.put(`http://localhost:5000/bill/update-petrolpump-payment/${id}?payment=${newStatus}`, {}, { withCredentials: true });
-      if (response.data.success) {
-        showNotification(true, `Status updated to ${newStatus}!`);
+      const newStatus = currentStatus === "payed" ? "unpayed" : "payed";
+      // Backend expects 'update-petrolpump-payment' and payment in query params
+      const res = await axios.put(`http://localhost:5000/bill/update-petrolpump-payment/${pumpId}?payment=${newStatus}`,
+        {},
+        { withCredentials: true }
+      );
+
+      if (res.data.success) {
+        showNotification(true, "Payment Status Updated! ✅");
         getPetrolPumps(currentPage);
       }
     } catch (error) {
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
-        if (isRefreshed) handleUpdatePayment(id, currentStatus);
+        if (isRefreshed) handleUpdatePumpPayment(pumpId, currentStatus);
       }
-    }
-  };
-
-  const handleNewBiltyClick = () => {
-    const user = JSON.parse(localStorage.getItem("transportUser")) || {};
-    const isExpired = user.subscriptionEndDate && new Date() > new Date(user.subscriptionEndDate);
-    if (!user.isPremium && (user.biltyCount || 0) >= 5) {
-      setIsPricingOpen(true);
-    } else if (user.isPremium && isExpired) {
-      setIsPricingOpen(true);
-    } else {
-      setIsModalOpen(true);
-    }
-  };
-
-  const handleNewExpenseClick = () => {
-    const user = JSON.parse(localStorage.getItem("transportUser")) || {};
-    const isExpired = user.subscriptionEndDate && new Date() > new Date(user.subscriptionEndDate);
-    if (!user.isPremium || isExpired) {
-      setIsPricingOpen(true);
-    } else {
-      setIsExModalOpen(true);
+      showNotification(false, "Update failed");
     }
   };
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (menuOption === "home") getDashboardData();
-      else if (menuOption === "biltiy") getBilty(currentPage);
+      else if (menuOption === "biltiy" || menuOption === "accounts") getBilty(currentPage);
       else if (menuOption === "petrolPump") getPetrolPumps(currentPage);
       else if (menuOption === "expantion") getExpenses(currentPage);
     }, 400);
     return () => clearTimeout(delayDebounceFn);
-  }, [menuOption, getDashboardData, getBilty, getPetrolPumps, getExpenses, currentPage, selectedYear, selectedMonth, exTitle, searchTerm]);
+  }, [menuOption, getDashboardData, getBilty, getPetrolPumps, getExpenses, currentPage, selectedYear, selectedMonth, searchTerm]);
 
   const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
   const months = [{ name: "Jan", value: "1" }, { name: "Feb", value: "2" }, { name: "Mar", value: "3" }, { name: "Apr", value: "4" }, { name: "May", value: "5" }, { name: "Jun", value: "6" }, { name: "Jul", value: "7" }, { name: "Aug", value: "8" }, { name: "Sep", value: "9" }, { name: "Oct", value: "10" }, { name: "Nov", value: "11" }, { name: "Dec", value: "12" }];
 
   return (
-    <div className="flex fixed h-screen w-full bg-[#f8fafc] overflow-hidden">
+    <div className="flex fixed h-screen w-full bg-[#f8fafc] overflow-hidden uppercase font-bold text-xs">
       {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
 
       <AddBiltyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(msg) => { getBilty(1); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
       <AddExpenseModal isOpen={isExModalOpen} onClose={() => setIsExModalOpen(false)} onSuccess={(msg) => { getExpenses(1); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
       <Pricing isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
+      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} user={user} showNotification={showNotification} />
 
       <aside className={`${sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full w-0 md:translate-x-0 md:w-20"} fixed md:relative z-50 h-full bg-slate-900 text-white transition-all duration-300 flex flex-col shadow-2xl`}>
-        <div className="p-5 flex items-center justify-between border-b border-slate-800 font-black">
-          {(sidebarOpen || window.innerWidth < 768) && <span className="text-lg text-blue-400 uppercase tracking-tighter">SAWARIYA.</span>}
+        <div className="p-5 flex items-center justify-between border-b border-slate-800">
+          {/* {(sidebarOpen || window.innerWidth < 768) && <span className="text-lg text-blue-400 uppercase italic tracking-tighter">{user?.companyName || "SAWARIYA"}</span>} */}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 hover:bg-slate-800 rounded-lg transition-colors"><Menu size={20} /></button>
         </div>
-        <nav className="flex-1 p-4 space-y-2 mt-2">
+        <nav className="flex-1 p-4 space-y-2 mt-2 tracking-widest text-[10px]">
           {[
             { name: "home", icon: <BarChart3 size={20} />, label: "Dashboard" },
+            { name: "accounts", icon: <CircleUserRound size={20} />, label: "Accounts" },
             { name: "biltiy", icon: <FileText size={20} />, label: "Bilty Records" },
-            { name: "petrolPump", icon: <Fuel size={20} />, label: "Petrol Pump" },
             { name: "expantion", icon: <Receipt size={20} />, label: "Expenses" },
+            { name: "maintenance ", icon: <Receipt size={20} />, label: "Maintenance " },
+            { name: "petrolPump", icon: <Fuel size={20} />, label: "Petrol Pump" },
           ].map((item) => (
             <button
               key={item.name}
               onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); if (window.innerWidth < 768) setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all font-bold text-[10px] uppercase tracking-widest ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
             >
               {item.icon}
               {sidebarOpen && <span>{item.label}</span>}
             </button>
           ))}
+          <button onClick={() => setIsProfileOpen(true)} className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-slate-800 hover:text-white mt-10">
+            <Settings size={20} /> {sidebarOpen && "Edit Profile"}
+          </button>
         </nav>
         <div className="p-4 border-t border-slate-800">
-          <button onClick={() => { localStorage.clear(); navigate("/auth") }} className="w-full flex items-center gap-4 p-4 rounded-xl text-red-400 font-bold text-[10px] uppercase hover:bg-red-500/10"><LogOut size={20} /> {sidebarOpen && "Logout"}</button>
+          <button onClick={() => { localStorage.clear(); navigate("/auth") }} className="w-full flex items-center gap-4 p-4 rounded-xl text-red-400 font-bold hover:bg-red-500/10"><LogOut size={20} /> {sidebarOpen && "Logout"}</button>
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-20 bg-white border-b flex items-center justify-between px-4 md:px-8 shrink-0 shadow-sm">
+        <header className="h-20 bg-white border-b flex items-center justify-between px-4 md:px-8 shrink-0 shadow-sm uppercase italic">
           <div className="flex items-center gap-4">
             <button className="md:hidden p-2 bg-slate-100 rounded-lg" onClick={() => setSidebarOpen(true)}><Menu size={20} /></button>
-            <h1 className="text-lg md:text-xl font-black text-slate-800 uppercase tracking-tighter">{menuOption} Dashboard</h1>
+            <h1 className="text-lg md:text-xl font-black text-slate-800 tracking-tighter">{menuOption} Manager</h1>
           </div>
-          <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white font-black uppercase shadow-lg transform rotate-3 tracking-tighter">
-            {JSON.parse(localStorage.getItem("transportUser"))?.companyName?.[0]}
+          <div onClick={() => setIsProfileOpen(true)} className="cursor-pointer group flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <p className="text-[10px] font-black text-slate-900">{user?.name}</p>
+              <p className="text-[8px] text-blue-500">{user?.companyName}</p>
+            </div>
+            <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white font-black group-hover:bg-blue-600 transition-colors shadow-lg">
+              {user?.companyName?.[0] || <UserIcon size={18} />}
+            </div>
           </div>
         </header>
 
         <main className="p-4 md:p-10 overflow-y-auto grow bg-gray-50/50">
           {menuOption === "home" && (
-            <div className="space-y-8 animate-in fade-in duration-500">
-              {/* Dashboard Content */}
+            <div className="space-y-8 animate-in fade-in duration-500 font-black">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h2 className="text-2xl font-black text-slate-900 underline decoration-blue-500 decoration-4 underline-offset-8 uppercase tracking-tighter">Revenue Overview</h2>
-                <div className="bg-white p-1 rounded-xl shadow-sm border flex gap-1 font-bold">
-                  {["week", "month", "year"].map((f) => (
-                    <button key={f} onClick={() => setDashFilter(f)} className={`px-4 py-1.5 rounded-lg text-[10px] uppercase tracking-widest ${dashFilter === f ? "bg-blue-600 text-white shadow-md" : "text-slate-500"}`}>{f}</button>
-                  ))}
-                </div>
+                <h2 className="text-2xl text-slate-900 underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">Revenue Overview</h2>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-black">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-6 hover:shadow-xl transition-all group">
                   <div className="p-4 bg-blue-600 rounded-2xl text-white shadow-lg group-hover:scale-110 duration-300"><TrendingUp size={24} /></div>
                   <div>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest leading-none">Total Revenue</p>
+                    <p className="text-slate-500 text-xs uppercase tracking-widest leading-none">Total Revenue</p>
                     <h3 className="text-3xl text-slate-900 mt-2 tracking-tighter">₹{dashData.totalRevenue?.toLocaleString('en-IN')}</h3>
                   </div>
                 </div>
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-6 hover:shadow-xl transition-all group">
                   <div className="p-4 bg-orange-500 rounded-2xl text-white shadow-lg group-hover:scale-110 duration-300"><Wallet size={24} /></div>
                   <div>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest leading-none">Trip Balance</p>
+                    <p className="text-slate-500 text-xs uppercase tracking-widest leading-none">Trip Balance</p>
                     <h3 className="text-3xl text-slate-900 mt-2 tracking-tighter">₹{dashData.totalTripBalance?.toLocaleString('en-IN')}</h3>
                   </div>
                 </div>
@@ -236,69 +275,69 @@ function Home() {
             </div>
           )}
 
-
-
-
-          {menuOption === "biltiy" && (
+          {(menuOption === "biltiy" || menuOption === "accounts") && (
             <div className="space-y-4 animate-in fade-in duration-500">
               <div className="flex flex-col xl:flex-row justify-between items-stretch gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                 <div className="flex flex-col sm:flex-row items-stretch gap-3 flex-1">
                   <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input type="text" placeholder="Search LR, DI, Vehicle..." className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <input type="text" placeholder="Search LR, Vehicle No..." className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
                   <div className="flex gap-2">
-                    <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 outline-none">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
-                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 outline-none">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
+                    <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
+                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
                   </div>
                 </div>
-                <button onClick={handleNewBiltyClick} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black uppercase shadow-lg active:scale-95 transition-all"><Plus size={18} /> New Bilty</button>
+                <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black shadow-lg shadow-blue-100"><Plus size={18} /> New Bilty</button>
               </div>
-
-              {/* FIXED: refreshData prop correctly passed to handle maintenance updates */}
-              <BiltyTable
-                data={biltyData}
-                loading={loading}
-                refreshData={() => getBilty(currentPage)}
-              />
+              {menuOption === "biltiy" ? (
+                <BiltyTable data={biltyData} loading={loading} refreshData={() => getBilty(currentPage)} showNotification={showNotification} />
+              ) : (
+                <FrightTable data={biltyData} loading={loading} refreshData={() => getBilty(currentPage)} showNotification={showNotification} />
+              )}
             </div>
           )}
+
           {menuOption === "petrolPump" && (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+              <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border">
                 <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
                 <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
               </div>
-              <PetrolPumpTable data={pumpData} loading={loading} onUpdatePayment={handleUpdatePayment} />
+              <PetrolPumpTable
+                data={pumpData}
+                loading={loading}
+                onUpdatePayment={handleUpdatePumpPayment}
+              />
             </div>
           )}
 
           {menuOption === "expantion" && (
-            <div className="space-y-6">
-              <div className="flex flex-col lg:flex-row justify-between items-stretch gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                <div className="flex flex-col sm:flex-row gap-3 flex-1">
-                  <div className="relative flex-1 max-w-xs font-bold">
+            <div className="space-y-4 animate-in fade-in duration-500">
+              <div className="flex flex-col xl:flex-row justify-between items-stretch gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div className="flex flex-col sm:flex-row items-stretch gap-3 flex-1">
+                  <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input type="text" placeholder="Search Purpose..." className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <input type="text" placeholder="Search by Title or Purpose..." className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <select value={exTitle} onChange={(e) => setExTitle(e.target.value)} className="border rounded-xl px-4 py-2 text-xs font-black uppercase bg-white"><option value="">All Expenses</option><option value="salary">Salary</option><option value="bills">Bills</option><option value="other">Others</option></select>
-                    <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-xl px-4 py-2 text-xs font-black uppercase bg-white">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
-                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-xl px-4 py-2 text-xs font-black uppercase bg-white">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
+                  <div className="flex gap-2">
+                    <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
+                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
                   </div>
                 </div>
-                <button onClick={handleNewExpenseClick} className="bg-slate-900 text-white px-6 py-3 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase shadow-xl"><Plus size={16} /> New Expense</button>
+                <button onClick={() => setIsExModalOpen(true)} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black shadow-xl"><Plus size={18} /> New Expense</button>
               </div>
-              <ExpenseTable data={expenseData} loading={loading} />
+              {/* Added filter logic here */}
+              <ExpenseTable data={expenseData} loading={loading} filterTerm={searchTerm} />
             </div>
           )}
 
-          {menuOption !== "home" && (
+          {menuOption !== "home" && totalPages > 1 && (
             <div className="flex items-center justify-between bg-white px-6 py-4 mt-6 rounded-2xl border shadow-sm">
-              <p className="text-[10px] font-black uppercase text-slate-400">Page {currentPage} of {totalPages}</p>
+              <p className="text-[10px] p-2 uppercase text-gray-500 font-sans font-bold">Page {currentPage} of {totalPages}</p>
               <div className="flex gap-2">
-                <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="p-2 border rounded-xl disabled:opacity-20 hover:bg-slate-50 transition-all"><ChevronLeft size={18} /></button>
-                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="p-2 border rounded-xl disabled:opacity-20 hover:bg-slate-50 transition-all"><ChevronRight size={18} /></button>
+                <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="p-2 border border-gray-300 rounded-xl disabled:opacity-20 hover:bg-slate-50 transition-all"><ChevronLeft size={18} /></button>
+                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="p-2 border border-gray-300 rounded-xl disabled:opacity-20 hover:bg-slate-50 transition-all"><ChevronRight size={18} /></button>
               </div>
             </div>
           )}

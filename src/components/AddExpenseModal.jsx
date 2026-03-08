@@ -27,6 +27,7 @@ const AddExpenseModal = ({ isOpen, onClose, onSuccess, onError }) => {
             descraption: formData.descraption,
             expenseDate: formData.expenseDate
         };
+        console.log(payload)
 
         try {
             const response = await axios.post("http://localhost:5000/persnol/expantion", payload, {
