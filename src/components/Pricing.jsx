@@ -14,9 +14,9 @@ const Pricing = ({ isOpen, onClose }) => {
     };
 
     const plans = [
-        { id: "monthly", name: "Silver", price: "2,999", duration: "1 Month", color: "text-slate-600", btn: "bg-slate-900", features: ["5 Bilty Demo", "Basic Reports", "Expense Tracking"] },
-        { id: "halfYearly", name: "Gold", price: "15,999", duration: "6 Months", popular: true, color: "text-blue-600", btn: "bg-blue-600", features: ["Unlimited Bilty", "Priority Support", "Advanced Analytics"] },
-        { id: "yearly", name: "Platinum", price: "31,999", duration: "1 Year", color: "text-orange-600", btn: "bg-orange-600", features: ["Unlimited Everything", "Multi-device Sync", "24/7 Phone Support"] }
+        { id: "monthly", name: "Silver", price: "2,999", duration: "1 Month", color: "text-slate-600 dark:text-slate-400", btn: "bg-slate-900 dark:bg-black", features: ["5 Bilty Demo", "Basic Reports", "Expense Tracking"] },
+        { id: "halfYearly", name: "Gold", price: "15,999", duration: "6 Months", popular: true, color: "text-blue-600 dark:text-blue-400", btn: "bg-blue-600", features: ["Unlimited Bilty", "Priority Support", "Advanced Analytics"] },
+        { id: "yearly", name: "Platinum", price: "31,999", duration: "1 Year", color: "text-orange-600 dark:text-orange-400", btn: "bg-orange-600", features: ["Unlimited Everything", "Multi-device Sync", "24/7 Phone Support"] }
     ];
 
     const handlePayment = async (planId) => {
@@ -55,7 +55,7 @@ const Pricing = ({ isOpen, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[100] bg-slate-900/95 dark:bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
             {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
             <div className="max-w-6xl w-full relative my-auto">
                 <button onClick={onClose} className="absolute -top-12 right-0 p-2 text-white hover:rotate-90 transition-all"><X size={32}/></button>
@@ -65,16 +65,16 @@ const Pricing = ({ isOpen, onClose }) => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-bold">
                     {plans.map(plan => (
-                        <div key={plan.id} className={`bg-white p-8 rounded-[2.5rem] relative flex flex-col transition-all hover:scale-[1.02] ${plan.popular ? 'ring-4 ring-blue-500 shadow-2xl' : ''}`}>
+                        <div key={plan.id} className={`bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] relative flex flex-col transition-all hover:scale-[1.02] ${plan.popular ? 'ring-4 ring-blue-500 shadow-2xl' : ''}`}>
                             {plan.popular && <span className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-6 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Most Popular</span>}
                             <h3 className={`text-xl font-black uppercase ${plan.color}`}>{plan.name}</h3>
                             <div className="flex items-baseline gap-1 mt-4 mb-6 font-black">
-                                <span className="text-4xl">₹{plan.price}</span>
-                                <span className="text-slate-400 text-sm">/{plan.duration}</span>
+                                <span className="text-4xl dark:text-white">₹{plan.price}</span>
+                                <span className="text-slate-400 dark:text-slate-500 text-sm">/{plan.duration}</span>
                             </div>
                             <ul className="flex-1 space-y-4 mb-8">
                                 {plan.features.map((f, i) => (
-                                    <li key={i} className="flex items-center gap-3 text-sm text-slate-600"><CheckCircle2 size={18} className="text-green-500 shrink-0"/>{f}</li>
+                                    <li key={i} className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300"><CheckCircle2 size={18} className="text-green-500 shrink-0"/>{f}</li>
                                 ))}
                             </ul>
                             <button onClick={() => handlePayment(plan.id)} className={`w-full py-4 ${plan.btn} text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl active:scale-95 transition-all`}>Activate Now</button>

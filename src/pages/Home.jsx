@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound,
   ChevronLeft, ChevronRight, Plus, LogOut,
-  TrendingUp, Wallet, Receipt, Search, User as UserIcon, Settings, FileSpreadsheet
+  TrendingUp, Wallet, Receipt, Search, User as UserIcon, Settings, FileSpreadsheet,
+  Sun, Moon
 } from "lucide-react";
 import axios from "axios";
 import { refreshToken } from "../api/api";
@@ -44,27 +45,27 @@ const ProfileModal = ({ isOpen, onClose, user, showNotification }) => {
 
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <form onSubmit={handleUpdate} className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-300">
+    <div className="fixed inset-0 z-[200] bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <form onSubmit={handleUpdate} className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-300">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-black uppercase tracking-tighter underline decoration-blue-500 decoration-4">My Profile</h2>
-          <X onClick={onClose} className="cursor-pointer text-slate-400 hover:text-slate-900" />
+          <h2 className="text-2xl font-black uppercase tracking-tighter underline decoration-blue-500 decoration-4 dark:text-white">My Profile</h2>
+          <X onClick={onClose} className="cursor-pointer text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white" />
         </div>
-        <div className="space-y-4 font-bold text-xs uppercase tracking-widest text-slate-900">
+        <div className="space-y-4 font-bold text-xs uppercase tracking-widest text-slate-900 dark:text-white">
           <div>
-            <label className="text-slate-400">Owner Name</label>
-            <input className="w-full border border-slate-200 p-3 rounded-xl mt-1 outline-none focus:border-blue-500" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+            <label className="text-slate-400 dark:text-slate-500">Owner Name</label>
+            <input className="w-full border border-slate-200 dark:border-slate-700 p-3 rounded-xl mt-1 outline-none focus:border-blue-500 dark:bg-slate-800 dark:text-white" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
           </div>
           <div>
-            <label className="text-slate-400">Company Name</label>
-            <input className="w-full border border-slate-200 p-3 rounded-xl mt-1 outline-none focus:border-blue-500" value={formData.companyName} onChange={(e) => setFormData({ ...formData, companyName: e.target.value })} />
+            <label className="text-slate-400 dark:text-slate-500">Company Name</label>
+            <input className="w-full border border-slate-200 dark:border-slate-700 p-3 rounded-xl mt-1 outline-none focus:border-blue-500 dark:bg-slate-800 dark:text-white" value={formData.companyName} onChange={(e) => setFormData({ ...formData, companyName: e.target.value })} />
           </div>
           <div>
-            <label className="text-slate-400">Email Address</label>
-            <input className="w-full border border-slate-200 p-3 rounded-xl mt-1 outline-none focus:border-blue-500" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+            <label className="text-slate-400 dark:text-slate-500">Email Address</label>
+            <input className="w-full border border-slate-200 dark:border-slate-700 p-3 rounded-xl mt-1 outline-none focus:border-blue-500 dark:bg-slate-800 dark:text-white" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
           </div>
         </div>
-        <button className="w-full bg-slate-900 text-white py-4 rounded-2xl mt-8 font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">Save Changes</button>
+        <button className="w-full bg-slate-900 dark:bg-black text-white py-4 rounded-2xl mt-8 font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">Save Changes</button>
       </form>
     </div>
   );
@@ -94,6 +95,23 @@ function Home() {
   const [dashFilter, setDashFilter] = useState("month");
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Dark mode state
+  const [darkMode, setDarkMode] = useState(() => {
+    const stored = localStorage.getItem('theme');
+    if (stored) return stored === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
+
   const user = JSON.parse(localStorage.getItem("transportUser")) || {};
 
   const showNotification = (success, msg) => {
@@ -117,6 +135,7 @@ function Home() {
     setLoading(true);
     try {
       const response = await axios.get(`http://localhost:5000/bill/get-bills?page=${page}&limit=50&year=${selectedYear}&month=${selectedMonth}&search=${searchTerm}`, { withCredentials: true });
+       console.log(response.data)
       if (response.data.success) {
         setBiltyData(response.data.bills);
         setTotalPages(response.data.totalPage);
@@ -193,7 +212,7 @@ function Home() {
   const months = [{ name: "Jan", value: "1" }, { name: "Feb", value: "2" }, { name: "Mar", value: "3" }, { name: "Apr", value: "4" }, { name: "May", value: "5" }, { name: "Jun", value: "6" }, { name: "Jul", value: "7" }, { name: "Aug", value: "8" }, { name: "Sep", value: "9" }, { name: "Oct", value: "10" }, { name: "Nov", value: "11" }, { name: "Dec", value: "12" }];
 
   return (
-    <div className="flex fixed h-screen w-full bg-[#f8fafc] overflow-hidden uppercase font-bold text-xs">
+    <div className="flex fixed h-screen w-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden uppercase font-bold text-xs">
       {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
 
       <AddBiltyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(msg) => { getBilty(1); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
@@ -201,10 +220,9 @@ function Home() {
       <Pricing isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} user={user} showNotification={showNotification} />
 
-      <aside className={`${sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full w-0 md:translate-x-0 md:w-20"} fixed md:relative z-50 h-full bg-slate-900 text-white transition-all duration-300 flex flex-col shadow-2xl`}>
-        <div className="p-5 flex items-center justify-between border-b border-slate-800">
-          {/* {(sidebarOpen || window.innerWidth < 768) && <span className="text-lg text-blue-400 uppercase italic tracking-tighter">{user?.companyName || "SAWARIYA"}</span>} */}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 hover:bg-slate-800 rounded-lg transition-colors"><Menu size={20} /></button>
+      <aside className={`${sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full w-0 md:translate-x-0 md:w-20"} fixed md:relative z-50 h-full bg-slate-900 dark:bg-black text-white transition-all duration-300 flex flex-col shadow-2xl`}>
+        <div className="p-5 flex items-center justify-between border-b border-slate-800 dark:border-slate-900">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded-lg transition-colors"><Menu size={20} /></button>
         </div>
         <nav className="flex-1 p-4 space-y-2 mt-2 tracking-widest text-[10px]">
           {[
@@ -218,57 +236,65 @@ function Home() {
             <button
               key={item.name}
               onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); if (window.innerWidth < 768) setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900"}`}
             >
               {item.icon}
               {sidebarOpen && <span>{item.label}</span>}
             </button>
           ))}
-          <button onClick={() => setIsProfileOpen(true)} className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-slate-800 hover:text-white mt-10">
+          <button onClick={() => setIsProfileOpen(true)} className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 mt-10">
             <Settings size={20} /> {sidebarOpen && "Edit Profile"}
           </button>
         </nav>
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-4 border-t border-slate-800 dark:border-slate-900">
           <button onClick={() => { localStorage.clear(); navigate("/auth") }} className="w-full flex items-center gap-4 p-4 rounded-xl text-red-400 font-bold hover:bg-red-500/10"><LogOut size={20} /> {sidebarOpen && "Logout"}</button>
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-20 bg-white border-b flex items-center justify-between px-4 md:px-8 shrink-0 shadow-sm uppercase italic">
+        <header className="h-20 bg-white dark:bg-slate-900 border-b dark:border-slate-800 flex items-center justify-between px-4 md:px-8 shrink-0 shadow-sm uppercase italic">
           <div className="flex items-center gap-4">
-            <button className="md:hidden p-2 bg-slate-100 rounded-lg" onClick={() => setSidebarOpen(true)}><Menu size={20} /></button>
-            <h1 className="text-lg md:text-xl font-black text-slate-800 tracking-tighter">{menuOption} Manager</h1>
+            <button className="md:hidden p-2 bg-slate-100 dark:bg-slate-800 rounded-lg" onClick={() => setSidebarOpen(true)}><Menu size={20} className="dark:text-white"/></button>
+            <h1 className="text-lg md:text-xl font-black text-slate-800 dark:text-white tracking-tighter">{menuOption} Manager</h1>
           </div>
-          <div onClick={() => setIsProfileOpen(true)} className="cursor-pointer group flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <p className="text-[10px] font-black text-slate-900">{user?.name}</p>
-              <p className="text-[8px] text-blue-500">{user?.companyName}</p>
-            </div>
-            <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white font-black group-hover:bg-blue-600 transition-colors shadow-lg">
-              {user?.companyName?.[0] || <UserIcon size={18} />}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg"
+            >
+              {darkMode ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-slate-700 dark:text-white" />}
+            </button>
+            <div onClick={() => setIsProfileOpen(true)} className="cursor-pointer group flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-[10px] font-black text-slate-900 dark:text-white">{user?.name}</p>
+                <p className="text-[8px] text-blue-500 dark:text-blue-400">{user?.companyName}</p>
+              </div>
+              <div className="w-10 h-10 bg-slate-900 dark:bg-black rounded-xl flex items-center justify-center text-white font-black group-hover:bg-blue-600 dark:group-hover:bg-blue-700 transition-colors shadow-lg">
+                {user?.companyName?.[0] || <UserIcon size={18} />}
+              </div>
             </div>
           </div>
         </header>
 
-        <main className="p-4 md:p-10 overflow-y-auto grow bg-gray-50/50">
+        <main className="p-4 md:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
           {menuOption === "home" && (
             <div className="space-y-8 animate-in fade-in duration-500 font-black">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h2 className="text-2xl text-slate-900 underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">Revenue Overview</h2>
+                <h2 className="text-2xl text-slate-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">Revenue Overview</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-6 hover:shadow-xl transition-all group">
+                <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-6 hover:shadow-xl transition-all group">
                   <div className="p-4 bg-blue-600 rounded-2xl text-white shadow-lg group-hover:scale-110 duration-300"><TrendingUp size={24} /></div>
                   <div>
-                    <p className="text-slate-500 text-xs uppercase tracking-widest leading-none">Total Revenue</p>
-                    <h3 className="text-3xl text-slate-900 mt-2 tracking-tighter">₹{dashData.totalRevenue?.toLocaleString('en-IN')}</h3>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest leading-none">Total Revenue</p>
+                    <h3 className="text-3xl text-slate-900 dark:text-white mt-2 tracking-tighter">₹{dashData.totalRevenue?.toLocaleString('en-IN')}</h3>
                   </div>
                 </div>
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-6 hover:shadow-xl transition-all group">
+                <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-6 hover:shadow-xl transition-all group">
                   <div className="p-4 bg-orange-500 rounded-2xl text-white shadow-lg group-hover:scale-110 duration-300"><Wallet size={24} /></div>
                   <div>
-                    <p className="text-slate-500 text-xs uppercase tracking-widest leading-none">Trip Balance</p>
-                    <h3 className="text-3xl text-slate-900 mt-2 tracking-tighter">₹{dashData.totalTripBalance?.toLocaleString('en-IN')}</h3>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest leading-none">Trip Balance</p>
+                    <h3 className="text-3xl text-slate-900 dark:text-white mt-2 tracking-tighter">₹{dashData.totalTripBalance?.toLocaleString('en-IN')}</h3>
                   </div>
                 </div>
               </div>
@@ -277,18 +303,18 @@ function Home() {
 
           {(menuOption === "biltiy" || menuOption === "accounts") && (
             <div className="space-y-4 animate-in fade-in duration-500">
-              <div className="flex flex-col xl:flex-row justify-between items-stretch gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+              <div className="flex flex-col xl:flex-row justify-between items-stretch gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-3 flex-1">
                   <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input type="text" placeholder="Search LR, Vehicle No..." className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+                    <input type="text" placeholder="Search LR, Vehicle No..." className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
                   <div className="flex gap-2">
-                    <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
-                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
+                    <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
+                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
                   </div>
                 </div>
-                <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black shadow-lg shadow-blue-100"><Plus size={18} /> New Bilty</button>
+                <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black shadow-lg shadow-blue-100 dark:shadow-blue-900/50"><Plus size={18} /> New Bilty</button>
               </div>
               {menuOption === "biltiy" ? (
                 <BiltyTable data={biltyData} loading={loading} refreshData={() => getBilty(currentPage)} showNotification={showNotification} />
@@ -300,9 +326,9 @@ function Home() {
 
           {menuOption === "petrolPump" && (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border">
-                <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
-                <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
+              <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700">
+                <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
+                <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
               </div>
               <PetrolPumpTable
                 data={pumpData}
@@ -314,30 +340,29 @@ function Home() {
 
           {menuOption === "expantion" && (
             <div className="space-y-4 animate-in fade-in duration-500">
-              <div className="flex flex-col xl:flex-row justify-between items-stretch gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+              <div className="flex flex-col xl:flex-row justify-between items-stretch gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-3 flex-1">
                   <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input type="text" placeholder="Search by Title or Purpose..." className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+                    <input type="text" placeholder="Search by Title or Purpose..." className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
                   <div className="flex gap-2">
-                    <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
-                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
+                    <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
+                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
                   </div>
                 </div>
-                <button onClick={() => setIsExModalOpen(true)} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black shadow-xl"><Plus size={18} /> New Expense</button>
+                <button onClick={() => setIsExModalOpen(true)} className="bg-slate-900 dark:bg-black text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black shadow-xl"><Plus size={18} /> New Expense</button>
               </div>
-              {/* Added filter logic here */}
               <ExpenseTable data={expenseData} loading={loading} filterTerm={searchTerm} />
             </div>
           )}
 
           {menuOption !== "home" && totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white px-6 py-4 mt-6 rounded-2xl border shadow-sm">
-              <p className="text-[10px] p-2 uppercase text-gray-500 font-sans font-bold">Page {currentPage} of {totalPages}</p>
+            <div className="flex items-center justify-between bg-white dark:bg-slate-800 px-6 py-4 mt-6 rounded-2xl border dark:border-slate-700 shadow-sm">
+              <p className="text-[10px] p-2 uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">Page {currentPage} of {totalPages}</p>
               <div className="flex gap-2">
-                <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="p-2 border border-gray-300 rounded-xl disabled:opacity-20 hover:bg-slate-50 transition-all"><ChevronLeft size={18} /></button>
-                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="p-2 border border-gray-300 rounded-xl disabled:opacity-20 hover:bg-slate-50 transition-all"><ChevronRight size={18} /></button>
+                <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="p-2 border border-gray-300 dark:border-slate-600 rounded-xl disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"><ChevronLeft size={18} className="dark:text-white"/></button>
+                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="p-2 border border-gray-300 dark:border-slate-600 rounded-xl disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"><ChevronRight size={18} className="dark:text-white"/></button>
               </div>
             </div>
           )}
