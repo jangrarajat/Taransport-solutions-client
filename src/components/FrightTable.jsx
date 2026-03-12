@@ -261,8 +261,8 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
 
       const headers = [
         ["Date", "LR No.", "Challan", "Vehicle", "DI No.", "Recipient", "Dest.", "Qty", "Rate",
-         "Freight", "Comm.", "Advance", "Diesel", "Pump", "Final", "Remark", "Balance",
-         "Open Bal", "Close Bal"]
+          "Freight", "Comm.", "Advance", "Diesel", "Pump", "Final", "Remark", "Balance",
+          "Open Bal", "Close Bal"]
       ];
 
       const rows = exportData.map((bill, index) => [
@@ -316,9 +316,9 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
         body: [...rows, totalsRow],
         startY: 20,
         theme: 'striped',
-        styles: { fontSize: 7, cellPadding: 1.5, halign: 'center', valign: 'middle', lineColor: [200,200,200], lineWidth: 0.1, overflow: 'linebreak' },
-        headStyles: { fillColor: [30,41,59], textColor: 255, fontStyle: 'bold' },
-        footStyles: { fillColor: [241,245,249], textColor: [30,41,59], fontStyle: 'bold' },
+        styles: { fontSize: 7, cellPadding: 1.5, halign: 'center', valign: 'middle', lineColor: [200, 200, 200], lineWidth: 0.1, overflow: 'linebreak' },
+        headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
+        footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
       });
 
       doc.save(`Fright_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
@@ -567,14 +567,14 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
                     <td className={`px-4 py-3 text-center font-black border-x dark:border-slate-700 ${bill.tripBalanceAmmount < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
                       ₹{bill.tripBalanceAmmount || 0}
                     </td>
+                    <td className={`px-4 py-3 text-center font-black ${runningBalances[index] < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
+                      {runningBalances[index] !== undefined ? `₹${runningBalances[index]}` : '-'}
+                    </td>
                     {/* Opening Balance column – uses openingBalance if available, else vehicleTotalBalance */}
                     <td className="px-4 py-3 text-center font-black bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
                       {startBalance !== null ? `₹${startBalance}` : '-'}
                     </td>
                     {/* Closing Balance column – running balance */}
-                    <td className={`px-4 py-3 text-center font-black ${runningBalances[index] < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
-                      {runningBalances[index] !== undefined ? `₹${runningBalances[index]}` : '-'}
-                    </td>
                   </tr>
                 );
               })}
@@ -602,11 +602,13 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
                 <td className={`px-4 py-3 text-center font-black ${totals.balance < 0 ? "text-red-700 dark:text-red-300" : "text-green-700 dark:text-green-300"}`}>
                   ₹{totals.balance}
                 </td>
-                {/* Opening Balance footer (blank) */}
-                <td className="px-4 py-3 text-center font-black"></td>
                 {/* Closing Balance footer (last running balance) */}
-                <td className={`px-4 py-3 text-center font-black ${runningBalances.length && runningBalances[runningBalances.length-1] < 0 ? "text-red-700 dark:text-red-300" : "text-green-700 dark:text-green-300"}`}>
-                  {runningBalances.length ? `₹${runningBalances[runningBalances.length-1]}` : '-'}
+                <td className={`px-4 py-3 text-center font-black ${runningBalances.length && runningBalances[runningBalances.length - 1] < 0 ? "text-red-700 dark:text-red-300" : "text-green-700 dark:text-green-300"}`}>
+                  {runningBalances.length ? `₹${runningBalances[runningBalances.length - 1]}` : '-'}
+                </td>
+                {/* Opening Balance footer (blank) */}
+                <td className="px-4 py-3 text-center font-black bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
+                   
                 </td>
               </tr>
             </tfoot>
