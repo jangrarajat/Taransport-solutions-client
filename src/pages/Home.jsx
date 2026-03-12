@@ -31,7 +31,7 @@ const ProfileModal = ({ isOpen, onClose, user, showNotification }) => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.put(`http://localhost:5000/user/update-profile`, formData, { withCredentials: true });
+      const res = await axios.put(`${import.meta.env.VITE_URL}/user/update-profile`, formData, { withCredentials: true });
       if (res.data.success) {
         localStorage.setItem("transportUser", JSON.stringify(res.data.user));
         showNotification(true, "Profile Updated Successfully! ✨");
@@ -93,8 +93,12 @@ function Home() {
   const [dashFilter, setDashFilter] = useState("month");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // ✅ New state for vehicle total balance (from backend)
+  // ✅ Existing state for vehicle total balance (from backend)
   const [vehicleTotalBalance, setVehicleTotalBalance] = useState(null);
+
+  // ✅ NEW: state for opening and closing balances
+  const [openingBalance, setOpeningBalance] = useState(null);
+  const [closingBalance, setClosingBalance] = useState(null);
 
   // Helper to get current month's date range (YYYY-MM-DD)
   const getCurrentMonthRange = () => {
@@ -167,7 +171,7 @@ function Home() {
 
   const getDashboardData = useCallback(async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/user/dashbord?filter=${dashFilter}`, { withCredentials: true });
+      const response = await axios.get(`${import.meta.env.VITE_URL}/user/dashbord?filter=${dashFilter}`, { withCredentials: true });
       if (response.data.success) setDashData(response.data.data);
     } catch (error) {
       if (error.response?.status === 401) {
@@ -180,7 +184,7 @@ function Home() {
   const getBilty = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const url = `http://localhost:5000/bill/get-bills?page=${page}&limit=50&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
+      const url = `${import.meta.env.VITE_URL}/bill/get-bills?page=${page}&limit=50&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
       console.log(response);
       if (response.data.success) {
@@ -195,6 +199,9 @@ function Home() {
         setCurrentPage(response.data.page);
         // ✅ Save vehicleTotalBalance if present (from backend)
         setVehicleTotalBalance(response.data.vehicleTotalBalance || null);
+        // ✅ NEW: Save opening and closing balances
+        setOpeningBalance(response.data.openingBalance ?? null);
+        setClosingBalance(response.data.closingBalance ?? null);
       }
     } catch (error) {
       if (error.response?.status === 401) {
@@ -207,7 +214,7 @@ function Home() {
   const getPetrolPumps = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const url = `http://localhost:5000/bill/get-petrolPumps?page=${page}&startDate=${startDate}&endDate=${endDate}`;
+      const url = `${import.meta.env.VITE_URL}/bill/get-petrolPumps?page=${page}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {
         const formattedPumps = response.data.pumpData.map(pump => ({
@@ -229,7 +236,7 @@ function Home() {
   const getExpenses = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const url = `http://localhost:5000/persnol/get-expantion?page=${page}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
+      const url = `${import.meta.env.VITE_URL}/persnol/get-expantion?page=${page}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {
         const formattedExpenses = response.data.expantions.map(exp => ({
@@ -281,7 +288,7 @@ function Home() {
   const handleUpdatePumpPayment = async (pumpId, currentStatus) => {
     try {
       const newStatus = currentStatus === "payed" ? "unpayed" : "payed";
-      const res = await axios.put(`http://localhost:5000/bill/update-petrolpump-payment/${pumpId}?payment=${newStatus}`,
+      const res = await axios.put(`${import.meta.env.VITE_URL}/bill/update-petrolpump-payment/${pumpId}?payment=${newStatus}`,
         {},
         { withCredentials: true }
       );
@@ -307,7 +314,7 @@ function Home() {
       <Pricing isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} user={user} showNotification={showNotification} />
 
-      <aside className={`${sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full w-0 md:translate-x-0 md:w-20"} fixed md:relative z-50 h-full bg-slate-900 dark:bg-black text-white transition-all duration-300 flex flex-col shadow-2xl`}>
+      <aside className={`${sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full w-0 md:translate-x-0 md:w-20"} fixed md:relative z-50 h-full bg-slate-900 dark:bg-gray-900 text-white transition-all duration-300 flex flex-col shadow-2xl`}>
         <div className="p-5 flex items-center justify-between border-b border-slate-800 dark:border-slate-900">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded-lg transition-colors"><Menu size={20} /></button>
         </div>
@@ -436,7 +443,10 @@ function Home() {
                   loading={loading}
                   refreshData={() => getBilty(currentPage)}
                   showNotification={showNotification}
-                  vehicleTotalBalance={vehicleTotalBalance}   // ✅ new prop
+                  vehicleTotalBalance={vehicleTotalBalance}
+                  // ✅ NEW: pass openingBalance and closingBalance
+                  openingBalance={openingBalance}
+                  closingBalance={closingBalance}
                 />
               ) : (
                 <FrightTable
@@ -444,7 +454,10 @@ function Home() {
                   loading={loading}
                   refreshData={() => getBilty(currentPage)}
                   showNotification={showNotification}
-                  vehicleTotalBalance={vehicleTotalBalance}   // ✅ new prop
+                  vehicleTotalBalance={vehicleTotalBalance}
+                  // ✅ NEW: pass openingBalance and closingBalance
+                  openingBalance={openingBalance}
+                  closingBalance={closingBalance}
                 />
               )}
             </div>

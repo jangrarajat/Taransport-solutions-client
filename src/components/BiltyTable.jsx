@@ -110,7 +110,7 @@ const BiltyTable = ({ data, loading, refreshData }) => {
 
     const handleDeleteClick = async () => {
         try {
-            const res = await axios.delete(`http://localhost:5000/bill/delete-bilty/${deleteModal.id}`, { withCredentials: true });
+            const res = await axios.delete(`${import.meta.env.VITE_URL}/bill/delete-bilty/${deleteModal.id}`, { withCredentials: true });
 
             if (res.data.success) {
                 showNotification(true, "Bilty Deleted! 🗑️");

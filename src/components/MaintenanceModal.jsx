@@ -14,7 +14,7 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate }) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await axios.put(`http://localhost:5000/bill/update-maintenance/${bill._id}`,
+            const res = await axios.put(`${import.meta.env.VITE_URL}/bill/update-maintenance/${bill._id}`,
                 { amount, remark }, { withCredentials: true });
 
             if (res.data.success) {

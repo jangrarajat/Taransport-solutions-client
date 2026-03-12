@@ -38,7 +38,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
     setLoading(true);
     try {
       // Backend controller 'addBillEntry' par request bhej raha hai
-      const response = await axios.post("http://localhost:5000/bill/add-bill-entry", formData, {
+      const response = await axios.post(`${import.meta.env.VITE_URL}/bill/add-bill-entry`, formData, {
         withCredentials: true
       });
       

@@ -30,7 +30,7 @@ const AddExpenseModal = ({ isOpen, onClose, onSuccess, onError }) => {
         console.log(payload)
 
         try {
-            const response = await axios.post("http://localhost:5000/persnol/expantion", payload, {
+            const response = await axios.post(`${import.meta.env.VITE_URL}/persnol/expantion`, payload, {
                 withCredentials: true
             });
             if (response.data.success) {

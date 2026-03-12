@@ -27,7 +27,7 @@ const Pricing = ({ isOpen, onClose }) => {
                 return;
             }
 
-            const { data } = await axios.post("http://localhost:5000/user/create-order", { planId }, { withCredentials: true });
+            const { data } = await axios.post(`${import.meta.env.VITE_URL}/user/create-order`, { planId }, { withCredentials: true });
             
             const options = {
                 key: rzpKey,
@@ -36,7 +36,7 @@ const Pricing = ({ isOpen, onClose }) => {
                 name: "Sawariya Logistic",
                 order_id: data.order.id,
                 handler: async (response) => {
-                    const verifyRes = await axios.post("http://localhost:5000/user/verify-payment", { ...response, planId }, { withCredentials: true });
+                    const verifyRes = await axios.post(`${import.meta.env.VITE_URL}/user/verify-payment`, { ...response, planId }, { withCredentials: true });
                     if (verifyRes.data.success) {
                         // FIXED: Pure user object ko update karein taaki isPremium true ho jaye
                         localStorage.setItem("transportUser", JSON.stringify(verifyRes.data.user));

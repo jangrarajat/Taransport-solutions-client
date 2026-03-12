@@ -43,7 +43,7 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.put(`http://localhost:5000/bill/update-maintenance/${bill._id}`,
+      const res = await axios.put(`${import.meta.env.VITE_URL}/bill/update-maintenance/${bill._id}`,
         { amount: Number(amount), remark }, { withCredentials: true });
       if (res.data.success) {
         onUpdate();
@@ -83,7 +83,7 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
 };
 
 // --- Main Component ---
-const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTotalBalance }) => {
+const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTotalBalance, openingBalance, closingBalance }) => {
   const [addPayment, setAddPayment] = useState(false);
   const [printBityBtn, setPrintBityBtn] = useState(false);
   const [pData, setPData] = useState([]);
@@ -111,15 +111,17 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
     });
   }, [data]);
 
-  // ✅ Compute running closing balances (based on sortedData)
+  // ✅ Compute running closing balances – use openingBalance if available, else fallback to vehicleTotalBalance
   const runningBalances = useMemo(() => {
-    if (!sortedData.length || vehicleTotalBalance === null || vehicleTotalBalance === undefined) return [];
-    let running = vehicleTotalBalance;
+    if (!sortedData.length) return [];
+    const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
+    if (startBalance === null || startBalance === undefined) return [];
+    let running = startBalance;
     return sortedData.map((bill) => {
       running = running - (bill.tripBalanceAmmount || 0);
       return running;
     });
-  }, [sortedData, vehicleTotalBalance]);
+  }, [sortedData, openingBalance, vehicleTotalBalance]);
 
   useEffect(() => {
     if (headerCheckboxRef.current) {
@@ -163,6 +165,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
   const downloadStyledExcel = () => {
     const exportData = getExportData();
     const totals = calculateTotals(exportData);
+    const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
 
     const headers = [
       "Date", "LR No.", "Challan No", "Vehicle", "DI No.",
@@ -190,7 +193,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
       bill.faynalAmmount || 0,
       bill.remark || "",
       bill.tripBalanceAmmount || 0,
-      vehicleTotalBalance !== null && vehicleTotalBalance !== undefined ? vehicleTotalBalance : "-",
+      startBalance !== null && startBalance !== undefined ? startBalance : "-",
       runningBalances[index] !== undefined ? runningBalances[index] : "-"
     ]);
 
@@ -254,6 +257,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
     try {
       const exportData = getExportData();
       const totals = calculateTotals(exportData);
+      const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
 
       const headers = [
         ["Date", "LR No.", "Challan", "Vehicle", "DI No.", "Recipient", "Dest.", "Qty", "Rate",
@@ -279,7 +283,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
         String(bill.faynalAmmount || 0),
         bill.remark || "",
         String(bill.tripBalanceAmmount || 0),
-        vehicleTotalBalance !== null ? String(vehicleTotalBalance) : "-",
+        startBalance !== null ? String(startBalance) : "-",
         runningBalances[index] !== undefined ? String(runningBalances[index]) : "-"
       ]);
 
@@ -328,6 +332,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
   const printData = () => {
     const exportData = getExportData();
     const totals = calculateTotals(exportData);
+    const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
 
     const headers = [
       "Date", "LR No.", "Challan No", "Vehicle", "DI No.",
@@ -355,7 +360,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
       bill.faynalAmmount || 0,
       bill.remark || "",
       bill.tripBalanceAmmount || 0,
-      vehicleTotalBalance !== null ? vehicleTotalBalance : "-",
+      startBalance !== null ? startBalance : "-",
       runningBalances[index] !== undefined ? runningBalances[index] : "-"
     ]);
 
@@ -411,7 +416,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
 
   const handleDeleteClick = async () => {
     try {
-      const res = await axios.delete(`http://localhost:5000/bill/delete-bilty/${deleteModal.id}`, { withCredentials: true });
+      const res = await axios.delete(`${import.meta.env.VITE_URL}/bill/delete-bilty/${deleteModal.id}`, { withCredentials: true });
       if (res.data.success) {
         showNotification(true, "Record Deleted! 🗑️");
         refreshData();
@@ -423,7 +428,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
   const handleAddPayment = async () => {
     console.log(date, nameOfRecipient, vehicleNo, amount, remark, destination);
     try {
-      const response = await axios.post('http://localhost:5000/bill/add-tranjaction-entry',
+      const response = await axios.post(`${import.meta.env.VITE_URL}/bill/add-tranjaction-entry`,
         { DateOfIssueOfInvoice: date, NameOfRecipient: nameOfRecipient, VehicleNo: vehicleNo, Amount: amount, remark: remark, Destination: destination },
         { withCredentials: true }
       );
@@ -526,50 +531,53 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-bold uppercase text-[11px] text-slate-700 dark:text-slate-300">
-              {sortedData.map((bill, index) => (
-                <tr key={bill._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${selectedIds.includes(bill._id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
-                  <td className="px-4 py-3 text-center border-r dark:border-slate-700">
-                    <input type="checkbox" checked={selectedIds.includes(bill._id)}
-                      onChange={() => setSelectedIds(prev => prev.includes(bill._id) ? prev.filter(i => i !== bill._id) : [...prev, bill._id])}
-                      className="dark:bg-slate-700 dark:border-slate-600" />
-                  </td>
-                  <td className="px-4 py-3 border-r dark:border-slate-700">
-                    <div className="flex items-center justify-center gap-2">
-                      <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><Edit3 size={14} /></button>
-                      <button onClick={() => setDeleteModal({ open: true, id: bill._id })} className="text-red-400 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg"><Trash2 size={14} /></button>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{bill.DateOfIssueOfInvoice}</td>
-                  <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{bill.LRNO}</td>
-                  <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{bill.challanNO}</td>
-                  <td className="px-4 py-3 text-center font-mono text-slate-800 dark:text-white">{bill.VehicleNo}</td>
-                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.DINo}</td>
-                  <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200 min-w-[150px]">{bill.NameOfRecipient}</td>
-                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.Destination}</td>
-                  <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(bill.Quantity)}</td>
-                  <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(bill.pmt)}</td>
-                  <td className="px-4 py-3 text-center text-blue-600 dark:text-blue-400">₹{bill.frightAmount || 0}</td>
-                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">₹{bill.commeion || 0}</td>
-                  <td className="px-4 py-3 text-center text-red-600 dark:text-red-400">₹{bill.advanceCash || 0}</td>
-                  <td className="px-4 py-3 text-center text-red-500 dark:text-red-400">₹{bill.desil || 0}</td>
-                  <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 uppercase">{bill.petrolPump || "N/A"}</td>
-                  <td className="px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black bg-blue-50 dark:bg-blue-900/20">
-                    ₹{bill.faynalAmmount || 0}
-                  </td>
-                  <td className="px-4 py-3 text-center text-nowrap">{bill.remark}</td>
-                  <td className={`px-4 py-3 text-center font-black border-x dark:border-slate-700 ${bill.tripBalanceAmmount < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
-                    ₹{bill.tripBalanceAmmount || 0}
-                  </td>
-                  {/* Opening Balance column */}
-                  <td className="px-4 py-3 text-center font-black bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
-                    {vehicleTotalBalance !== null && vehicleTotalBalance !== undefined ? `₹${vehicleTotalBalance}` : '-'}
-                  </td>
-                  {/* Closing Balance column */}
-                  <td className={`px-4 py-3 text-center font-black ${runningBalances[index] < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
-                    {runningBalances[index] !== undefined ? `₹${runningBalances[index]}` : '-'}
-                  </td>
-                </tr>
-              ))}
+              {sortedData.map((bill, index) => {
+                const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
+                return (
+                  <tr key={bill._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${selectedIds.includes(bill._id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
+                    <td className="px-4 py-3 text-center border-r dark:border-slate-700">
+                      <input type="checkbox" checked={selectedIds.includes(bill._id)}
+                        onChange={() => setSelectedIds(prev => prev.includes(bill._id) ? prev.filter(i => i !== bill._id) : [...prev, bill._id])}
+                        className="dark:bg-slate-700 dark:border-slate-600" />
+                    </td>
+                    <td className="px-4 py-3 border-r dark:border-slate-700">
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><Edit3 size={14} /></button>
+                        <button onClick={() => setDeleteModal({ open: true, id: bill._id })} className="text-red-400 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg"><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{bill.DateOfIssueOfInvoice}</td>
+                    <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{bill.LRNO}</td>
+                    <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{bill.challanNO}</td>
+                    <td className="px-4 py-3 text-center font-mono text-slate-800 dark:text-white">{bill.VehicleNo}</td>
+                    <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.DINo}</td>
+                    <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200 min-w-[150px]">{bill.NameOfRecipient}</td>
+                    <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.Destination}</td>
+                    <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(bill.Quantity)}</td>
+                    <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(bill.pmt)}</td>
+                    <td className="px-4 py-3 text-center text-blue-600 dark:text-blue-400">₹{bill.frightAmount || 0}</td>
+                    <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">₹{bill.commeion || 0}</td>
+                    <td className="px-4 py-3 text-center text-red-600 dark:text-red-400">₹{bill.advanceCash || 0}</td>
+                    <td className="px-4 py-3 text-center text-red-500 dark:text-red-400">₹{bill.desil || 0}</td>
+                    <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 uppercase">{bill.petrolPump || "N/A"}</td>
+                    <td className="px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black bg-blue-50 dark:bg-blue-900/20">
+                      ₹{bill.faynalAmmount || 0}
+                    </td>
+                    <td className="px-4 py-3 text-center text-nowrap">{bill.remark}</td>
+                    <td className={`px-4 py-3 text-center font-black border-x dark:border-slate-700 ${bill.tripBalanceAmmount < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
+                      ₹{bill.tripBalanceAmmount || 0}
+                    </td>
+                    {/* Opening Balance column – uses openingBalance if available, else vehicleTotalBalance */}
+                    <td className="px-4 py-3 text-center font-black bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
+                      {startBalance !== null ? `₹${startBalance}` : '-'}
+                    </td>
+                    {/* Closing Balance column – running balance */}
+                    <td className={`px-4 py-3 text-center font-black ${runningBalances[index] < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
+                      {runningBalances[index] !== undefined ? `₹${runningBalances[index]}` : '-'}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             {/* Totals Footer */}
             <tfoot className="bg-slate-100 dark:bg-slate-800 font-black text-xs border-t-2 border-slate-300 dark:border-slate-600">

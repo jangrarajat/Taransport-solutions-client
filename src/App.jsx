@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import './App.css'
-import Auth from './pages/auth'
+import Auth from './pages/Auth'
 import Home from './pages/Home'
 import {ProtectedRoute} from './utils/ProtectedRoute'
 import { PublicRoute } from './utils/ProtectedRoute'
