@@ -5,7 +5,7 @@ function Bilty({ pData }) {
         console.log(pData.Packages)
     },[])
     return (
-        <div className="invoice-box  text-xs">
+        <div className="invoice-box   text-xs">
             <table className="main-table">
                 <tbody>
                     <tr>
