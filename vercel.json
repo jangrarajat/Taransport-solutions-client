@@ -1,5 +1,9 @@
-{
+{{
   "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://taransport-solutions-system.onrender.com/:path*"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
