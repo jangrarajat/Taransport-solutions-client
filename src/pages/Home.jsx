@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
-  Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound,
+  Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound, ClipboardPlus,
   ChevronLeft, ChevronRight, Plus, LogOut,
   TrendingUp, Wallet, Receipt, Search, User as UserIcon, Settings, FileSpreadsheet,
-  Sun, Moon
+  Sun, Moon, RotateCcw
 } from "lucide-react";
 import axios from "axios";
 import { refreshToken } from "../api/api";
@@ -90,10 +90,36 @@ function Home() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [dashFilter, setDashFilter] = useState("month");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // ✅ New state for vehicle total balance (from backend)
+  const [vehicleTotalBalance, setVehicleTotalBalance] = useState(null);
+
+  // Helper to get current month's date range (YYYY-MM-DD)
+  const getCurrentMonthRange = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    const format = (date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+
+    return {
+      start: format(firstDay),
+      end: format(lastDay)
+    };
+  };
+
+  const initialRange = getCurrentMonthRange();
+  const [startDate, setStartDate] = useState(initialRange.start);
+  const [endDate, setEndDate] = useState(initialRange.end);
 
   // Dark mode state
   const [darkMode, setDarkMode] = useState(() => {
@@ -119,6 +145,26 @@ function Home() {
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
   };
 
+  // Reset to current month and trigger search
+  const resetToCurrentMonth = () => {
+    const range = getCurrentMonthRange();
+    setStartDate(range.start);
+    setEndDate(range.end);
+    setCurrentPage(1);
+    handleSearch(); // auto search after reset
+  };
+
+  // Date formatter for DD-MM-YYYY (used in tables)
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
   const getDashboardData = useCallback(async () => {
     try {
       const response = await axios.get(`http://localhost:5000/user/dashbord?filter=${dashFilter}`, { withCredentials: true });
@@ -134,12 +180,21 @@ function Home() {
   const getBilty = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const response = await axios.get(`http://localhost:5000/bill/get-bills?page=${page}&limit=50&year=${selectedYear}&month=${selectedMonth}&search=${searchTerm}`, { withCredentials: true });
-       console.log(response.data)
+      const url = `http://localhost:5000/bill/get-bills?page=${page}&limit=50&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
+      const response = await axios.get(url, { withCredentials: true });
+      console.log(response);
       if (response.data.success) {
-        setBiltyData(response.data.bills);
+        const formattedBills = response.data.bills.map(bill => ({
+          ...bill,
+          createdAt: formatDate(bill.createdAt),
+          DateOfIssueOfInvoice: formatDate(bill.DateOfIssueOfInvoice),
+          updatedAt: formatDate(bill.updatedAt)
+        }));
+        setBiltyData(formattedBills);
         setTotalPages(response.data.totalPage);
         setCurrentPage(response.data.page);
+        // ✅ Save vehicleTotalBalance if present (from backend)
+        setVehicleTotalBalance(response.data.vehicleTotalBalance || null);
       }
     } catch (error) {
       if (error.response?.status === 401) {
@@ -147,44 +202,89 @@ function Home() {
         if (isRefreshed) getBilty(page);
       }
     } finally { setLoading(false); }
-  }, [selectedYear, selectedMonth, searchTerm]);
+  }, [searchTerm, startDate, endDate]);
 
   const getPetrolPumps = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const response = await axios.get(`http://localhost:5000/bill/get-petrolPumps?page=${page}&month=${selectedMonth}&year=${selectedYear}`, { withCredentials: true });
+      const url = `http://localhost:5000/bill/get-petrolPumps?page=${page}&startDate=${startDate}&endDate=${endDate}`;
+      const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {
-        setPumpData(response.data.pumpData);
+        const formattedPumps = response.data.pumpData.map(pump => ({
+          ...pump,
+          createdAt: formatDate(pump.createdAt),
+          updatedAt: formatDate(pump.updatedAt)
+        }));
+        setPumpData(formattedPumps);
         setTotalPages(response.data.totalPage);
       }
-    } catch (error) { if (error.response?.status === 401) { const isRefreshed = await refreshToken(); if (isRefreshed) getPetrolPumps(page); } }
-    finally { setLoading(false); }
-  }, [selectedYear, selectedMonth]);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) getPetrolPumps(page);
+      }
+    } finally { setLoading(false); }
+  }, [startDate, endDate]);
 
   const getExpenses = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const response = await axios.get(`http://localhost:5000/persnol/get-expantion?page=${page}&month=${selectedMonth}&year=${selectedYear}&search=${searchTerm}`, { withCredentials: true });
-      console.log(response.data.expantions)
+      const url = `http://localhost:5000/persnol/get-expantion?page=${page}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
+      const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {
-        setExpenseData(response.data.expantions);
+        const formattedExpenses = response.data.expantions.map(exp => ({
+          ...exp,
+          createdAt: formatDate(exp.createdAt),
+          updatedAt: formatDate(exp.updatedAt),
+          date: formatDate(exp.date)
+        }));
+        setExpenseData(formattedExpenses);
         setTotalPages(response.data.totalPage);
         setCurrentPage(response.data.page);
       }
-    } catch (error) { if (error.response?.status === 401) { const isRefreshed = await refreshToken(); if (isRefreshed) getExpenses(page); } }
-    finally { setLoading(false); }
-  }, [selectedYear, selectedMonth, searchTerm]);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) getExpenses(page);
+      }
+    } finally { setLoading(false); }
+  }, [searchTerm, startDate, endDate]);
 
-  // Fix: Petrol Pump Status Update URL according to backend route
+  // Handle search button click
+  const handleSearch = () => {
+    setCurrentPage(1); // reset to first page on new search
+    if (menuOption === "biltiy" || menuOption === "accounts") {
+      getBilty(1);
+    } else if (menuOption === "petrolPump") {
+      getPetrolPumps(1);
+    } else if (menuOption === "expantion") {
+      getExpenses(1);
+    }
+  };
+
+  // Handle Enter key in search input
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  // Load data when menu changes (with current filters)
+  useEffect(() => {
+    if (menuOption === "home") {
+      getDashboardData();
+    } else {
+      handleSearch(); // use same search logic
+    }
+  }, [menuOption]); // only on menu change, not on filter changes
+
   const handleUpdatePumpPayment = async (pumpId, currentStatus) => {
     try {
       const newStatus = currentStatus === "payed" ? "unpayed" : "payed";
-      // Backend expects 'update-petrolpump-payment' and payment in query params
       const res = await axios.put(`http://localhost:5000/bill/update-petrolpump-payment/${pumpId}?payment=${newStatus}`,
         {},
         { withCredentials: true }
       );
-
       if (res.data.success) {
         showNotification(true, "Payment Status Updated! ✅");
         getPetrolPumps(currentPage);
@@ -197,19 +297,6 @@ function Home() {
       showNotification(false, "Update failed");
     }
   };
-
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      if (menuOption === "home") getDashboardData();
-      else if (menuOption === "biltiy" || menuOption === "accounts") getBilty(currentPage);
-      else if (menuOption === "petrolPump") getPetrolPumps(currentPage);
-      else if (menuOption === "expantion") getExpenses(currentPage);
-    }, 400);
-    return () => clearTimeout(delayDebounceFn);
-  }, [menuOption, getDashboardData, getBilty, getPetrolPumps, getExpenses, currentPage, selectedYear, selectedMonth, searchTerm]);
-
-  const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
-  const months = [{ name: "Jan", value: "1" }, { name: "Feb", value: "2" }, { name: "Mar", value: "3" }, { name: "Apr", value: "4" }, { name: "May", value: "5" }, { name: "Jun", value: "6" }, { name: "Jul", value: "7" }, { name: "Aug", value: "8" }, { name: "Sep", value: "9" }, { name: "Oct", value: "10" }, { name: "Nov", value: "11" }, { name: "Dec", value: "12" }];
 
   return (
     <div className="flex fixed h-screen w-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden uppercase font-bold text-xs">
@@ -230,7 +317,7 @@ function Home() {
             { name: "accounts", icon: <CircleUserRound size={20} />, label: "Accounts" },
             { name: "biltiy", icon: <FileText size={20} />, label: "Bilty Records" },
             { name: "expantion", icon: <Receipt size={20} />, label: "Expenses" },
-            { name: "maintenance ", icon: <Receipt size={20} />, label: "Maintenance " },
+            { name: "Reports", icon: <ClipboardPlus size={20} />, label: "Reports" },
             { name: "petrolPump", icon: <Fuel size={20} />, label: "Petrol Pump" },
           ].map((item) => (
             <button
@@ -258,10 +345,7 @@ function Home() {
             <h1 className="text-lg md:text-xl font-black text-slate-800 dark:text-white tracking-tighter">{menuOption} Manager</h1>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg"
-            >
+            <button onClick={() => setDarkMode(!darkMode)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
               {darkMode ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-slate-700 dark:text-white" />}
             </button>
             <div onClick={() => setIsProfileOpen(true)} className="cursor-pointer group flex items-center gap-3">
@@ -307,19 +391,61 @@ function Home() {
                 <div className="flex flex-col sm:flex-row items-stretch gap-3 flex-1">
                   <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
-                    <input type="text" placeholder="Search LR, Vehicle No..." className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <input
+                      type="text"
+                      placeholder="Search LR, Vehicle No..."
+                      className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                    />
                   </div>
                   <div className="flex gap-2">
-                    <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
-                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                    />
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                    />
+                    <button
+                      onClick={handleSearch}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 text-xs font-black shadow-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Search size={16} /> Search
+                    </button>
+                    <button
+                      onClick={resetToCurrentMonth}
+                      className="p-2 bg-gray-200 dark:bg-slate-600 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+                      title="Reset to current month"
+                    >
+                      <RotateCcw size={16} className="text-slate-700 dark:text-white" />
+                    </button>
                   </div>
                 </div>
                 <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black shadow-lg shadow-blue-100 dark:shadow-blue-900/50"><Plus size={18} /> New Bilty</button>
               </div>
               {menuOption === "biltiy" ? (
-                <BiltyTable data={biltyData} loading={loading} refreshData={() => getBilty(currentPage)} showNotification={showNotification} />
+                <BiltyTable
+                  data={biltyData}
+                  loading={loading}
+                  refreshData={() => getBilty(currentPage)}
+                  showNotification={showNotification}
+                  vehicleTotalBalance={vehicleTotalBalance}   // ✅ new prop
+                />
               ) : (
-                <FrightTable data={biltyData} loading={loading} refreshData={() => getBilty(currentPage)} showNotification={showNotification} />
+                <FrightTable
+                  data={biltyData}
+                  loading={loading}
+                  refreshData={() => getBilty(currentPage)}
+                  showNotification={showNotification}
+                  vehicleTotalBalance={vehicleTotalBalance}   // ✅ new prop
+                />
               )}
             </div>
           )}
@@ -327,14 +453,23 @@ function Home() {
           {menuOption === "petrolPump" && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700">
-                <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
-                <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                <button
+                  onClick={handleSearch}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 text-xs font-black shadow-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Search size={16} /> Search
+                </button>
+                <button
+                  onClick={resetToCurrentMonth}
+                  className="p-2 bg-gray-200 dark:bg-slate-600 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+                  title="Reset to current month"
+                >
+                  <RotateCcw size={16} className="text-slate-700 dark:text-white" />
+                </button>
               </div>
-              <PetrolPumpTable
-                data={pumpData}
-                loading={loading}
-                onUpdatePayment={handleUpdatePumpPayment}
-              />
+              <PetrolPumpTable data={pumpData} loading={loading} onUpdatePayment={handleUpdatePumpPayment} />
             </div>
           )}
 
@@ -344,11 +479,31 @@ function Home() {
                 <div className="flex flex-col sm:flex-row items-stretch gap-3 flex-1">
                   <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
-                    <input type="text" placeholder="Search by Title or Purpose..." className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <input
+                      type="text"
+                      placeholder="Search by Title or Purpose..."
+                      className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                    />
                   </div>
                   <div className="flex gap-2">
-                    <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
-                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">{months.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}</select>
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                    <button
+                      onClick={handleSearch}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 text-xs font-black shadow-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Search size={16} /> Search
+                    </button>
+                    <button
+                      onClick={resetToCurrentMonth}
+                      className="p-2 bg-gray-200 dark:bg-slate-600 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+                      title="Reset to current month"
+                    >
+                      <RotateCcw size={16} className="text-slate-700 dark:text-white" />
+                    </button>
                   </div>
                 </div>
                 <button onClick={() => setIsExModalOpen(true)} className="bg-slate-900 dark:bg-black text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black shadow-xl"><Plus size={18} /> New Expense</button>

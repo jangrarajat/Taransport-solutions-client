@@ -169,7 +169,7 @@ const BiltyTable = ({ data, loading, refreshData }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-bold uppercase text-[11px] text-slate-700 dark:text-slate-300">
-                            {data.map((bill) => (
+                            {data.map((bill) => bill.LRNO ?  (
                                 <tr key={bill._id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                                     <td className="px-4 py-3 text-center border-r dark:border-slate-700">
                                         <input
@@ -207,7 +207,7 @@ const BiltyTable = ({ data, loading, refreshData }) => {
                                     {/* Financials */}
                                     <td className="px-4 py-3 text-center text-green-700 dark:text-green-400 font-black">₹{bill.TotalInvoiceValue?.toLocaleString('en-IN')}</td>
                                 </tr>
-                            ))}
+                            ) :null)}
                         </tbody>
                     </table>
                 </div>

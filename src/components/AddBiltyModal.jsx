@@ -15,6 +15,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
     LRNO: "",
     VehicleNo: "", 
     Destination: "", 
+    challanNO:"",
     ratePMT: "",        
     advanceCash: "",     
     desilOnRent: "",    
@@ -62,6 +63,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
       onError(error.response?.data?.mussage || "Failed to add Bilty");
     } finally {
       setLoading(false);
+      onClose()
     }
   };
 
@@ -71,7 +73,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 dark:bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl animate-in zoom-in duration-300 my-auto">
         <div className="sticky top-0 bg-white dark:bg-slate-900 border-b dark:border-slate-700 p-6 flex justify-between items-center z-10">
-          <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white tracking-tight underline decoration-blue-500 decoration-4 underline-offset-8 uppercase tracking-widest">New Bilty & Trip Entry</h2>
+          <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white  underline decoration-blue-500 decoration-4 underline-offset-8 uppercase tracking-widest">New Bilty & Trip Entry</h2>
           <button onClick={onClose} type="button" className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors"><X size={24} className="dark:text-white"/></button>
         </div>
 
@@ -83,8 +85,8 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
                   {key.replace(/([A-Z])/g, ' $1').trim()}
                 </label>
                 <input
-                  required={key !== "petrolPump" && key !== "advanceCash"} // petrolPump optional ho sakta hai depend on diesel
-                  type={key === "DateOfIssueOfInvoice" ? "date" : "text"}
+                  required={key !== "petrolPump" && key !== "advanceCash"}  
+                  type={key === "DateOfIssueOfInvoice" ? "date"  : "text"}
                   name={key}
                   value={formData[key]}
                   onChange={handleChange}

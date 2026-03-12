@@ -1,6 +1,9 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 
 function Bilty({ pData }) {
+    useEffect(()=>{
+        console.log(pData.Packages)
+    },[])
     return (
         <div className="invoice-box  text-xs">
             <table className="main-table">
@@ -95,7 +98,7 @@ function Bilty({ pData }) {
                         </td>
                         <td className="bold-center">CEMENT</td>
                         <td className="bold-center" style={{ fontSize: '16px' }}>{pData.Quantity}</td>
-                        <td colSpan="3" className="bold-center" style={{ fontSize: '16px' }}>{pData.commeion}</td>
+                        <td colSpan="3" className="bold-center" style={{ fontSize: '16px' }}>{pData.Packages}</td>
                     </tr>
                     <tr>
                         <td>GRADE : 43/53/PPC</td>
