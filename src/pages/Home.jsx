@@ -296,7 +296,7 @@ function Home() {
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} user={user} showNotification={showNotification} />
 
       {/* Sidebar - hidden by default on mobile, toggled by menu button */}
-      <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-slate-900 dark:bg-gray-900 text-white transition-all duration-300 flex flex-col shadow-2xl w-64`}>
+      <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-white dark:bg-gray-900 text-gray-700 transition-all duration-300 flex flex-col shadow-2xl w-64`}>
         <div className="p-5 flex items-center justify-between border-b border-slate-800 dark:border-slate-900">
           <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded-lg">
             <X size={20} />
@@ -315,7 +315,7 @@ function Home() {
             <button
               key={item.name}
               onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900"}`}
+              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"}`}
             >
               {item.icon}
               <span>{item.label}</span>
@@ -337,14 +337,15 @@ function Home() {
         <header className="h-20 bg-white dark:bg-slate-900 border-b dark:border-slate-800 flex items-center justify-between px-3 md:px-8 shrink-0 shadow-sm uppercase italic">
           <div className="flex items-center gap-2">
             <button className="md:hidden p-2 bg-slate-100 dark:bg-slate-800 rounded-lg" onClick={() => setSidebarOpen(true)}>
-              <Menu size={20} className="dark:text-white"/>
+              <Menu size={20} className="dark:text-white" />
             </button>
             <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-slate-800 dark:text-white tracking-tighter truncate max-w-[120px] sm:max-w-[200px] md:max-w-full">
               {menuOption} Manager
             </h1>
           </div>
+         
           <div className="flex items-center gap-2 sm:gap-3">
-            
+
             <div onClick={() => setIsProfileOpen(true)} className="cursor-pointer group flex items-center gap-2">
               <div className="text-right hidden sm:block">
                 <p className="text-[10px] font-black text-slate-900 dark:text-white truncate max-w-[80px]">{user?.name}</p>
