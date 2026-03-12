@@ -74,7 +74,7 @@ const ProfileModal = ({ isOpen, onClose, user, showNotification }) => {
 function Home() {
   const navigate = useNavigate();
   const [menuOption, setMenuOption] = useState("home");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // 👈 initially closed on mobile
   const [loading, setLoading] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -93,14 +93,11 @@ function Home() {
   const [dashFilter, setDashFilter] = useState("month");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // ✅ Existing state for vehicle total balance (from backend)
   const [vehicleTotalBalance, setVehicleTotalBalance] = useState(null);
-
-  // ✅ NEW: state for opening and closing balances
   const [openingBalance, setOpeningBalance] = useState(null);
   const [closingBalance, setClosingBalance] = useState(null);
 
-  // Helper to get current month's date range (YYYY-MM-DD)
+  // Helper to get current month's date range
   const getCurrentMonthRange = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -115,10 +112,7 @@ function Home() {
       return `${y}-${m}-${d}`;
     };
 
-    return {
-      start: format(firstDay),
-      end: format(lastDay)
-    };
+    return { start: format(firstDay), end: format(lastDay) };
   };
 
   const initialRange = getCurrentMonthRange();
@@ -149,16 +143,14 @@ function Home() {
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
   };
 
-  // Reset to current month and trigger search
   const resetToCurrentMonth = () => {
     const range = getCurrentMonthRange();
     setStartDate(range.start);
     setEndDate(range.end);
     setCurrentPage(1);
-    handleSearch(); // auto search after reset
+    handleSearch();
   };
 
-  // Date formatter for DD-MM-YYYY (used in tables)
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -186,7 +178,6 @@ function Home() {
     try {
       const url = `${import.meta.env.VITE_URL}/bill/get-bills?page=${page}&limit=50&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
-      console.log(response);
       if (response.data.success) {
         const formattedBills = response.data.bills.map(bill => ({
           ...bill,
@@ -197,9 +188,7 @@ function Home() {
         setBiltyData(formattedBills);
         setTotalPages(response.data.totalPage);
         setCurrentPage(response.data.page);
-        // ✅ Save vehicleTotalBalance if present (from backend)
         setVehicleTotalBalance(response.data.vehicleTotalBalance || null);
-        // ✅ NEW: Save opening and closing balances
         setOpeningBalance(response.data.openingBalance ?? null);
         setClosingBalance(response.data.closingBalance ?? null);
       }
@@ -257,9 +246,8 @@ function Home() {
     } finally { setLoading(false); }
   }, [searchTerm, startDate, endDate]);
 
-  // Handle search button click
   const handleSearch = () => {
-    setCurrentPage(1); // reset to first page on new search
+    setCurrentPage(1);
     if (menuOption === "biltiy" || menuOption === "accounts") {
       getBilty(1);
     } else if (menuOption === "petrolPump") {
@@ -269,29 +257,22 @@ function Home() {
     }
   };
 
-  // Handle Enter key in search input
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
+    if (e.key === 'Enter') handleSearch();
   };
 
-  // Load data when menu changes (with current filters)
   useEffect(() => {
     if (menuOption === "home") {
       getDashboardData();
     } else {
-      handleSearch(); // use same search logic
+      handleSearch();
     }
-  }, [menuOption]); // only on menu change, not on filter changes
+  }, [menuOption]);
 
   const handleUpdatePumpPayment = async (pumpId, currentStatus) => {
     try {
       const newStatus = currentStatus === "payed" ? "unpayed" : "payed";
-      const res = await axios.put(`${import.meta.env.VITE_URL}/bill/update-petrolpump-payment/${pumpId}?payment=${newStatus}`,
-        {},
-        { withCredentials: true }
-      );
+      const res = await axios.put(`${import.meta.env.VITE_URL}/bill/update-petrolpump-payment/${pumpId}?payment=${newStatus}`, {}, { withCredentials: true });
       if (res.data.success) {
         showNotification(true, "Payment Status Updated! ✅");
         getPetrolPumps(currentPage);
@@ -314,11 +295,15 @@ function Home() {
       <Pricing isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} user={user} showNotification={showNotification} />
 
-      <aside className={`${sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full w-0 md:translate-x-0 md:w-20"} fixed md:relative z-50 h-full bg-slate-900 dark:bg-gray-900 text-white transition-all duration-300 flex flex-col shadow-2xl`}>
+      {/* Sidebar - hidden by default on mobile, toggled by menu button */}
+      <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-slate-900 dark:bg-gray-900 text-white transition-all duration-300 flex flex-col shadow-2xl w-64`}>
         <div className="p-5 flex items-center justify-between border-b border-slate-800 dark:border-slate-900">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded-lg transition-colors"><Menu size={20} /></button>
+          <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded-lg">
+            <X size={20} />
+          </button>
+          <span className="text-sm font-black">MENU</span>
         </div>
-        <nav className="flex-1 p-4 space-y-2 mt-2 tracking-widest text-[10px]">
+        <nav className="flex-1 p-4 space-y-2 mt-2 tracking-widest text-[10px] overflow-y-auto">
           {[
             { name: "home", icon: <BarChart3 size={20} />, label: "Dashboard" },
             { name: "accounts", icon: <CircleUserRound size={20} />, label: "Accounts" },
@@ -329,63 +314,82 @@ function Home() {
           ].map((item) => (
             <button
               key={item.name}
-              onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); if (window.innerWidth < 768) setSidebarOpen(false); }}
+              onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900"}`}
             >
               {item.icon}
-              {sidebarOpen && <span>{item.label}</span>}
+              <span>{item.label}</span>
             </button>
           ))}
           <button onClick={() => setIsProfileOpen(true)} className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 mt-10">
-            <Settings size={20} /> {sidebarOpen && "Edit Profile"}
+            <Settings size={20} /> <span>Edit Profile</span>
           </button>
         </nav>
         <div className="p-4 border-t border-slate-800 dark:border-slate-900">
-          <button onClick={() => { localStorage.clear(); navigate("/auth") }} className="w-full flex items-center gap-4 p-4 rounded-xl text-red-400 font-bold hover:bg-red-500/10"><LogOut size={20} /> {sidebarOpen && "Logout"}</button>
+          <button onClick={() => { localStorage.clear(); navigate("/auth") }} className="w-full flex items-center gap-4 p-4 rounded-xl text-red-400 font-bold hover:bg-red-500/10">
+            <LogOut size={20} /> <span>Logout</span>
+          </button>
         </div>
       </aside>
 
+      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-20 bg-white dark:bg-slate-900 border-b dark:border-slate-800 flex items-center justify-between px-4 md:px-8 shrink-0 shadow-sm uppercase italic">
-          <div className="flex items-center gap-4">
-            <button className="md:hidden p-2 bg-slate-100 dark:bg-slate-800 rounded-lg" onClick={() => setSidebarOpen(true)}><Menu size={20} className="dark:text-white"/></button>
-            <h1 className="text-lg md:text-xl font-black text-slate-800 dark:text-white tracking-tighter">{menuOption} Manager</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => setDarkMode(!darkMode)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-              {darkMode ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-slate-700 dark:text-white" />}
+        <header className="h-20 bg-white dark:bg-slate-900 border-b dark:border-slate-800 flex items-center justify-between px-3 md:px-8 shrink-0 shadow-sm uppercase italic">
+          <div className="flex items-center gap-2">
+            <button className="md:hidden p-2 bg-slate-100 dark:bg-slate-800 rounded-lg" onClick={() => setSidebarOpen(true)}>
+              <Menu size={20} className="dark:text-white"/>
             </button>
-            <div onClick={() => setIsProfileOpen(true)} className="cursor-pointer group flex items-center gap-3">
+            <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-slate-800 dark:text-white tracking-tighter truncate max-w-[120px] sm:max-w-[200px] md:max-w-full">
+              {menuOption} Manager
+            </h1>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            
+            <div onClick={() => setIsProfileOpen(true)} className="cursor-pointer group flex items-center gap-2">
               <div className="text-right hidden sm:block">
-                <p className="text-[10px] font-black text-slate-900 dark:text-white">{user?.name}</p>
-                <p className="text-[8px] text-blue-500 dark:text-blue-400">{user?.companyName}</p>
+                <p className="text-[10px] font-black text-slate-900 dark:text-white truncate max-w-[80px]">{user?.name}</p>
+                <p className="text-[8px] text-blue-500 dark:text-blue-400 truncate max-w-[80px]">{user?.companyName}</p>
               </div>
-              <div className="w-10 h-10 bg-slate-900 dark:bg-black rounded-xl flex items-center justify-center text-white font-black group-hover:bg-blue-600 dark:group-hover:bg-blue-700 transition-colors shadow-lg">
-                {user?.companyName?.[0] || <UserIcon size={18} />}
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-900 dark:bg-black rounded-xl flex items-center justify-center text-white font-black group-hover:bg-blue-600 dark:group-hover:bg-blue-700 transition-colors shadow-lg">
+                {user?.companyName?.[0] || <UserIcon size={14} />}
               </div>
             </div>
           </div>
         </header>
 
-        <main className="p-4 md:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
+        <main className="p-3 sm:p-4 md:p-6 lg:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
           {menuOption === "home" && (
-            <div className="space-y-8 animate-in fade-in duration-500 font-black">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h2 className="text-2xl text-slate-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">Revenue Overview</h2>
+            <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <h2 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">
+                  Revenue Overview
+                </h2>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-6 hover:shadow-xl transition-all group">
-                  <div className="p-4 bg-blue-600 rounded-2xl text-white shadow-lg group-hover:scale-110 duration-300"><TrendingUp size={24} /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 hover:shadow-xl transition-all group">
+                  <div className="p-2 sm:p-3 bg-blue-600 rounded-xl text-white shadow-lg group-hover:scale-110 duration-300">
+                    <TrendingUp size={18} />
+                  </div>
                   <div>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest leading-none">Total Revenue</p>
-                    <h3 className="text-3xl text-slate-900 dark:text-white mt-2 tracking-tighter">₹{dashData.totalRevenue?.toLocaleString('en-IN')}</h3>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest leading-none">
+                      Total Revenue
+                    </p>
+                    <h3 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white mt-1 tracking-tighter">
+                      ₹{dashData.totalRevenue?.toLocaleString('en-IN')}
+                    </h3>
                   </div>
                 </div>
-                <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-6 hover:shadow-xl transition-all group">
-                  <div className="p-4 bg-orange-500 rounded-2xl text-white shadow-lg group-hover:scale-110 duration-300"><Wallet size={24} /></div>
+                <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 hover:shadow-xl transition-all group">
+                  <div className="p-2 sm:p-3 bg-orange-500 rounded-xl text-white shadow-lg group-hover:scale-110 duration-300">
+                    <Wallet size={18} />
+                  </div>
                   <div>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest leading-none">Trip Balance</p>
-                    <h3 className="text-3xl text-slate-900 dark:text-white mt-2 tracking-tighter">₹{dashData.totalTripBalance?.toLocaleString('en-IN')}</h3>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest leading-none">
+                      Trip Balance
+                    </p>
+                    <h3 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white mt-1 tracking-tighter">
+                      ₹{dashData.totalTripBalance?.toLocaleString('en-IN')}
+                    </h3>
                   </div>
                 </div>
               </div>
@@ -393,144 +397,197 @@ function Home() {
           )}
 
           {(menuOption === "biltiy" || menuOption === "accounts") && (
-            <div className="space-y-4 animate-in fade-in duration-500">
-              <div className="flex flex-col xl:flex-row justify-between items-stretch gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                <div className="flex flex-col sm:flex-row items-stretch gap-3 flex-1">
-                  <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+            <div className="space-y-3 animate-in fade-in duration-500">
+              {/* Filter bar - stacked on mobile */}
+              <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} />
                     <input
                       type="text"
-                      placeholder="Search LR, Vehicle No..."
-                      className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
+                      placeholder="Search LR, Vehicle..."
+                      className="w-full pl-8 pr-3 py-2 border rounded-lg text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyDown={handleKeyDown}
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                      className="border rounded-lg px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                      className="border rounded-lg px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <button
                       onClick={handleSearch}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 text-xs font-black shadow-lg hover:bg-blue-700 transition-colors"
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-1 text-[10px] font-black shadow-lg hover:bg-blue-700 transition-colors"
                     >
-                      <Search size={16} /> Search
+                      <Search size={12} /> Search
                     </button>
                     <button
                       onClick={resetToCurrentMonth}
                       className="p-2 bg-gray-200 dark:bg-slate-600 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
                       title="Reset to current month"
                     >
-                      <RotateCcw size={16} className="text-slate-700 dark:text-white" />
+                      <RotateCcw size={12} className="text-slate-700 dark:text-white" />
                     </button>
                   </div>
                 </div>
-                <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black shadow-lg shadow-blue-100 dark:shadow-blue-900/50"><Plus size={18} /> New Bilty</button>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-1 text-[10px] font-black shadow-lg shadow-blue-100 dark:shadow-blue-900/50 w-full sm:w-auto"
+                >
+                  <Plus size={14} /> New Bilty
+                </button>
               </div>
-              {menuOption === "biltiy" ? (
-                <BiltyTable
-                  data={biltyData}
-                  loading={loading}
-                  refreshData={() => getBilty(currentPage)}
-                  showNotification={showNotification}
-                  vehicleTotalBalance={vehicleTotalBalance}
-                  // ✅ NEW: pass openingBalance and closingBalance
-                  openingBalance={openingBalance}
-                  closingBalance={closingBalance}
-                />
-              ) : (
-                <FrightTable
-                  data={biltyData}
-                  loading={loading}
-                  refreshData={() => getBilty(currentPage)}
-                  showNotification={showNotification}
-                  vehicleTotalBalance={vehicleTotalBalance}
-                  // ✅ NEW: pass openingBalance and closingBalance
-                  openingBalance={openingBalance}
-                  closingBalance={closingBalance}
-                />
-              )}
+
+              {/* Table container - horizontal scroll */}
+              <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden rounded-xl">
+                <div className="overflow-x-auto">
+                  {menuOption === "biltiy" ? (
+                    <BiltyTable
+                      data={biltyData}
+                      loading={loading}
+                      refreshData={() => getBilty(currentPage)}
+                      showNotification={showNotification}
+                      vehicleTotalBalance={vehicleTotalBalance}
+                      openingBalance={openingBalance}
+                      closingBalance={closingBalance}
+                    />
+                  ) : (
+                    <FrightTable
+                      data={biltyData}
+                      loading={loading}
+                      refreshData={() => getBilty(currentPage)}
+                      showNotification={showNotification}
+                      vehicleTotalBalance={vehicleTotalBalance}
+                      openingBalance={openingBalance}
+                      closingBalance={closingBalance}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
           {menuOption === "petrolPump" && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700">
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="border rounded-lg px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="border rounded-lg px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                />
                 <button
                   onClick={handleSearch}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 text-xs font-black shadow-lg hover:bg-blue-700 transition-colors"
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-1 text-[10px] font-black shadow-lg hover:bg-blue-700 transition-colors"
                 >
-                  <Search size={16} /> Search
+                  <Search size={12} /> Search
                 </button>
                 <button
                   onClick={resetToCurrentMonth}
                   className="p-2 bg-gray-200 dark:bg-slate-600 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
                   title="Reset to current month"
                 >
-                  <RotateCcw size={16} className="text-slate-700 dark:text-white" />
+                  <RotateCcw size={12} className="text-slate-700 dark:text-white" />
                 </button>
               </div>
-              <PetrolPumpTable data={pumpData} loading={loading} onUpdatePayment={handleUpdatePumpPayment} />
+              <div className="overflow-x-auto">
+                <PetrolPumpTable data={pumpData} loading={loading} onUpdatePayment={handleUpdatePumpPayment} />
+              </div>
             </div>
           )}
 
           {menuOption === "expantion" && (
-            <div className="space-y-4 animate-in fade-in duration-500">
-              <div className="flex flex-col xl:flex-row justify-between items-stretch gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                <div className="flex flex-col sm:flex-row items-stretch gap-3 flex-1">
-                  <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+            <div className="space-y-3 animate-in fade-in duration-500">
+              <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} />
                     <input
                       type="text"
-                      placeholder="Search by Title or Purpose..."
-                      className="w-full pl-10 pr-4 py-2 border rounded-lg text-xs font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
+                      placeholder="Search by Title..."
+                      className="w-full pl-8 pr-3 py-2 border rounded-lg text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyDown={handleKeyDown}
                     />
                   </div>
-                  <div className="flex gap-2">
-                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border rounded-lg px-4 py-2 text-xs font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="border rounded-lg px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                    />
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="border rounded-lg px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                    />
                     <button
                       onClick={handleSearch}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 text-xs font-black shadow-lg hover:bg-blue-700 transition-colors"
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-1 text-[10px] font-black shadow-lg hover:bg-blue-700 transition-colors"
                     >
-                      <Search size={16} /> Search
+                      <Search size={12} /> Search
                     </button>
                     <button
                       onClick={resetToCurrentMonth}
                       className="p-2 bg-gray-200 dark:bg-slate-600 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
                       title="Reset to current month"
                     >
-                      <RotateCcw size={16} className="text-slate-700 dark:text-white" />
+                      <RotateCcw size={12} className="text-slate-700 dark:text-white" />
                     </button>
                   </div>
                 </div>
-                <button onClick={() => setIsExModalOpen(true)} className="bg-slate-900 dark:bg-black text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black shadow-xl"><Plus size={18} /> New Expense</button>
+                <button
+                  onClick={() => setIsExModalOpen(true)}
+                  className="bg-slate-900 dark:bg-black text-white px-4 py-2 rounded-xl flex items-center justify-center gap-1 text-[10px] font-black shadow-xl w-full sm:w-auto"
+                >
+                  <Plus size={14} /> New Expense
+                </button>
               </div>
-              <ExpenseTable data={expenseData} loading={loading} filterTerm={searchTerm} />
+              <div className="overflow-x-auto">
+                <ExpenseTable data={expenseData} loading={loading} filterTerm={searchTerm} />
+              </div>
             </div>
           )}
 
           {menuOption !== "home" && totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white dark:bg-slate-800 px-6 py-4 mt-6 rounded-2xl border dark:border-slate-700 shadow-sm">
-              <p className="text-[10px] p-2 uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">Page {currentPage} of {totalPages}</p>
+            <div className="flex items-center justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4 rounded-xl border dark:border-slate-700 shadow-sm">
+              <p className="text-[8px] uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">
+                Page {currentPage} of {totalPages}
+              </p>
               <div className="flex gap-2">
-                <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="p-2 border border-gray-300 dark:border-slate-600 rounded-xl disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"><ChevronLeft size={18} className="dark:text-white"/></button>
-                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="p-2 border border-gray-300 dark:border-slate-600 rounded-xl disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"><ChevronRight size={18} className="dark:text-white"/></button>
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="p-1 border border-gray-300 dark:border-slate-600 rounded-lg disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                >
+                  <ChevronLeft size={14} className="dark:text-white" />
+                </button>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="p-1 border border-gray-300 dark:border-slate-600 rounded-lg disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                >
+                  <ChevronRight size={14} className="dark:text-white" />
+                </button>
               </div>
             </div>
           )}
