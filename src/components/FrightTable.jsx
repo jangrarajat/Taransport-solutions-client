@@ -5,35 +5,14 @@ import PrintBilty from "./PrintBilty";
 import SuccessToster from "./toster/SuccessToster";
 import ButtonLoaders from "./loaders/ButtonLoaders";
 import EditBiltyModal from "./bill/EditBiltyModal";
+import DeleteConfirmModal from "./DeleteConfirmModal";
 import * as XLSX from 'xlsx';
 import { refreshToken } from "../api/api";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { backendUrl } from "../utils/backendUrl";
 
-// --- Delete Confirmation Modal ---
-const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[200] bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-300">
-        <div className="flex items-center gap-4 text-red-600 dark:text-red-400 mb-4">
-          <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full"><AlertTriangle size={28} /></div>
-          <h2 className="text-xl font-black uppercase tracking-tighter dark:text-white">Confirm Delete</h2>
-        </div>
-        <p className="text-slate-500 dark:text-slate-400 font-bold text-sm mb-6 uppercase">
-          Kya aap sach mein ye {title} delete karna chahte hain? Ye data permanently delete ho jayega.
-        </p>
-        <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-black uppercase text-xs tracking-widest">Cancel</button>
-          <button onClick={onConfirm} className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-red-200 dark:shadow-red-900/50">Yes, Delete</button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Maintenance Modal ---
+// Maintenance Modal
 const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification }) => {
   const [amount, setAmount] = useState("");
   const [remark, setRemark] = useState("");
@@ -83,7 +62,6 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
   );
 };
 
-// --- Main Component ---
 const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTotalBalance, openingBalance, closingBalance }) => {
   const [addPayment, setAddPayment] = useState(false);
   const [printBityBtn, setPrintBityBtn] = useState(false);
@@ -93,7 +71,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
   const [selectedBill, setSelectedBill] = useState(null);
   const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
   const [selectedIds, setSelectedIds] = useState([]);
-  const [deleteModal, setDeleteModal] = useState({ open: false, id: null });
+  const [deleteModal, setDeleteModal] = useState({ open: false, ids: [] });
   const [date, setDate] = useState();
   const [nameOfRecipient, setNameOfRecipient] = useState('');
   const [vehicleNo, setVehicleNo] = useState('');
@@ -103,7 +81,6 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
 
   const headerCheckboxRef = useRef(null);
 
-  // Sort data by date ascending
   const sortedData = useMemo(() => {
     return [...data].sort((a, b) => {
       const dateA = new Date(a.DateOfIssueOfInvoice);
@@ -112,7 +89,6 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
     });
   }, [data]);
 
-  // Compute running closing balances
   const runningBalances = useMemo(() => {
     if (!sortedData.length) return [];
     const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
@@ -166,7 +142,6 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
     });
   };
 
-  // ----- Export functions with conditional summary line -----
   const downloadStyledExcel = () => {
     const exportData = getExportData();
     const totals = calculateTotals(exportData);
@@ -434,25 +409,39 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
     printWindow.print();
   };
 
+  const handleSingleDelete = (id) => {
+    setDeleteModal({ open: true, ids: [id] });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) {
+      showNotification(false, "Please select records to delete");
+      return;
+    }
+    setDeleteModal({ open: true, ids: selectedIds });
+  };
+
   const handleDeleteClick = async () => {
     try {
-      const res = await axios.delete(`${backendUrl}/bill/delete-bilty/${deleteModal.id}`, { withCredentials: true });
-      if (res.data.success) {
-        showNotification(true, "Record Deleted! 🗑️");
-        refreshData();
-      }
-    } catch (error) { showNotification(false, "Delete Failed"); }
-    setDeleteModal({ open: false, id: null });
+      const deletePromises = deleteModal.ids.map(id => 
+        axios.delete(`${backendUrl}/bill/delete-bilty/${id}`, { withCredentials: true })
+      );
+      
+      await Promise.all(deletePromises);
+      
+      setSelectedIds([]);
+      refreshData();
+    } catch (error) { 
+      throw new Error(error.response?.data?.message || "Delete Failed");
+    }
   };
 
   const handleAddPayment = async () => {
-    console.log(date, nameOfRecipient, vehicleNo, amount, remark, destination);
     try {
       const response = await axios.post(`${backendUrl}/bill/add-tranjaction-entry`,
         { DateOfIssueOfInvoice: date, NameOfRecipient: nameOfRecipient, VehicleNo: vehicleNo, Amount: amount, remark: remark, Destination: destination },
         { withCredentials: true }
       );
-      console.log(response);
       showNotification(true, "Record Added ");
       refreshData();
     } catch (error) {
@@ -520,8 +509,16 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
           <button onClick={printData} className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-purple-700 transition-colors">
             <Printer size={15} /> Print
           </button>
-          {selectedIds.length !== 0 && (
+          {/* {selectedIds.length !== 0 && (
             <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase">{selectedIds.length}</span>
+          )} */}
+          {selectedIds.length > 0 && (
+            <button 
+              onClick={handleBulkDelete}
+              className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-700 transition-colors"
+            >
+              <Trash2 size={14} />{selectedIds.length} Delete Selected
+            </button>
           )}
         </div>
         <div>
@@ -531,13 +528,11 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
         </div>
       </div>
 
-      {/* Top summary line – only shown when valid balance exists */}
       {sortedData.length > 0 && hasValidBalance && (
         <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-center font-bold text-sm">
           <span className="mr-6 text-slate-700 dark:text-slate-300">
             Opening Balance:{' '}
-            <span
-              className={
+            <span className={
                 runningBalances.length
                   ? runningBalances[runningBalances.length - 1] < 0
                     ? 'text-red-600 dark:text-red-400'
@@ -545,22 +540,19 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
                     ? 'text-green-600 dark:text-green-400'
                     : ''
                   : ''
-              }
-            >
+              }>
               ₹{runningBalances.length ? runningBalances[runningBalances.length - 1] : '-'}
             </span>
           </span>
           <span className="text-slate-700 dark:text-slate-300">
             Closing Balance:{' '}
-            <span
-              className={
+            <span className={
                 startBalance < 0
                   ? 'text-red-600 dark:text-red-400'
                   : startBalance > 0
                   ? 'text-green-600 dark:text-green-400'
                   : ''
-              }
-            >
+              }>
               ₹{startBalance}
             </span>
           </span>
@@ -590,7 +582,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-bold uppercase text-[11px] text-slate-700 dark:text-slate-300">
-              {sortedData.map((bill, index) => (
+              {sortedData.map((bill) => (
                 <tr key={bill._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${selectedIds.includes(bill._id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
                   <td className="px-4 py-3 text-center border-r dark:border-slate-700">
                     <input type="checkbox" checked={selectedIds.includes(bill._id)}
@@ -600,7 +592,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
                   <td className="px-4 py-3 border-r dark:border-slate-700">
                     <div className="flex items-center justify-center gap-2">
                       <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><Edit3 size={14} /></button>
-                      <button onClick={() => setDeleteModal({ open: true, id: bill._id })} className="text-red-400 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg"><Trash2 size={14} /></button>
+                      {/* <button onClick={() => handleSingleDelete(bill._id)} className="text-red-400 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg"><Trash2 size={14} /></button> */}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{bill.DateOfIssueOfInvoice}</td>
@@ -617,9 +609,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
                   <td className="px-4 py-3 text-center text-red-600 dark:text-red-400">₹{bill.advanceCash || 0}</td>
                   <td className="px-4 py-3 text-center text-red-500 dark:text-red-400">₹{bill.desil || 0}</td>
                   <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 uppercase">{bill.petrolPump || "N/A"}</td>
-                  <td className="px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black bg-blue-50 dark:bg-blue-900/20">
-                    ₹{bill.faynalAmmount || 0}
-                  </td>
+                  <td className="px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black bg-blue-50 dark:bg-blue-900/20">₹{bill.faynalAmmount || 0}</td>
                   <td className="px-4 py-3 text-center text-nowrap">{bill.remark}</td>
                   <td className={`px-4 py-3 text-center font-black border-x dark:border-slate-700 ${bill.tripBalanceAmmount < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
                     ₹{bill.tripBalanceAmmount || 0}
@@ -632,22 +622,23 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
                 {(() => {
                   const cells = [
                     { colSpan: 2, content: "Totals", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // Date
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // LR No
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // Challan No
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // Vehicle
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // DI No
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // Recipient
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // Destination
-                    { content: totals.qty, className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" }, // Qty
-                    { content: "", className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" }, // Rate PMT
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
+                    // { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
+                    { content: totals.qty, className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" },
+                    { content: "", className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" },
                     { content: `₹${totals.freight}`, className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" },
                     { content: `₹${totals.commission}`, className: "px-4 py-3 text-center text-slate-600 dark:text-slate-300 font-black" },
                     { content: `₹${totals.advance}`, className: "px-4 py-3 text-center text-red-600 dark:text-red-400 font-black" },
                     { content: `₹${totals.diesel}`, className: "px-4 py-3 text-center text-red-500 dark:text-red-400 font-black" },
-                    { content: "", className: "px-4 py-3 text-center text-slate-500 dark:text-slate-400" }, // Pump
+                    { content: "", className: "px-4 py-3 text-center text-slate-500 dark:text-slate-400" },
                     { content: `₹${totals.final}`, className: "px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black" },
-                    { content: "", className: "px-4 py-3 text-center text-orange-600 dark:text-orange-400 font-black" }, // Remark
+                    { content: "", className: "px-4 py-3 text-center text-orange-600 dark:text-orange-400 font-black" },
                     { content: `₹${totals.balance}`, className: `px-4 py-3 text-center font-black ${totals.balance < 0 ? "text-red-700 dark:text-red-300" : "text-green-700 dark:text-green-300"}` },
                   ];
                   return cells.map((cell, idx) => {
@@ -665,8 +656,16 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
 
       {printBityBtn && <PrintBilty pData={pData} setPrintBityBtn={setPrintBityBtn} />}
       <MaintenanceModal isOpen={isMaintOpen} onClose={() => setIsMaintOpen(false)} bill={selectedBill} onUpdate={refreshData} showNotification={showNotification} />
-      <EditBiltyModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} bill={selectedBill} onSuccess={(msg) => { refreshData(); showNotification(true, msg); }} />
-      <DeleteConfirmModal isOpen={deleteModal.open} onClose={() => setDeleteModal({ open: false, id: null })} onConfirm={handleDeleteClick} title="Bilty Record" />
+      <EditBiltyModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} bill={selectedBill} onSuccess={(msg) => { refreshData(); showNotification(true, msg); }} showNotification={showNotification} />
+      
+      <DeleteConfirmModal 
+        isOpen={deleteModal.open} 
+        onClose={() => setDeleteModal({ open: false, ids: [] })} 
+        onConfirm={handleDeleteClick} 
+        title="Record"
+        count={deleteModal.ids.length}
+        showNotification={showNotification}
+      />
     </>
   );
 };

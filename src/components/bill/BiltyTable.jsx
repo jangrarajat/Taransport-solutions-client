@@ -5,29 +5,10 @@ import PrintBilty from "../PrintBilty";
 import SuccessToster from "../toster/SuccessToster";
 import ButtonLoaders from "../loaders/ButtonLoaders";
 import EditBiltyModal from "./EditBiltyModal";
+import DeleteConfirmModal from "../DeleteConfirmModal";
 import * as XLSX from 'xlsx';
 import { refreshToken } from "../../api/api";
 import { backendUrl } from "../../utils/backendUrl";
-
-// Delete Modal Component
-const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title }) => {
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-[200] bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-300 font-bold uppercase">
-                <div className="flex items-center gap-4 text-red-600 dark:text-red-400 mb-4">
-                    <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full"><AlertTriangle size={28} /></div>
-                    <h2 className="text-xl font-black tracking-tighter dark:text-white">Confirm Delete</h2>
-                </div>
-                <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Kya aap sach mein ye {title} delete karna chahte hain?</p>
-                <div className="flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl text-xs tracking-widest">Cancel</button>
-                    <button onClick={onConfirm} className="flex-1 py-4 bg-red-600 text-white rounded-2xl text-xs tracking-widest shadow-lg shadow-red-200 dark:shadow-red-900/50">Yes, Delete</button>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 // Maintenance Modal
 const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification }) => {
@@ -74,7 +55,7 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
     );
 };
 
-const BiltyTable = ({ data, loading, refreshData }) => {
+const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
     const [printBityBtn, setPrintBityBtn] = useState(false);
     const [pData, setPData] = useState([]);
     const [isMaintOpen, setIsMaintOpen] = useState(false);
@@ -82,12 +63,10 @@ const BiltyTable = ({ data, loading, refreshData }) => {
     const [selectedBill, setSelectedBill] = useState(null);
     const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
     const [selectedIds, setSelectedIds] = useState([]);
-    const [deleteModal, setDeleteModal] = useState({ open: false, id: null });
+    const [deleteModal, setDeleteModal] = useState({ open: false, ids: [] });
 
-    // Refs for header checkbox
     const headerCheckboxRef = useRef(null);
 
-    // Effect to handle indeterminate state of header checkbox
     useEffect(() => {
         if (headerCheckboxRef.current) {
             const allIds = data.map(item => item._id);
@@ -96,7 +75,7 @@ const BiltyTable = ({ data, loading, refreshData }) => {
         }
     }, [selectedIds, data]);
 
-    const showNotification = (success, msg) => {
+    const handleNotification = (success, msg) => {
         setToast({ show: true, success, msg, id: Date.now() });
         setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
     };
@@ -111,23 +90,41 @@ const BiltyTable = ({ data, loading, refreshData }) => {
 
     const handleDeleteClick = async () => {
         try {
-            const res = await axios.delete(`${backendUrl}/bill/delete-bilty/${deleteModal.id}`, { withCredentials: true });
-
-            if (res.data.success) {
-                showNotification(true, "Bilty Deleted! 🗑️");
-                refreshData();
+            const deletePromises = deleteModal.ids.map(id => 
+                axios.delete(`${backendUrl}/bill/delete-bilty/${id}`, { withCredentials: true })
+            );
+            
+            await Promise.all(deletePromises);
+            
+            setSelectedIds([]);
+            refreshData();
+        } catch (error) { 
+             if (error.response?.status === 401) {
+                const isRefreshed = await refreshToken()
+                if (isRefreshed) handleDeleteClick()
             }
-        } catch (error) { showNotification(false, "Delete Failed"); }
-        setDeleteModal({ open: false, id: null });
+            throw new Error(error.response?.data?.message || "Delete Failed");
+        }
     };
 
-    // Select all handler
     const handleSelectAll = (e) => {
         if (e.target.checked) {
             setSelectedIds(data.map(item => item._id));
         } else {
             setSelectedIds([]);
         }
+    };
+
+    const handleSingleDelete = (id) => {
+        setDeleteModal({ open: true, ids: [id] });
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.length === 0) {
+            handleNotification(false, "Please select records to delete");
+            return;
+        }
+        setDeleteModal({ open: true, ids: selectedIds });
     };
 
     if (loading) return <div className="h-64 flex items-center justify-center"><ButtonLoaders /></div>;
@@ -138,8 +135,16 @@ const BiltyTable = ({ data, loading, refreshData }) => {
 
             <div className="mb-4 flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                 <div className="flex items-center gap-3">
-                    <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase">{selectedIds.length} Selected</span>
+                    {/* <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase">{selectedIds.length} Selected</span> */}
                     <button onClick={downloadExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase"><FileSpreadsheet size={14} /> Export</button>
+                    {selectedIds.length > 0 && (
+                        <button 
+                            onClick={handleBulkDelete}
+                            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-700 transition-colors"
+                        >
+                            <Trash2 size={14} />{selectedIds.length} Delete Selected
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -188,11 +193,10 @@ const BiltyTable = ({ data, loading, refreshData }) => {
                                         <div className="flex items-center justify-center gap-2">
                                             <Printer className="mx-auto cursor-pointer hover:text-blue-600 dark:hover:text-blue-400" onClick={() => { setPData(bill); setPrintBityBtn(true); }} size={18} />
                                             <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><Edit3 size={14} /></button>
-                                            <button onClick={() => setDeleteModal({ open: true, id: bill._id })} className="text-red-400 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg"><Trash2 size={14} /></button>
+                                            <button onClick={() => handleSingleDelete(bill._id)} className="text-red-400 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg"><Trash2 size={14} /></button>
                                         </div>
                                     </td>
 
-                                    {/* Main Data Fields */}
                                     <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{bill.DateOfIssueOfInvoice}</td>
                                     <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{bill.LRNO}</td>
                                     <td className="px-4 py-3 text-center font-mono text-slate-800 dark:text-white">{bill.VehicleNo}</td>
@@ -204,8 +208,6 @@ const BiltyTable = ({ data, loading, refreshData }) => {
                                     <td className="px-4 py-3 text-center dark:text-slate-200">{bill.Quantity}</td>
                                     <td className="px-4 py-3 text-center dark:text-slate-200">{bill.Packages}</td>
                                     <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 text-[10px]">{bill.GSTINNo}</td>
-
-                                    {/* Financials */}
                                     <td className="px-4 py-3 text-center text-green-700 dark:text-green-400 font-black">₹{bill.TotalInvoiceValue?.toLocaleString('en-IN')}</td>
                                 </tr>
                             ) :null)}
@@ -213,10 +215,19 @@ const BiltyTable = ({ data, loading, refreshData }) => {
                     </table>
                 </div>
             </div>
+
             {printBityBtn && <PrintBilty pData={pData} setPrintBityBtn={setPrintBityBtn} />}
-            <MaintenanceModal isOpen={isMaintOpen} onClose={() => setIsMaintOpen(false)} bill={selectedBill} onUpdate={refreshData} showNotification={showNotification} />
-            <EditBiltyModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} bill={selectedBill} onSuccess={(msg) => { refreshData(); showNotification(true, msg); }} />
-            <DeleteConfirmModal isOpen={deleteModal.open} onClose={() => setDeleteModal({ open: false, id: null })} onConfirm={handleDeleteClick} title="Bilty Record" />
+            <MaintenanceModal isOpen={isMaintOpen} onClose={() => setIsMaintOpen(false)} bill={selectedBill} onUpdate={refreshData} showNotification={handleNotification} />
+            <EditBiltyModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} bill={selectedBill} onSuccess={(msg) => { refreshData(); handleNotification(true, msg); }} showNotification={handleNotification} />
+            
+            <DeleteConfirmModal 
+                isOpen={deleteModal.open} 
+                onClose={() => setDeleteModal({ open: false, ids: [] })} 
+                onConfirm={handleDeleteClick} 
+                title="Record"
+                count={deleteModal.ids.length}
+                showNotification={handleNotification}
+            />
         </>
     );
 };

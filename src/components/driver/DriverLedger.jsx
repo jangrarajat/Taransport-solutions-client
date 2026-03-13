@@ -123,10 +123,10 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
     printWindow.document.write(`
       <html><head><title>${driverName} - Ledger</title>
       <style>
-        body { font-family: Arial; margin:20px; background:#0f172a; color:white; }
+        body { font-family: Arial; margin:20px; }
         table { border-collapse:collapse; width:100%; }
-        th, td { border:1px solid #334155; padding:8px; text-align:left; }
-        th { background-color:#1e293b; }
+        th, td { border:1px solid #ddd; padding:8px; text-align:left; }
+        th { background-color:#f2f2f2; }
         .summary { margin:10px 0; }
       </style>
       </head><body>
@@ -155,35 +155,35 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
   const SummarySkeleton = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {[...Array(3)].map((_, i) => (
-        <div key={i} className="bg-white/5 backdrop-blur-xl border border-white/10 p-4 rounded-xl shadow-sm animate-pulse">
-          <div className="h-3 bg-white/10 rounded w-24 mb-2"></div>
-          <div className="h-6 bg-white/10 rounded w-16"></div>
+        <div key={i} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pulse">
+          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-2"></div>
+          <div className="h-6 bg-slate-300 dark:bg-slate-600 rounded w-16"></div>
         </div>
       ))}
     </div>
   );
 
   const TableSkeleton = () => (
-    <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
-          <thead className="bg-white/5 border-b border-white/10">
+          <thead className="bg-slate-50 dark:bg-slate-800 border-b dark:border-slate-700">
             <tr>
-              <th className="px-4 py-3 text-white/50">Date</th>
-              <th className="px-4 py-3 text-white/50">Description</th>
-              <th className="px-4 py-3 text-white/50 text-right">Amount (₹)</th>
-              <th className="px-4 py-3 text-white/50 text-right">Balance (₹)</th>
-              <th className="px-4 py-3 text-white/50 text-center">Action</th>
+              <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Date</th>
+              <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Description</th>
+              <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Amount (₹)</th>
+              <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Balance (₹)</th>
+              <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-center">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {[...Array(5)].map((_, i) => (
               <tr key={i} className="animate-pulse">
-                <td className="px-4 py-2"><div className="h-3 bg-white/10 rounded w-16"></div></td>
-                <td className="px-4 py-2"><div className="h-3 bg-white/10 rounded w-32"></div></td>
-                <td className="px-4 py-2 text-right"><div className="h-3 bg-white/10 rounded w-12 ml-auto"></div></td>
-                <td className="px-4 py-2 text-right"><div className="h-3 bg-white/10 rounded w-12 ml-auto"></div></td>
-                <td className="px-4 py-2 text-center"><div className="h-3 bg-white/10 rounded w-6 mx-auto"></div></td>
+                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16"></div></td>
+                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32"></div></td>
+                <td className="px-4 py-2 text-right"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12 ml-auto"></div></td>
+                <td className="px-4 py-2 text-right"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12 ml-auto"></div></td>
+                <td className="px-4 py-2 text-center"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-6 mx-auto"></div></td>
               </tr>
             ))}
           </tbody>
@@ -197,52 +197,52 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <button onClick={onBack} className="text-sm underline text-cyan-400 hover:text-cyan-300">
+        <button onClick={onBack} className="text-sm underline text-blue-600 dark:text-blue-400 hover:text-blue-800">
           ← Back to drivers
         </button>
-        <h2 className="text-xl font-black uppercase text-white">{driverName} - Ledger</h2>
+        <h2 className="text-xl font-black uppercase text-gray-800 dark:text-white">{driverName} - Ledger</h2>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 p-3 rounded-xl shadow-sm">
+      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-xs text-white flex-1 min-w-[120px]" />
+          className="border rounded-lg px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 flex-1 min-w-[120px]" />
         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-xs text-white flex-1 min-w-[120px]" />
+          className="border rounded-lg px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 flex-1 min-w-[120px]" />
         <button onClick={fetchLedger}
-          className="px-3 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg text-xs font-bold hover:from-cyan-600 hover:to-blue-700">
+          className="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
           Apply
         </button>
         <button onClick={() => { const range = getCurrentMonthRange(); setStartDate(range.start); setEndDate(range.end); }}
-          className="p-2 bg-white/5 hover:bg-white/10 rounded-lg" title="Reset">
-          <RotateCcw size={12} className="text-white/70" />
+          className="p-2 bg-gray-200 dark:bg-slate-600 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500" title="Reset">
+          <RotateCcw size={12} className="text-slate-700 dark:text-white" />
         </button>
         <button onClick={exportToExcel}
-          className="p-2 bg-green-600/20 hover:bg-green-600/30 text-green-300 rounded-lg border border-green-500/30" title="Excel">
+          className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700" title="Excel">
           <FileSpreadsheet size={14} />
         </button>
         <button onClick={handlePrint}
-          className="p-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 rounded-lg border border-purple-500/30" title="Print">
+          className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700" title="Print">
           <Printer size={14} />
         </button>
         <button onClick={() => setPaymentModalOpen(true)}
-          className="ml-auto flex items-center gap-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-bold">
+          className="ml-auto flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-green-700">
           <Plus size={12} /> Add Payment
         </button>
       </div>
 
       {loading ? <SummarySkeleton /> : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-4 rounded-xl shadow-sm">
-            <p className="text-xs text-white/50 uppercase tracking-wider">Opening Balance (before {startDate || 'start'})</p>
-            <p className="text-xl font-black text-white">₹{openingBefore.toLocaleString('en-IN')}</p>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Opening Balance (before {startDate || 'start'})</p>
+            <p className="text-xl font-black text-gray-900 dark:text-white">₹{openingBefore.toLocaleString('en-IN')}</p>
           </div>
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-4 rounded-xl shadow-sm">
-            <p className="text-xs text-white/50 uppercase tracking-wider">Total Payments</p>
-            <p className="text-xl font-black text-green-400">₹{totalPayments.toLocaleString('en-IN')}</p>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Payments</p>
+            <p className="text-xl font-black text-green-600 dark:text-green-400">₹{totalPayments.toLocaleString('en-IN')}</p>
           </div>
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-4 rounded-xl shadow-sm">
-            <p className="text-xs text-white/50 uppercase tracking-wider">Closing Balance</p>
-            <p className={`text-xl font-black ${closingBalance >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Closing Balance</p>
+            <p className={`text-xl font-black ${closingBalance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
               ₹{closingBalance.toLocaleString('en-IN')}
             </p>
           </div>
@@ -250,42 +250,42 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
       )}
 
       {loading ? <TableSkeleton /> : (
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-white/5 border-b border-white/10">
+              <thead className="bg-slate-50 dark:bg-slate-800 border-b dark:border-slate-700">
                 <tr>
-                  <th className="px-4 py-3 font-black text-white/50 uppercase">Date</th>
-                  <th className="px-4 py-3 font-black text-white/50 uppercase">Description</th>
-                  <th className="px-4 py-3 font-black text-white/50 uppercase text-right">Amount (₹)</th>
-                  <th className="px-4 py-3 font-black text-white/50 uppercase text-right">Balance (₹)</th>
-                  <th className="px-4 py-3 font-black text-white/50 uppercase text-center">Action</th>
+                  <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Date</th>
+                  <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Description</th>
+                  <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Amount (₹)</th>
+                  <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Balance (₹)</th>
+                  <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {transactions.length > 0 ? transactions.map(t => (
-                  <tr key={t._id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-2 text-white/70">{formatDate(t.date)}</td>
-                    <td className="px-4 py-2 text-white/70">{t.description || '-'}</td>
-                    <td className="px-4 py-2 font-black text-right text-green-400">+ ₹{t.amount.toLocaleString('en-IN')}</td>
-                    <td className="px-4 py-2 font-black text-right text-white">₹{t.runningBalance.toLocaleString('en-IN')}</td>
+                  <tr key={t._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <td className="px-4 py-2 text-slate-700 dark:text-slate-300">{formatDate(t.date)}</td>
+                    <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{t.description || '-'}</td>
+                    <td className="px-4 py-2 font-black text-right text-green-600 dark:text-green-400">+ ₹{t.amount.toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2 font-black text-right text-slate-900 dark:text-white">₹{t.runningBalance.toLocaleString('en-IN')}</td>
                     <td className="px-4 py-2 text-center">
                       <button onClick={() => { setTransactionToDelete(t); setDeleteModalOpen(true); }}
-                        className="p-1 text-red-400 hover:bg-red-500/20 rounded" title="Delete">
+                        className="p-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded" title="Delete">
                         <Trash2 size={14} />
                       </button>
                     </td>
                   </tr>
                 )) : (
-                  <tr><td colSpan="5" className="p-8 text-center text-white/30 italic">No transactions in this period</td></tr>
+                  <tr><td colSpan="5" className="p-8 text-center text-slate-400 dark:text-slate-500 italic">No transactions in this period</td></tr>
                 )}
               </tbody>
               {transactions.length > 0 && (
-                <tfoot className="bg-white/5 border-t border-white/10 font-black">
+                <tfoot className="bg-slate-50 dark:bg-slate-800 border-t dark:border-slate-700 font-black">
                   <tr>
-                    <td colSpan="2" className="px-4 py-3 text-right text-white/70 uppercase">Period Totals</td>
-                    <td className="px-4 py-3 text-right text-cyan-400">₹{totalPayments.toLocaleString('en-IN')}</td>
-                    <td className="px-4 py-3 text-right text-cyan-400">{closingBalance.toLocaleString('en-IN')}</td>
+                    <td colSpan="2" className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 uppercase">Period Totals</td>
+                    <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400">₹{totalPayments.toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400">{closingBalance.toLocaleString('en-IN')}</td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -296,16 +296,16 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
       )}
 
       {!loading && totalPages > 1 && (
-        <div className="flex justify-between items-center bg-white/5 backdrop-blur-xl border border-white/10 px-4 py-3 rounded-xl shadow-sm">
-          <p className="text-xs text-white/50">Page {page} of {totalPages}</p>
+        <div className="flex justify-between items-center bg-white dark:bg-slate-800 px-4 py-3 rounded-xl border dark:border-slate-700 shadow-sm">
+          <p className="text-xs text-slate-500 dark:text-slate-400">Page {page} of {totalPages}</p>
           <div className="flex gap-2">
             <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-              className="p-1 border border-white/10 rounded-lg disabled:opacity-30 hover:bg-white/5">
-              <ChevronLeft size={14} className="text-white/70" />
+              className="p-1 border border-slate-300 dark:border-slate-600 rounded-lg disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700">
+              <ChevronLeft size={14} className="text-slate-700 dark:text-white" />
             </button>
             <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)}
-              className="p-1 border border-white/10 rounded-lg disabled:opacity-30 hover:bg-white/5">
-              <ChevronRight size={14} className="text-white/70" />
+              className="p-1 border border-slate-300 dark:border-slate-600 rounded-lg disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700">
+              <ChevronRight size={14} className="text-slate-700 dark:text-white" />
             </button>
           </div>
         </div>

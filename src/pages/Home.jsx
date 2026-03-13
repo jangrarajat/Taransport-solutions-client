@@ -521,7 +521,7 @@ function Home() {
                 </div>
               )}
 
-                  {/* Vehicle & Driver Stats */}
+              {/* Vehicle & Driver Stats */}
               <div className="mt-8">
                 <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 underline decoration-purple-500 decoration-4 underline-offset-8">
                   Fleet Overview
@@ -541,6 +541,7 @@ function Home() {
                   </div>
                 </div>
               </div>
+
               {/* Pump Summary */}
               <div className="mt-8">
                 <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 underline decoration-green-500 decoration-4 underline-offset-8">
@@ -600,14 +601,12 @@ function Home() {
                 )}
               </div>
 
-           
-
               {/* Driver Payments List */}
               {loading.stats ? (
                 <div className="mt-6">
                   <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="p-8 text-center">
-                      <ButtonLoaders/>
+                      <ButtonLoaders />
                     </div>
                   </div>
                 </div>
@@ -799,7 +798,12 @@ function Home() {
                 </button>
               </div>
               <div className="overflow-x-auto">
-                <ExpenseTable data={expenseData} loading={loading.expense} filterTerm={searchTerm} />
+                <ExpenseTable
+                  data={expenseData}
+                  loading={loading.expense}
+                  filterTerm={searchTerm}
+                  refreshData={() => getExpenses(currentPage)}
+                />
               </div>
             </div>
           )}

@@ -12,7 +12,7 @@ function SuccessToster({ success, msg , id }) {
 
   return (
     <div key={id}
-      className={`fixed top-5 right-0 z-50 transition-all duration-500
+      className={`fixed top-5 right-0 z-[9999] transition-all duration-500
       ${visible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}
       `}
     >

@@ -4,6 +4,7 @@ import axios from "axios";
 import { refreshToken } from "../../api/api";
 import { backendUrl } from "../../utils/backendUrl";
 import AddPumpModal from "../pump/AddPumpModal";
+import SuccessToster from "../toster/SuccessToster"; // Add this import
 
 const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
   const initialState = {
@@ -33,6 +34,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
   const [fetchingPumps, setFetchingPumps] = useState(false);
   const [fetchingVehicles, setFetchingVehicles] = useState(false);
   const [showAddPumpModal, setShowAddPumpModal] = useState(false);
+  const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
 
   const transportUser = JSON.parse(localStorage.getItem("transportUser")) || {};
 
@@ -44,6 +46,11 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
       setFormData(initialState);
     }
   }, [isOpen]);
+
+  const showNotification = (success, msg) => {
+    setToast({ show: true, success, msg, id: Date.now() });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
+  };
 
   const fetchPumps = async () => {
     setFetchingPumps(true);
@@ -91,7 +98,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
     // Validate vehicle exists
     const vehicleExists = vehicleList.some(v => v.vehicleNo.toUpperCase() === formData.VehicleNo.toUpperCase());
     if (!vehicleExists) {
-      onError("Vehicle number not registered. Please add it in Reports > Vehicles first.");
+      showNotification(false, "Vehicle number not registered. Please add it in Reports > Vehicles first.");
       return;
     }
 
@@ -108,16 +115,17 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
         };
         localStorage.setItem("transportUser", JSON.stringify(updatedUser));
 
-        onSuccess("Bilty added successfully 🚛");
+        showNotification(true, "Bilty added successfully 🚛");
         setFormData(initialState);
-        onClose();
+        setTimeout(() => onClose(), 1000); // Close after toast shows
       }
     } catch (error) {
+      console.log(error.response.data.mussage)
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
         if (isRefreshed) return handleSubmit();
       }
-      onError(error.response?.data?.message || "Failed to add Bilty");
+      showNotification(false, error.response.data.mussage || "Failed to add Bilty");
     } finally {
       setLoading(false);
     }
@@ -127,15 +135,12 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
     fetchPumps(); // refresh pump list after adding
   };
 
-  const pumpNotification = (success, msg) => {
-    if (success) onSuccess(msg);
-    else onError(msg);
-  };
-
   if (!isOpen) return null;
 
   return (
     <>
+      {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
+      
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 dark:bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
         <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl animate-in zoom-in duration-300 my-auto">
           <div className="sticky top-0 bg-white dark:bg-slate-900 border-b dark:border-slate-700 p-6 flex justify-between items-center z-10">
@@ -172,9 +177,9 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
                 </datalist>
               </div>
 
-              {/* All other fields as before */}
+              {/* All other fields */}
               {Object.keys(formData).map((key) => {
-                if (key === "VehicleNo") return null; // already handled above
+                if (key === "VehicleNo") return null;
                 if (key === "petrolPump") {
                   return (
                     <div key={key} className="space-y-1">
@@ -250,7 +255,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
         onClose={() => setShowAddPumpModal(false)}
         pump={null}
         onSuccess={handleAddPumpSuccess}
-        showNotification={pumpNotification}
+        showNotification={showNotification}
       />
     </>
   );
