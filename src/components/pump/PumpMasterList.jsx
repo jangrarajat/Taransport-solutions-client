@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Plus, Edit2, Trash2, Eye, Phone, User, MapPin, FileSpreadsheet, Printer } from "lucide-react";
 import * as XLSX from 'xlsx';
-import { backendUrl } from "../utils/backendUrl";
-import ButtonLoaders from "./loaders/ButtonLoaders";
+import { backendUrl } from "../../utils/backendUrl";
+import ButtonLoaders from "../loaders/ButtonLoaders";
 import AddPumpModal from "./AddPumpModal";
-import { refreshToken } from "../api/api";
+import { refreshToken } from "../../api/api";
 
 const PumpMasterList = ({ showNotification, onSelectPump }) => {
     const [pumps, setPumps] = useState([]);

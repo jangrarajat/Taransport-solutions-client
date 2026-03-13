@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { RotateCcw, Plus, ChevronLeft, ChevronRight, Trash2, FileSpreadsheet, Printer } from "lucide-react";
 import * as XLSX from 'xlsx';
-import { backendUrl } from "../utils/backendUrl";
-import ButtonLoaders from "./loaders/ButtonLoaders";
+import { backendUrl } from "../../utils/backendUrl";
+import ButtonLoaders from "../loaders/ButtonLoaders";
 import AddPaymentModal from "./AddPaymentModal";
-import { refreshToken } from "../api/api";
+import DeleteConfirmModal from "../DeleteConfirmModal";
+import { refreshToken } from "../../api/api";
 
 const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
   const [transactions, setTransactions] = useState([]);
@@ -16,6 +17,8 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
   const [totals, setTotals] = useState({ totalPurchases: 0, totalPayments: 0 });
   const [openingBefore, setOpeningBefore] = useState(0);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState(null);
 
   // Helper to get current month range
   const getCurrentMonthRange = () => {
@@ -76,22 +79,20 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
         const isRefreshed = await refreshToken();
         if (isRefreshed) return handleAddPayment(paymentData);
       }
-      showNotification(false, "Payment failed");
+      showNotification(false, error.response?.data?.message || "Payment failed");
     }
   };
 
   const handleDeleteTransaction = async (transactionId) => {
-    if (!window.confirm("Delete this transaction? This action cannot be undone.")) return;
     try {
       await axios.delete(`${backendUrl}/api/pump-transactions/${transactionId}`, { withCredentials: true });
-      showNotification(true, "Transaction deleted");
       fetchLedger();
     } catch (error) {
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
         if (isRefreshed) return handleDeleteTransaction(transactionId);
       }
-      showNotification(false, "Delete failed");
+      throw new Error(error.response?.data?.message || "Delete failed");
     }
   };
 
@@ -352,7 +353,10 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
                       </td>
                       <td className="px-4 py-2 text-center">
                         <button
-                          onClick={() => handleDeleteTransaction(t._id)}
+                          onClick={() => {
+                            setTransactionToDelete(t);
+                            setDeleteModalOpen(true);
+                          }}
                           className="p-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded transition-colors"
                           title="Delete"
                         >
@@ -418,6 +422,19 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
         isOpen={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         onSubmit={handleAddPayment}
+        showNotification={showNotification}
+      />
+
+      <DeleteConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setTransactionToDelete(null);
+        }}
+        onConfirm={async () => {
+          await handleDeleteTransaction(transactionToDelete._id);
+        }}
+        title="transaction"
         showNotification={showNotification}
       />
     </div>

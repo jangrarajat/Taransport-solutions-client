@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { X, Plus } from "lucide-react";
 import axios from "axios";
-import { refreshToken } from "../api/api";
-import { backendUrl } from "../utils/backendUrl";
-import AddPumpModal from "./AddPumpModal";
+import { refreshToken } from "../../api/api";
+import { backendUrl } from "../../utils/backendUrl";
+import AddPumpModal from "../pump/AddPumpModal";
 
 const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
   const initialState = {
@@ -29,7 +29,9 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
   const [formData, setFormData] = useState(initialState);
   const [loading, setLoading] = useState(false);
   const [pumpList, setPumpList] = useState([]);
+  const [vehicleList, setVehicleList] = useState([]);
   const [fetchingPumps, setFetchingPumps] = useState(false);
+  const [fetchingVehicles, setFetchingVehicles] = useState(false);
   const [showAddPumpModal, setShowAddPumpModal] = useState(false);
 
   const transportUser = JSON.parse(localStorage.getItem("transportUser")) || {};
@@ -37,6 +39,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
   useEffect(() => {
     if (isOpen) {
       fetchPumps();
+      fetchVehicles();
     } else {
       setFormData(initialState);
     }
@@ -45,19 +48,36 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
   const fetchPumps = async () => {
     setFetchingPumps(true);
     try {
-      // ✅ Fixed: added /api prefix
       const res = await axios.get(`${backendUrl}/api/pump-master`, { withCredentials: true });
       if (res.data.success) {
         setPumpList(res.data.pumps);
       }
     } catch (error) {
-         if (error.response?.status === 401) {
-                const isRefreshed = await refreshToken();
-                if (isRefreshed) return fetchPumps();
-            }
+      if (error.response?.status === 401) {
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) return fetchPumps();
+      }
       console.error("Failed to fetch pumps", error);
     } finally {
       setFetchingPumps(false);
+    }
+  };
+
+  const fetchVehicles = async () => {
+    setFetchingVehicles(true);
+    try {
+      const res = await axios.get(`${backendUrl}/api/vehicle-master`, { withCredentials: true });
+      if (res.data.success) {
+        setVehicleList(res.data.vehicles);
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) return fetchVehicles();
+      }
+      console.error("Failed to fetch vehicles", error);
+    } finally {
+      setFetchingVehicles(false);
     }
   };
 
@@ -67,6 +87,14 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate vehicle exists
+    const vehicleExists = vehicleList.some(v => v.vehicleNo.toUpperCase() === formData.VehicleNo.toUpperCase());
+    if (!vehicleExists) {
+      onError("Vehicle number not registered. Please add it in Reports > Vehicles first.");
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await axios.post(`${backendUrl}/bill/add-bill-entry`, formData, {
@@ -89,7 +117,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
         const isRefreshed = await refreshToken();
         if (isRefreshed) return handleSubmit();
       }
-      onError(error.response?.data?.mussage || "Failed to add Bilty");
+      onError(error.response?.data?.message || "Failed to add Bilty");
     } finally {
       setLoading(false);
     }
@@ -99,7 +127,6 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
     fetchPumps(); // refresh pump list after adding
   };
 
-  // wrapper for pump modal notifications
   const pumpNotification = (success, msg) => {
     if (success) onSuccess(msg);
     else onError(msg);
@@ -122,7 +149,32 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
 
           <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Vehicle Number with datalist */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">
+                  Vehicle Number *
+                </label>
+                <input
+                  list="vehicleList"
+                  name="VehicleNo"
+                  value={formData.VehicleNo}
+                  onChange={handleChange}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
+                  placeholder="Enter vehicle number"
+                  required
+                />
+                <datalist id="vehicleList">
+                  {fetchingVehicles ? (
+                    <option value="" disabled>Loading vehicles...</option>
+                  ) : (
+                    vehicleList.map(v => <option key={v._id} value={v.vehicleNo} />)
+                  )}
+                </datalist>
+              </div>
+
+              {/* All other fields as before */}
               {Object.keys(formData).map((key) => {
+                if (key === "VehicleNo") return null; // already handled above
                 if (key === "petrolPump") {
                   return (
                     <div key={key} className="space-y-1">

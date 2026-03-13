@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import axios from "axios";
-import { refreshToken } from "../api/api";
-import { backendUrl } from "../utils/backendUrl";
+import { refreshToken } from "../../api/api";
+import { backendUrl } from "../../utils/backendUrl";
 
 const EditBiltyModal = ({ isOpen, onClose, bill, onSuccess }) => {
   const [formData, setFormData] = useState({});

@@ -4,7 +4,7 @@ import axios from "axios";
 import PrintBilty from "./PrintBilty";
 import SuccessToster from "./toster/SuccessToster";
 import ButtonLoaders from "./loaders/ButtonLoaders";
-import EditBiltyModal from "./EditBiltyModal";
+import EditBiltyModal from "./bill/EditBiltyModal";
 import * as XLSX from 'xlsx';
 import { refreshToken } from "../api/api";
 import jsPDF from 'jspdf';

@@ -11,15 +11,17 @@ import { useNavigate } from "react-router-dom";
 import { backendUrl } from "../utils/backendUrl";
 
 // Components
-import BiltyTable from "../components/BiltyTable";
-import AddBiltyModal from "../components/AddBiltyModal";
+import BiltyTable from "../components/bill/BiltyTable";
+import AddBiltyModal from "../components/bill/AddBiltyModal";
 import ExpenseTable from "../components/ExpenseTable";
 import AddExpenseModal from "../components/AddExpenseModal";
 import SuccessToster from "../components/toster/SuccessToster";
 import Pricing from "../components/Pricing";
 import FrightTable from "../components/FrightTable";
-import PumpMasterList from "../components/PumpMasterList";
-import PumpLedger from "../components/PumpLedger";
+import PumpMasterList from "../components/pump/PumpMasterList";
+import PumpLedger from "../components/pump/PumpLedger";
+import ReportsManager from "../components/ReportsManager";
+import ButtonLoaders from "../components/loaders/ButtonLoaders";
 
 // Skeleton Loaders
 const DashboardCardSkeleton = () => (
@@ -67,7 +69,7 @@ const EmptyState = ({ message }) => (
   </div>
 );
 
-// Profile Modal Component (unchanged)
+// Profile Modal Component
 const ProfileModal = ({ isOpen, onClose, user, showNotification }) => {
   const [formData, setFormData] = useState({
     name: user?.name || "",
@@ -126,11 +128,13 @@ function Home() {
     dashboard: false,
     bilty: false,
     expense: false,
-    pumpSummary: false
+    pumpSummary: false,
+    stats: false
   });
   const [error, setError] = useState({
     dashboard: null,
-    pumpSummary: null
+    pumpSummary: null,
+    stats: null
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -154,6 +158,12 @@ function Home() {
   // Pump summary
   const [pumpSummary, setPumpSummary] = useState([]);
   const [totalPumpBalance, setTotalPumpBalance] = useState(0);
+
+  // Vehicle & Driver stats
+  const [vehicleCount, setVehicleCount] = useState(0);
+  const [driverCount, setDriverCount] = useState(0);
+  const [driverMonthlyPayments, setDriverMonthlyPayments] = useState([]);
+  const [totalDriverPayments, setTotalDriverPayments] = useState(0);
 
   // Pump ledger navigation
   const [selectedPump, setSelectedPump] = useState(null);
@@ -220,6 +230,7 @@ function Home() {
     return `${day}-${month}-${year}`;
   };
 
+  // Dashboard data
   const getDashboardData = useCallback(async () => {
     setLoading(prev => ({ ...prev, dashboard: true }));
     setError(prev => ({ ...prev, dashboard: null }));
@@ -237,6 +248,7 @@ function Home() {
     }
   }, [dashFilter]);
 
+  // Pump summary
   const fetchPumpSummary = async () => {
     setLoading(prev => ({ ...prev, pumpSummary: true }));
     setError(prev => ({ ...prev, pumpSummary: null }));
@@ -258,6 +270,52 @@ function Home() {
     }
   };
 
+  // Vehicle & Driver stats
+  const fetchVehicleStats = async () => {
+    try {
+      const res = await axios.get(`${backendUrl}/api/vehicle-master/stats`, { withCredentials: true });
+      if (res.data.success) setVehicleCount(res.data.count);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) fetchVehicleStats();
+      }
+    }
+  };
+
+  const fetchDriverStats = async () => {
+    try {
+      const res = await axios.get(`${backendUrl}/api/driver-master/stats`, { withCredentials: true });
+      if (res.data.success) setDriverCount(res.data.count);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) fetchDriverStats();
+      }
+    }
+  };
+
+  const fetchDriverMonthlyPayments = async () => {
+    setLoading(prev => ({ ...prev, stats: true }));
+    setError(prev => ({ ...prev, stats: null }));
+    try {
+      const res = await axios.get(`${backendUrl}/api/driver-transactions/current-month`, { withCredentials: true });
+      if (res.data.success) {
+        setDriverMonthlyPayments(res.data.drivers);
+        setTotalDriverPayments(res.data.totalPayments);
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) return fetchDriverMonthlyPayments();
+      }
+      setError(prev => ({ ...prev, stats: error.response?.data?.message || "Failed to load driver payments" }));
+    } finally {
+      setLoading(prev => ({ ...prev, stats: false }));
+    }
+  };
+
+  // Bilty data
   const getBilty = useCallback(async (page = 1) => {
     setLoading(prev => ({ ...prev, bilty: true }));
     try {
@@ -285,6 +343,7 @@ function Home() {
     } finally { setLoading(prev => ({ ...prev, bilty: false })); }
   }, [searchTerm, startDate, endDate]);
 
+  // Expenses
   const getExpenses = useCallback(async (page = 1) => {
     setLoading(prev => ({ ...prev, expense: true }));
     try {
@@ -326,7 +385,10 @@ function Home() {
     if (menuOption === "home") {
       getDashboardData();
       fetchPumpSummary();
-    } else if (menuOption !== "petrolPump") {
+      fetchVehicleStats();
+      fetchDriverStats();
+      fetchDriverMonthlyPayments();
+    } else if (menuOption !== "petrolPump" && menuOption !== "Reports") {
       handleSearch();
     }
   }, [menuOption]);
@@ -404,6 +466,7 @@ function Home() {
         <main className="p-3 sm:p-4 md:p-6 lg:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
           {menuOption === "home" && (
             <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black">
+              {/* Revenue Overview */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <h2 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">
                   Revenue Overview
@@ -419,7 +482,7 @@ function Home() {
                 </select>
               </div>
 
-              {/* Dashboard Cards with Skeleton/Error */}
+              {/* Dashboard Cards */}
               {loading.dashboard ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <DashboardCardSkeleton />
@@ -458,7 +521,27 @@ function Home() {
                 </div>
               )}
 
-              {/* Pump Summary Section with Skeleton/Error */}
+                  {/* Vehicle & Driver Stats */}
+              <div className="mt-8">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 underline decoration-purple-500 decoration-4 underline-offset-8">
+                  Fleet Overview
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Vehicles</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">{vehicleCount}</p>
+                  </div>
+                  <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Drivers</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">{driverCount}</p>
+                  </div>
+                  <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Payments to Drivers (This Month)</p>
+                    <p className="text-2xl font-black text-green-600 dark:text-green-400 mt-1">₹{totalDriverPayments.toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+              </div>
+              {/* Pump Summary */}
               <div className="mt-8">
                 <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 underline decoration-green-500 decoration-4 underline-offset-8">
                   Petrol Pumps Payable
@@ -516,6 +599,47 @@ function Home() {
                   </div>
                 )}
               </div>
+
+           
+
+              {/* Driver Payments List */}
+              {loading.stats ? (
+                <div className="mt-6">
+                  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="p-8 text-center">
+                      <ButtonLoaders/>
+                    </div>
+                  </div>
+                </div>
+              ) : error.stats ? (
+                <div className="mt-6">
+                  <ErrorState message={error.stats} onRetry={fetchDriverMonthlyPayments} />
+                </div>
+              ) : driverMonthlyPayments.length > 0 ? (
+                <div className="mt-6">
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white mb-3 underline decoration-blue-500 decoration-4 underline-offset-8">Driver Payments This Month</h4>
+                  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
+                          <tr>
+                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Driver Name</th>
+                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Total Paid (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                          {driverMonthlyPayments.map(d => (
+                            <tr key={d.driverId} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                              <td className="px-4 py-2 text-slate-800 dark:text-slate-200 font-bold">{d.driverName}</td>
+                              <td className="px-4 py-2 font-black text-right text-green-600 dark:text-green-400">₹{d.totalAmount.toLocaleString('en-IN')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -619,6 +743,11 @@ function Home() {
             </div>
           )}
 
+          {/* Reports Section */}
+          {menuOption === "Reports" && (
+            <ReportsManager showNotification={showNotification} />
+          )}
+
           {menuOption === "expantion" && (
             <div className="space-y-3 animate-in fade-in duration-500">
               <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
@@ -675,7 +804,7 @@ function Home() {
             </div>
           )}
 
-          {menuOption !== "home" && menuOption !== "petrolPump" && totalPages > 1 && (
+          {menuOption !== "home" && menuOption !== "petrolPump" && menuOption !== "Reports" && totalPages > 1 && (
             <div className="flex items-center justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4 rounded-xl border dark:border-slate-700 shadow-sm">
               <p className="text-[8px] uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">
                 Page {currentPage} of {totalPages}
