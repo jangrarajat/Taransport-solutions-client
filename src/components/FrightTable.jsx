@@ -102,16 +102,16 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
 
   const headerCheckboxRef = useRef(null);
 
-  // ✅ Sort data by date ascending (oldest first) – backend already sends ascending, but safe to sort again
+  // Sort data by date ascending
   const sortedData = useMemo(() => {
     return [...data].sort((a, b) => {
       const dateA = new Date(a.DateOfIssueOfInvoice);
       const dateB = new Date(b.DateOfIssueOfInvoice);
-      return dateA - dateB; // ascending
+      return dateA - dateB;
     });
   }, [data]);
 
-  // ✅ Compute running closing balances – use openingBalance if available, else fallback to vehicleTotalBalance
+  // Compute running closing balances
   const runningBalances = useMemo(() => {
     if (!sortedData.length) return [];
     const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
@@ -122,6 +122,9 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
       return running;
     });
   }, [sortedData, openingBalance, vehicleTotalBalance]);
+
+  const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
+  const hasValidBalance = startBalance !== null && startBalance !== undefined;
 
   useEffect(() => {
     if (headerCheckboxRef.current) {
@@ -162,20 +165,19 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
     });
   };
 
+  // ----- Export functions with conditional summary line -----
   const downloadStyledExcel = () => {
     const exportData = getExportData();
     const totals = calculateTotals(exportData);
-    const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
 
     const headers = [
       "Date", "LR No.", "Challan No", "Vehicle", "DI No.",
       "Recipient", "Destination", "Qty", "Rate PMT",
       "Freight (₹)", "Commission (₹)", "Advance (₹)", "Diesel (₹)", "Pump",
-      "Final Amount (₹)", "Remark", "Balance (₹)",
-      "Opening Bal (₹)", "Closing Bal (₹)"
+      "Final Amount (₹)", "Remark", "Balance (₹)"
     ];
 
-    const rows = exportData.map((bill, index) => [
+    const rows = exportData.map((bill) => [
       bill.DateOfIssueOfInvoice || "",
       bill.LRNO || "",
       bill.challanNO || "",
@@ -192,9 +194,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
       bill.petrolPump || "N/A",
       bill.faynalAmmount || 0,
       bill.remark || "",
-      bill.tripBalanceAmmount || 0,
-      startBalance !== null && startBalance !== undefined ? startBalance : "-",
-      runningBalances[index] !== undefined ? runningBalances[index] : "-"
+      bill.tripBalanceAmmount || 0
     ]);
 
     const totalsRow = [
@@ -208,10 +208,13 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
       "",
       totals.final,
       "",
-      totals.balance,
-      "",
-      runningBalances.length ? runningBalances[runningBalances.length - 1] : "-"
+      totals.balance
     ];
+
+    // Only add summary line if we have a valid balance
+    const summaryLine = hasValidBalance
+      ? `<p style="font-weight: bold; margin-bottom: 8px;">Opening Balance: ₹${runningBalances.length ? runningBalances[runningBalances.length - 1] : '-'} | Closing Balance: ₹${startBalance !== null ? startBalance : '-'}</p>`
+      : '';
 
     const htmlContent = `
       <html>
@@ -232,6 +235,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
           <h2>Sawariya Logistic Statement</h2>
           <p>Contact No: 9992269616 & 7027400769</p>
           <p>Generated: ${new Date().toLocaleDateString('en-IN')} | Records: ${exportData.length} (${selectedIds.length ? 'Selected' : 'All'})</p>
+          ${summaryLine}
           <table>
             <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
             <tbody>
@@ -257,15 +261,13 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
     try {
       const exportData = getExportData();
       const totals = calculateTotals(exportData);
-      const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
 
       const headers = [
         ["Date", "LR No.", "Challan", "Vehicle", "DI No.", "Recipient", "Dest.", "Qty", "Rate",
-          "Freight", "Comm.", "Advance", "Diesel", "Pump", "Final", "Remark", "Balance",
-          "Open Bal", "Close Bal"]
+          "Freight", "Comm.", "Advance", "Diesel", "Pump", "Final", "Remark", "Balance"]
       ];
 
-      const rows = exportData.map((bill, index) => [
+      const rows = exportData.map((bill) => [
         bill.DateOfIssueOfInvoice || "",
         bill.LRNO || "",
         bill.challanNO || "",
@@ -282,9 +284,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
         bill.petrolPump || "N/A",
         String(bill.faynalAmmount || 0),
         bill.remark || "",
-        String(bill.tripBalanceAmmount || 0),
-        startBalance !== null ? String(startBalance) : "-",
-        runningBalances[index] !== undefined ? String(runningBalances[index]) : "-"
+        String(bill.tripBalanceAmmount || 0)
       ]);
 
       const totalsRow = [
@@ -298,12 +298,12 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
         "",
         String(totals.final),
         "",
-        String(totals.balance),
-        "",
-        runningBalances.length ? String(runningBalances[runningBalances.length - 1]) : "-"
+        String(totals.balance)
       ];
 
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+      // Title and generation date
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.text("Fright Report", 14, 10);
@@ -311,10 +311,37 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
       doc.setFont("helvetica", "normal");
       doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, 14, 15);
 
+      let startY = 20; // default start for main table
+
+      // Conditionally add summary line
+      if (hasValidBalance) {
+        const summaryY = 20;
+        const margin = 14;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const summaryWidth = pageWidth - 2 * margin;
+        const summaryText = `Opening Balance: ₹${runningBalances.length ? runningBalances[runningBalances.length - 1].toLocaleString('en-IN') : '-'}   |   Closing Balance: ₹${startBalance.toLocaleString('en-IN')}`;
+
+        // Light blue background
+        doc.setFillColor(219, 234, 254);
+        doc.rect(margin, summaryY - 3, summaryWidth, 6, 'F');
+        // Border
+        doc.setDrawColor(147, 197, 253);
+        doc.setLineWidth(0.3);
+        doc.rect(margin, summaryY - 3, summaryWidth, 6, 'S');
+        // Text
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(30, 64, 175);
+        doc.text(summaryText, margin + 2, summaryY);
+
+        startY = summaryY + 5; // table starts after summary
+      }
+
+      // Main table
       autoTable(doc, {
         head: headers,
         body: [...rows, totalsRow],
-        startY: 20,
+        startY: startY,
         theme: 'striped',
         styles: { fontSize: 7, cellPadding: 1.5, halign: 'center', valign: 'middle', lineColor: [200, 200, 200], lineWidth: 0.1, overflow: 'linebreak' },
         headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
@@ -332,17 +359,15 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
   const printData = () => {
     const exportData = getExportData();
     const totals = calculateTotals(exportData);
-    const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
 
     const headers = [
       "Date", "LR No.", "Challan No", "Vehicle", "DI No.",
       "Recipient", "Destination", "Qty", "Rate PMT",
       "Freight (₹)", "Commission (₹)", "Advance (₹)", "Diesel (₹)", "Pump",
-      "Final Amount (₹)", "Remark", "Balance (₹)",
-      "Opening Bal (₹)", "Closing Bal (₹)"
+      "Final Amount (₹)", "Remark", "Balance (₹)"
     ];
 
-    const rows = exportData.map((bill, index) => [
+    const rows = exportData.map((bill) => [
       bill.DateOfIssueOfInvoice || "",
       bill.LRNO || "",
       bill.challanNO || "",
@@ -359,9 +384,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
       bill.petrolPump || "N/A",
       bill.faynalAmmount || 0,
       bill.remark || "",
-      bill.tripBalanceAmmount || 0,
-      startBalance !== null ? startBalance : "-",
-      runningBalances[index] !== undefined ? runningBalances[index] : "-"
+      bill.tripBalanceAmmount || 0
     ]);
 
     const totalsRow = [
@@ -375,10 +398,12 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
       "",
       totals.final,
       "",
-      totals.balance,
-      "",
-      runningBalances.length ? runningBalances[runningBalances.length - 1] : "-"
+      totals.balance
     ];
+
+    const summaryLine = hasValidBalance
+      ? `<p style="font-weight: bold; margin-bottom: 8px;">Opening Balance: ₹${runningBalances.length ? runningBalances[runningBalances.length - 1] : '-'} | Closing Balance: ₹${startBalance}</p>`
+      : '';
 
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
@@ -399,6 +424,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
         <body>
           <h2>Fright Report</h2>
           <p>Generated: ${new Date().toLocaleDateString('en-IN')} | Records: ${exportData.length} (${selectedIds.length ? 'Selected' : 'All'})</p>
+          ${summaryLine}
           <table>
             <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
             <tbody>
@@ -447,6 +473,12 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
   };
 
   const totals = calculateTotals(sortedData);
+  const mainHeaders = [
+    "Date", "LR NO.", "Challan NO", "Vehicle", "DI No.",
+    "Recipient", "Destination", "Qty", "Rate PMT",
+    "Freight", "Commission", "Advance", "Diesel", "Pump",
+    "Amount", "Remark", "Balance"
+  ];
 
   if (loading) return <div className="h-64 flex items-center justify-center"><ButtonLoaders /></div>;
 
@@ -482,18 +514,18 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
 
       <div className="mb-4 flex flex-wrap justify-between items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
         <div className="flex gap-2">
-          {selectedIds.length !== 0 && (
-            <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase">{selectedIds.length}</span>
-          )}
           <button onClick={downloadStyledExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-green-700 transition-colors">
             <ArrowDownToLine size={15} /> Excel
           </button>
-          <button onClick={downloadPDF} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-700 transition-colors">
+          {/* <button onClick={downloadPDF} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-700 transition-colors">
             <ArrowDownToLine size={15} /> PDF
-          </button>
+          </button> */}
           <button onClick={printData} className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-purple-700 transition-colors">
             <Printer size={15} /> Print
           </button>
+          {selectedIds.length !== 0 && (
+            <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase">{selectedIds.length}</span>
+          )}
         </div>
         <div>
           <button className="uppercase text-white bg-yellow-600 p-2 rounded-md" onClick={() => setAddPayment(!addPayment)}>
@@ -501,6 +533,42 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
           </button>
         </div>
       </div>
+
+      {/* Top summary line – only shown when valid balance exists */}
+      {sortedData.length > 0 && hasValidBalance && (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-center font-bold text-sm">
+          <span className="mr-6 text-slate-700 dark:text-slate-300">
+            Opening Balance:{' '}
+            <span
+              className={
+                runningBalances.length
+                  ? runningBalances[runningBalances.length - 1] < 0
+                    ? 'text-red-600 dark:text-red-400'
+                    : runningBalances[runningBalances.length - 1] > 0
+                    ? 'text-green-600 dark:text-green-400'
+                    : ''
+                  : ''
+              }
+            >
+              ₹{runningBalances.length ? runningBalances[runningBalances.length - 1] : '-'}
+            </span>
+          </span>
+          <span className="text-slate-700 dark:text-slate-300">
+            Closing Balance:{' '}
+            <span
+              className={
+                startBalance < 0
+                  ? 'text-red-600 dark:text-red-400'
+                  : startBalance > 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : ''
+              }
+            >
+              ₹{startBalance}
+            </span>
+          </span>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden rounded-xl">
         <div className="overflow-x-auto">
@@ -517,13 +585,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
                   />
                 </th>
                 <th className="px-4 py-4 text-center border-r border-slate-700 dark:border-slate-800">Actions</th>
-                {[
-                  "Date", "LR NO.", "Challan NO", "Vehicle", "DI No.",
-                  "Recipient", "Destination", "Qty", "Rate PMT",
-                  "Freight", "Commission", "Advance", "Diesel", "Pump",
-                  "Amount", "Remark", "Balance",
-                  "Opening Bal", "Closing Bal"
-                ].map((h) => (
+                {mainHeaders.map((h) => (
                   <th key={h} className="px-4 text-center py-4 text-[11px] uppercase tracking-wider font-bold border-r border-slate-700 dark:border-slate-800 whitespace-nowrap">
                     {h}
                   </th>
@@ -531,85 +593,73 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-bold uppercase text-[11px] text-slate-700 dark:text-slate-300">
-              {sortedData.map((bill, index) => {
-                const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
-                return (
-                  <tr key={bill._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${selectedIds.includes(bill._id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
-                    <td className="px-4 py-3 text-center border-r dark:border-slate-700">
-                      <input type="checkbox" checked={selectedIds.includes(bill._id)}
-                        onChange={() => setSelectedIds(prev => prev.includes(bill._id) ? prev.filter(i => i !== bill._id) : [...prev, bill._id])}
-                        className="dark:bg-slate-700 dark:border-slate-600" />
-                    </td>
-                    <td className="px-4 py-3 border-r dark:border-slate-700">
-                      <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><Edit3 size={14} /></button>
-                        <button onClick={() => setDeleteModal({ open: true, id: bill._id })} className="text-red-400 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg"><Trash2 size={14} /></button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{bill.DateOfIssueOfInvoice}</td>
-                    <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{bill.LRNO}</td>
-                    <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{bill.challanNO}</td>
-                    <td className="px-4 py-3 text-center font-mono text-slate-800 dark:text-white">{bill.VehicleNo}</td>
-                    <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.DINo}</td>
-                    <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200 min-w-[150px]">{bill.NameOfRecipient}</td>
-                    <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.Destination}</td>
-                    <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(bill.Quantity)}</td>
-                    <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(bill.pmt)}</td>
-                    <td className="px-4 py-3 text-center text-blue-600 dark:text-blue-400">₹{bill.frightAmount || 0}</td>
-                    <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">₹{bill.commeion || 0}</td>
-                    <td className="px-4 py-3 text-center text-red-600 dark:text-red-400">₹{bill.advanceCash || 0}</td>
-                    <td className="px-4 py-3 text-center text-red-500 dark:text-red-400">₹{bill.desil || 0}</td>
-                    <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 uppercase">{bill.petrolPump || "N/A"}</td>
-                    <td className="px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black bg-blue-50 dark:bg-blue-900/20">
-                      ₹{bill.faynalAmmount || 0}
-                    </td>
-                    <td className="px-4 py-3 text-center text-nowrap">{bill.remark}</td>
-                    <td className={`px-4 py-3 text-center font-black border-x dark:border-slate-700 ${bill.tripBalanceAmmount < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
-                      ₹{bill.tripBalanceAmmount || 0}
-                    </td>
-                    <td className={`px-4 py-3 text-center font-black ${runningBalances[index] < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
-                      {runningBalances[index] !== undefined ? `₹${runningBalances[index]}` : '-'}
-                    </td>
-                    {/* Opening Balance column – uses openingBalance if available, else vehicleTotalBalance */}
-                    <td className="px-4 py-3 text-center font-black bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
-                      {startBalance !== null ? `₹${startBalance}` : '-'}
-                    </td>
-                    {/* Closing Balance column – running balance */}
-                  </tr>
-                );
-              })}
+              {sortedData.map((bill, index) => (
+                <tr key={bill._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${selectedIds.includes(bill._id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
+                  <td className="px-4 py-3 text-center border-r dark:border-slate-700">
+                    <input type="checkbox" checked={selectedIds.includes(bill._id)}
+                      onChange={() => setSelectedIds(prev => prev.includes(bill._id) ? prev.filter(i => i !== bill._id) : [...prev, bill._id])}
+                      className="dark:bg-slate-700 dark:border-slate-600" />
+                  </td>
+                  <td className="px-4 py-3 border-r dark:border-slate-700">
+                    <div className="flex items-center justify-center gap-2">
+                      <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><Edit3 size={14} /></button>
+                      <button onClick={() => setDeleteModal({ open: true, id: bill._id })} className="text-red-400 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg"><Trash2 size={14} /></button>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{bill.DateOfIssueOfInvoice}</td>
+                  <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{bill.LRNO}</td>
+                  <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{bill.challanNO}</td>
+                  <td className="px-4 py-3 text-center font-mono text-slate-800 dark:text-white">{bill.VehicleNo}</td>
+                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.DINo}</td>
+                  <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200 min-w-[150px]">{bill.NameOfRecipient}</td>
+                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.Destination}</td>
+                  <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(bill.Quantity)}</td>
+                  <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(bill.pmt)}</td>
+                  <td className="px-4 py-3 text-center text-blue-600 dark:text-blue-400">₹{bill.frightAmount || 0}</td>
+                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">₹{bill.commeion || 0}</td>
+                  <td className="px-4 py-3 text-center text-red-600 dark:text-red-400">₹{bill.advanceCash || 0}</td>
+                  <td className="px-4 py-3 text-center text-red-500 dark:text-red-400">₹{bill.desil || 0}</td>
+                  <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 uppercase">{bill.petrolPump || "N/A"}</td>
+                  <td className="px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black bg-blue-50 dark:bg-blue-900/20">
+                    ₹{bill.faynalAmmount || 0}
+                  </td>
+                  <td className="px-4 py-3 text-center text-nowrap">{bill.remark}</td>
+                  <td className={`px-4 py-3 text-center font-black border-x dark:border-slate-700 ${bill.tripBalanceAmmount < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
+                    ₹{bill.tripBalanceAmmount || 0}
+                  </td>
+                </tr>
+              ))}
             </tbody>
-            {/* Totals Footer */}
             <tfoot className="bg-slate-100 dark:bg-slate-800 font-black text-xs border-t-2 border-slate-300 dark:border-slate-600">
               <tr>
-                <td colSpan="2" className="px-4 py-3 text-center text-slate-700 dark:text-slate-200">Totals</td>
-                <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200"></td> {/* Date */}
-                <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200"></td> {/* LR No */}
-                <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200"></td> {/* Challan No */}
-                <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200"></td> {/* Vehicle */}
-                <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200"></td> {/* DI No */}
-                <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200"></td> {/* Recipient */}
-                <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200"></td> {/* Destination */}
-                <td className="px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black">{totals.qty}</td> {/* Qty */}
-                <td className="px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black"></td> {/* Rate PMT */}
-                <td className="px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black">₹{totals.freight}</td>
-                <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300 font-black">₹{totals.commission}</td>
-                <td className="px-4 py-3 text-center text-red-600 dark:text-red-400 font-black">₹{totals.advance}</td>
-                <td className="px-4 py-3 text-center text-red-500 dark:text-red-400 font-black">₹{totals.diesel}</td>
-                <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400"></td> {/* Pump */}
-                <td className="px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black">₹{totals.final}</td>
-                <td className="px-4 py-3 text-center text-orange-600 dark:text-orange-400 font-black"></td> {/* Remark */}
-                <td className={`px-4 py-3 text-center font-black ${totals.balance < 0 ? "text-red-700 dark:text-red-300" : "text-green-700 dark:text-green-300"}`}>
-                  ₹{totals.balance}
-                </td>
-                {/* Closing Balance footer (last running balance) */}
-                <td className={`px-4 py-3 text-center font-black ${runningBalances.length && runningBalances[runningBalances.length - 1] < 0 ? "text-red-700 dark:text-red-300" : "text-green-700 dark:text-green-300"}`}>
-                  {runningBalances.length ? `₹${runningBalances[runningBalances.length - 1]}` : '-'}
-                </td>
-                {/* Opening Balance footer (blank) */}
-                <td className="px-4 py-3 text-center font-black bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
-                   
-                </td>
+                {(() => {
+                  const cells = [
+                    { colSpan: 2, content: "Totals", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // Date
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // LR No
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // Challan No
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // Vehicle
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // DI No
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // Recipient
+                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" }, // Destination
+                    { content: totals.qty, className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" }, // Qty
+                    { content: "", className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" }, // Rate PMT
+                    { content: `₹${totals.freight}`, className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" },
+                    { content: `₹${totals.commission}`, className: "px-4 py-3 text-center text-slate-600 dark:text-slate-300 font-black" },
+                    { content: `₹${totals.advance}`, className: "px-4 py-3 text-center text-red-600 dark:text-red-400 font-black" },
+                    { content: `₹${totals.diesel}`, className: "px-4 py-3 text-center text-red-500 dark:text-red-400 font-black" },
+                    { content: "", className: "px-4 py-3 text-center text-slate-500 dark:text-slate-400" }, // Pump
+                    { content: `₹${totals.final}`, className: "px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black" },
+                    { content: "", className: "px-4 py-3 text-center text-orange-600 dark:text-orange-400 font-black" }, // Remark
+                    { content: `₹${totals.balance}`, className: `px-4 py-3 text-center font-black ${totals.balance < 0 ? "text-red-700 dark:text-red-300" : "text-green-700 dark:text-green-300"}` },
+                  ];
+                  return cells.map((cell, idx) => {
+                    if (cell.colSpan) {
+                      return <td key={idx} colSpan={cell.colSpan} className={cell.className}>{cell.content}</td>;
+                    }
+                    return <td key={idx} className={cell.className}>{cell.content}</td>;
+                  });
+                })()}
               </tr>
             </tfoot>
           </table>
