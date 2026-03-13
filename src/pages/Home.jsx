@@ -2,28 +2,72 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound, ClipboardPlus,
   ChevronLeft, ChevronRight, Plus, LogOut,
-  TrendingUp, Wallet, Receipt, Search, User as UserIcon, Settings, FileSpreadsheet,
-  Sun, Moon, RotateCcw
+  TrendingUp, Wallet, Receipt, Search, User as UserIcon, Settings,
+  RotateCcw, AlertCircle, RefreshCw
 } from "lucide-react";
 import axios from "axios";
 import { refreshToken } from "../api/api";
 import { useNavigate } from "react-router-dom";
-import * as XLSX from 'xlsx';
 import { backendUrl } from "../utils/backendUrl";
 
 // Components
 import BiltyTable from "../components/BiltyTable";
 import AddBiltyModal from "../components/AddBiltyModal";
-// import PetrolPumpTable from "../components/PetrolPumpTable"; // old – remove
 import ExpenseTable from "../components/ExpenseTable";
 import AddExpenseModal from "../components/AddExpenseModal";
 import SuccessToster from "../components/toster/SuccessToster";
 import Pricing from "../components/Pricing";
 import FrightTable from "../components/FrightTable";
-import PumpMasterList from "../components/PumpMasterList";   // new
-import PumpLedger from "../components/PumpLedger";           // new
+import PumpMasterList from "../components/PumpMasterList";
+import PumpLedger from "../components/PumpLedger";
 
-// --- Profile Edit Modal Component ---
+// Skeleton Loaders
+const DashboardCardSkeleton = () => (
+  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 animate-pulse">
+    <div className="flex items-center gap-3">
+      <div className="p-2 sm:p-3 bg-slate-200 dark:bg-slate-700 rounded-xl w-10 h-10 sm:w-12 sm:h-12"></div>
+      <div className="flex-1">
+        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-2"></div>
+        <div className="h-6 bg-slate-300 dark:bg-slate-600 rounded w-32"></div>
+      </div>
+    </div>
+  </div>
+);
+
+const TableRowSkeleton = ({ rows = 3 }) => (
+  <>
+    {[...Array(rows)].map((_, i) => (
+      <tr key={i} className="animate-pulse">
+        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24"></div></td>
+        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32"></div></td>
+      </tr>
+    ))}
+  </>
+);
+
+const ErrorState = ({ message, onRetry }) => (
+  <div className="bg-white dark:bg-slate-800 rounded-xl p-8 text-center border border-red-200 dark:border-red-900">
+    <AlertCircle className="mx-auto mb-3 text-red-500" size={40} />
+    <h3 className="text-lg font-black text-red-600 dark:text-red-400 mb-2">Oops! Something went wrong</h3>
+    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{message}</p>
+    {onRetry && (
+      <button
+        onClick={onRetry}
+        className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-black text-xs hover:bg-red-700 transition-colors"
+      >
+        <RefreshCw size={14} /> Retry
+      </button>
+    )}
+  </div>
+);
+
+const EmptyState = ({ message }) => (
+  <div className="bg-white dark:bg-slate-800 rounded-xl p-8 text-center border border-slate-200 dark:border-slate-700">
+    <p className="text-slate-400 dark:text-slate-500 italic">{message}</p>
+  </div>
+);
+
+// Profile Modal Component (unchanged)
 const ProfileModal = ({ isOpen, onClose, user, showNotification }) => {
   const [formData, setFormData] = useState({
     name: user?.name || "",
@@ -78,7 +122,16 @@ function Home() {
   const navigate = useNavigate();
   const [menuOption, setMenuOption] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState({
+    dashboard: false,
+    bilty: false,
+    expense: false,
+    pumpSummary: false
+  });
+  const [error, setError] = useState({
+    dashboard: null,
+    pumpSummary: null
+  });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
@@ -87,7 +140,6 @@ function Home() {
   const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
 
   const [biltyData, setBiltyData] = useState([]);
-  // const [pumpData, setPumpData] = useState([]); // old – remove
   const [expenseData, setExpenseData] = useState([]);
   const [dashData, setDashData] = useState({ totalRevenue: 0, totalTripBalance: 0 });
 
@@ -95,42 +147,43 @@ function Home() {
   const [totalPages, setTotalPages] = useState(1);
   const [dashFilter, setDashFilter] = useState("month");
   const [searchTerm, setSearchTerm] = useState("");
-
   const [vehicleTotalBalance, setVehicleTotalBalance] = useState(null);
   const [openingBalance, setOpeningBalance] = useState(null);
   const [closingBalance, setClosingBalance] = useState(null);
 
-  // New state for pump ledger navigation
+  // Pump summary
+  const [pumpSummary, setPumpSummary] = useState([]);
+  const [totalPumpBalance, setTotalPumpBalance] = useState(0);
+
+  // Pump ledger navigation
   const [selectedPump, setSelectedPump] = useState(null);
 
-  // Helper to get current month's date range
+  // Dark mode
+  const [darkMode, setDarkMode] = useState(() => {
+    const stored = localStorage.getItem('theme');
+    if (stored) return stored === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  // Date helpers
   const getCurrentMonthRange = () => {
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-
     const format = (date) => {
       const y = date.getFullYear();
       const m = String(date.getMonth() + 1).padStart(2, '0');
       const d = String(date.getDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
     };
-
     return { start: format(firstDay), end: format(lastDay) };
   };
 
   const initialRange = getCurrentMonthRange();
   const [startDate, setStartDate] = useState(initialRange.start);
   const [endDate, setEndDate] = useState(initialRange.end);
-
-  // Dark mode state
-  const [darkMode, setDarkMode] = useState(() => {
-    const stored = localStorage.getItem('theme');
-    if (stored) return stored === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
 
   useEffect(() => {
     if (darkMode) {
@@ -168,20 +221,45 @@ function Home() {
   };
 
   const getDashboardData = useCallback(async () => {
+    setLoading(prev => ({ ...prev, dashboard: true }));
+    setError(prev => ({ ...prev, dashboard: null }));
     try {
-      console.log(`${backendUrl}/user/dashbord?filter=${dashFilter}`)
       const response = await axios.get(`${backendUrl}/user/dashbord?filter=${dashFilter}`, { withCredentials: true });
       if (response.data.success) setDashData(response.data.data);
     } catch (error) {
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
-        if (isRefreshed) getDashboardData();
+        if (isRefreshed) return getDashboardData();
       }
+      setError(prev => ({ ...prev, dashboard: error.response?.data?.message || "Failed to load dashboard data" }));
+    } finally {
+      setLoading(prev => ({ ...prev, dashboard: false }));
     }
   }, [dashFilter]);
 
+  const fetchPumpSummary = async () => {
+    setLoading(prev => ({ ...prev, pumpSummary: true }));
+    setError(prev => ({ ...prev, pumpSummary: null }));
+    try {
+      const res = await axios.get(`${backendUrl}/api/pump-transactions/summary`, { withCredentials: true });
+      if (res.data.success) {
+        setPumpSummary(res.data.summary);
+        const total = res.data.summary.reduce((acc, p) => acc + p.balance, 0);
+        setTotalPumpBalance(total);
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) return fetchPumpSummary();
+      }
+      setError(prev => ({ ...prev, pumpSummary: error.response?.data?.message || "Failed to load pump summary" }));
+    } finally {
+      setLoading(prev => ({ ...prev, pumpSummary: false }));
+    }
+  };
+
   const getBilty = useCallback(async (page = 1) => {
-    setLoading(true);
+    setLoading(prev => ({ ...prev, bilty: true }));
     try {
       const url = `${backendUrl}/bill/get-bills?page=${page}&limit=50&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
@@ -204,14 +282,11 @@ function Home() {
         const isRefreshed = await refreshToken();
         if (isRefreshed) getBilty(page);
       }
-    } finally { setLoading(false); }
+    } finally { setLoading(prev => ({ ...prev, bilty: false })); }
   }, [searchTerm, startDate, endDate]);
 
-  // Old petrol pump function – no longer needed
-  // const getPetrolPumps = useCallback(async ... ) { ... }
-
   const getExpenses = useCallback(async (page = 1) => {
-    setLoading(true);
+    setLoading(prev => ({ ...prev, expense: true }));
     try {
       const url = `${backendUrl}/persnol/get-expantion?page=${page}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
@@ -231,7 +306,7 @@ function Home() {
         const isRefreshed = await refreshToken();
         if (isRefreshed) getExpenses(page);
       }
-    } finally { setLoading(false); }
+    } finally { setLoading(prev => ({ ...prev, expense: false })); }
   }, [searchTerm, startDate, endDate]);
 
   const handleSearch = () => {
@@ -241,7 +316,6 @@ function Home() {
     } else if (menuOption === "expantion") {
       getExpenses(1);
     }
-    // PetrolPump section now uses its own internal filtering, so no need to call anything here
   };
 
   const handleKeyDown = (e) => {
@@ -251,14 +325,11 @@ function Home() {
   useEffect(() => {
     if (menuOption === "home") {
       getDashboardData();
+      fetchPumpSummary();
     } else if (menuOption !== "petrolPump") {
-      // For petrol pump, we don't auto-fetch anything; the list component handles it
       handleSearch();
     }
   }, [menuOption]);
-
-  // Old payment update function – no longer needed
-  // const handleUpdatePumpPayment = async ... { ... }
 
   return (
     <div className="flex fixed h-screen w-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden uppercase font-bold text-xs">
@@ -317,7 +388,6 @@ function Home() {
               {menuOption} Manager
             </h1>
           </div>
-         
           <div className="flex items-center gap-2 sm:gap-3">
             <div onClick={() => setIsProfileOpen(true)} className="cursor-pointer group flex items-center gap-2">
               <div className="text-right hidden sm:block">
@@ -338,34 +408,113 @@ function Home() {
                 <h2 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">
                   Revenue Overview
                 </h2>
+                <select
+                  value={dashFilter}
+                  onChange={(e) => setDashFilter(e.target.value)}
+                  className="border rounded-lg px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700"
+                >
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="year">This Year</option>
+                </select>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 hover:shadow-xl transition-all group">
-                  <div className="p-2 sm:p-3 bg-blue-600 rounded-xl text-white shadow-lg group-hover:scale-110 duration-300">
-                    <TrendingUp size={18} />
+
+              {/* Dashboard Cards with Skeleton/Error */}
+              {loading.dashboard ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <DashboardCardSkeleton />
+                  <DashboardCardSkeleton />
+                </div>
+              ) : error.dashboard ? (
+                <ErrorState message={error.dashboard} onRetry={getDashboardData} />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 hover:shadow-xl transition-all group">
+                    <div className="p-2 sm:p-3 bg-blue-600 rounded-xl text-white shadow-lg group-hover:scale-110 duration-300">
+                      <TrendingUp size={18} />
+                    </div>
+                    <div>
+                      <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest leading-none">
+                        Total Revenue
+                      </p>
+                      <h3 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white mt-1 tracking-tighter">
+                        ₹{dashData.totalRevenue?.toLocaleString('en-IN')}
+                      </h3>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest leading-none">
-                      Total Revenue
-                    </p>
-                    <h3 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white mt-1 tracking-tighter">
-                      ₹{dashData.totalRevenue?.toLocaleString('en-IN')}
-                    </h3>
+                  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 hover:shadow-xl transition-all group">
+                    <div className="p-2 sm:p-3 bg-orange-500 rounded-xl text-white shadow-lg group-hover:scale-110 duration-300">
+                      <Wallet size={18} />
+                    </div>
+                    <div>
+                      <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest leading-none">
+                        Trip Balance
+                      </p>
+                      <h3 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white mt-1 tracking-tighter">
+                        ₹{dashData.totalTripBalance?.toLocaleString('en-IN')}
+                      </h3>
+                    </div>
                   </div>
                 </div>
-                <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 hover:shadow-xl transition-all group">
-                  <div className="p-2 sm:p-3 bg-orange-500 rounded-xl text-white shadow-lg group-hover:scale-110 duration-300">
-                    <Wallet size={18} />
+              )}
+
+              {/* Pump Summary Section with Skeleton/Error */}
+              <div className="mt-8">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 underline decoration-green-500 decoration-4 underline-offset-8">
+                  Petrol Pumps Payable
+                </h3>
+                {loading.pumpSummary ? (
+                  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
+                          <tr>
+                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Pump Name</th>
+                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Balance (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                          <TableRowSkeleton rows={3} />
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest leading-none">
-                      Trip Balance
-                    </p>
-                    <h3 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white mt-1 tracking-tighter">
-                      ₹{dashData.totalTripBalance?.toLocaleString('en-IN')}
-                    </h3>
+                ) : error.pumpSummary ? (
+                  <ErrorState message={error.pumpSummary} onRetry={fetchPumpSummary} />
+                ) : pumpSummary.length === 0 ? (
+                  <EmptyState message="No pumps found. Add a pump in Petrol Pump section." />
+                ) : (
+                  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
+                          <tr>
+                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Pump Name</th>
+                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Balance (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                          {pumpSummary.map(pump => (
+                            <tr key={pump._id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                              <td className="px-4 py-2 text-slate-800 dark:text-slate-200 font-bold">{pump.name}</td>
+                              <td className={`px-4 py-2 font-black text-right ${pump.balance > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                ₹{pump.balance.toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-slate-100 dark:bg-slate-700 border-t dark:border-slate-600 font-black">
+                          <tr>
+                            <td className="px-4 py-3 text-slate-800 dark:text-white uppercase">Total Payable</td>
+                            <td className="px-4 py-3 text-right text-red-600 dark:text-red-400">
+                              ₹{totalPumpBalance.toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}
@@ -428,7 +577,7 @@ function Home() {
                   {menuOption === "biltiy" ? (
                     <BiltyTable
                       data={biltyData}
-                      loading={loading}
+                      loading={loading.bilty}
                       refreshData={() => getBilty(currentPage)}
                       showNotification={showNotification}
                       vehicleTotalBalance={vehicleTotalBalance}
@@ -438,7 +587,7 @@ function Home() {
                   ) : (
                     <FrightTable
                       data={biltyData}
-                      loading={loading}
+                      loading={loading.bilty}
                       refreshData={() => getBilty(currentPage)}
                       showNotification={showNotification}
                       vehicleTotalBalance={vehicleTotalBalance}
@@ -451,7 +600,7 @@ function Home() {
             </div>
           )}
 
-          {/* ✅ New Petrol Pump Section */}
+          {/* Petrol Pump Section */}
           {menuOption === "petrolPump" && (
             <div className="space-y-4">
               {!selectedPump ? (
@@ -521,7 +670,7 @@ function Home() {
                 </button>
               </div>
               <div className="overflow-x-auto">
-                <ExpenseTable data={expenseData} loading={loading} filterTerm={searchTerm} />
+                <ExpenseTable data={expenseData} loading={loading.expense} filterTerm={searchTerm} />
               </div>
             </div>
           )}

@@ -4,9 +4,11 @@ import { Plus, Edit2, Trash2, Eye, Phone, User, MapPin } from "lucide-react";
 import { backendUrl } from "../utils/backendUrl";
 import ButtonLoaders from "./loaders/ButtonLoaders";
 import AddPumpModal from "./AddPumpModal";
+import { refreshToken } from "../api/api";
 
 const PumpMasterList = ({ showNotification, onSelectPump }) => {
     const [pumps, setPumps] = useState([]);
+    const [balances, setBalances] = useState({}); // pumpId -> balance
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [editingPump, setEditingPump] = useState(null);
@@ -17,7 +19,7 @@ const PumpMasterList = ({ showNotification, onSelectPump }) => {
             const res = await axios.get(`${backendUrl}/api/pump-master`, { withCredentials: true });
             if (res.data.success) setPumps(res.data.pumps);
         } catch (error) {
-              if (error.response?.status === 401) {
+            if (error.response?.status === 401) {
                 const isRefreshed = await refreshToken();
                 if (isRefreshed) return fetchPumps();
             }
@@ -27,8 +29,28 @@ const PumpMasterList = ({ showNotification, onSelectPump }) => {
         }
     };
 
+    const fetchBalances = async () => {
+        try {
+            const res = await axios.get(`${backendUrl}/api/pump-transactions/summary`, { withCredentials: true });
+            if (res.data.success) {
+                const balanceMap = {};
+                res.data.summary.forEach(item => {
+                    balanceMap[item._id] = item.balance;
+                });
+                setBalances(balanceMap);
+            }
+        } catch (error) {
+            if (error.response?.status === 401) {
+                const isRefreshed = await refreshToken();
+                if (isRefreshed) return fetchBalances();
+            }
+            console.error("Failed to load balances");
+        }
+    };
+
     useEffect(() => {
         fetchPumps();
+        fetchBalances();
     }, []);
 
     const handleDelete = async (id) => {
@@ -37,18 +59,26 @@ const PumpMasterList = ({ showNotification, onSelectPump }) => {
             await axios.delete(`${backendUrl}/api/pump-master/${id}`, { withCredentials: true });
             showNotification(true, "Pump deleted");
             fetchPumps();
+            fetchBalances();
         } catch (error) {
             if (error.response?.status === 401) {
                 const isRefreshed = await refreshToken();
-                if (isRefreshed) return handleDelete();
+                if (isRefreshed) return handleDelete(id);
             }
             showNotification(false, "Delete failed");
         }
     };
 
+    // After successful add/edit, refresh both
+    const onSuccess = () => {
+        fetchPumps();
+        fetchBalances();
+        showNotification(true, "Pump saved");
+    };
+
     return (
         <div className="space-y-4">
-            {/* Header with title and add button */}
+            {/* Header */}
             <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <h2 className="text-lg font-black uppercase text-slate-800 dark:text-white tracking-tighter">
                     Petrol Pumps
@@ -126,6 +156,12 @@ const PumpMasterList = ({ showNotification, onSelectPump }) => {
                                             ₹{pump.openingBalance?.toLocaleString('en-IN') || 0}
                                         </span>
                                     </p>
+                                    <p className="flex justify-between items-center mt-1">
+                                        <span className="text-slate-500 dark:text-slate-400">Closing Balance (Payable)</span>
+                                        <span className={`font-black ${(balances[pump._id] || 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                            ₹{(balances[pump._id] || 0).toLocaleString('en-IN')}
+                                        </span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -143,7 +179,7 @@ const PumpMasterList = ({ showNotification, onSelectPump }) => {
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
                 pump={editingPump}
-                onSuccess={() => { fetchPumps(); showNotification(true, "Pump saved"); }}
+                onSuccess={onSuccess}
                 showNotification={showNotification}
             />
         </div>
