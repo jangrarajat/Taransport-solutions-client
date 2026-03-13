@@ -404,7 +404,7 @@ function Home() {
 
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-white dark:bg-gray-900 text-gray-700 transition-all duration-300 flex flex-col shadow-2xl w-64`}>
-        <div className="p-5 flex items-center justify-between border-b border-slate-800 dark:border-slate-900">
+        <div className="p-5 flex items-center justify-between  dark:border-slate-900">
           <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded-lg">
             <X size={20} />
           </button>
@@ -432,7 +432,7 @@ function Home() {
             <Settings size={20} /> <span>Edit Profile</span>
           </button>
         </nav>
-        <div className="p-4 border-t border-slate-800 dark:border-slate-900">
+        <div className="p-4  dark:border-slate-900">
           <button onClick={() => { localStorage.clear(); navigate("/auth") }} className="w-full flex items-center gap-4 p-4 rounded-xl text-red-400 font-bold hover:bg-red-500/10">
             <LogOut size={20} /> <span>Logout</span>
           </button>

@@ -3,7 +3,6 @@ import React from "react";
 const ExpenseTable = ({ data, loading, filterTerm = "" }) => {
   if (loading) return <div className="p-10 text-center font-black uppercase text-slate-300 dark:text-slate-600 tracking-widest italic animate-pulse">Fetching Expenses...</div>;
 
-  // Manual Filter for Title (salary, other, bills etc)
   const filteredData = data.filter(ex => 
     ex.title?.toLowerCase().includes(filterTerm.toLowerCase()) || 
     ex.amount[1]?.paymentPurpes?.toLowerCase().includes(filterTerm.toLowerCase())

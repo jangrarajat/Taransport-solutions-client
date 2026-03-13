@@ -71,11 +71,11 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input required type="number" placeholder="Amount (₹)" value={amount} onChange={(e) => setAmount(e.target.value)}
-            className="w-full border rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white dark:border-slate-700 outline-none" />
+            className="w-full border rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none focus:border-orange-400" />
           <input required type="text" placeholder="Remark" value={remark} onChange={(e) => setRemark(e.target.value)}
-            className="w-full border rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white dark:border-slate-700 outline-none" />
-          <button disabled={loading} className="w-full bg-orange-500 text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest">
-            {loading ? "Saving..." : "Save & Update"}
+            className="w-full border rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none focus:border-orange-400" />
+          <button disabled={loading} className="w-full bg-orange-500 text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+            {loading ? <ButtonLoaders /> : "Save & Update"}
           </button>
         </form>
       </div>
@@ -212,7 +212,6 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
       totals.balance
     ];
 
-    // Only add summary line if we have a valid balance
     const summaryLine = hasValidBalance
       ? `<p style="font-weight: bold; margin-bottom: 8px;">Opening Balance: ₹${runningBalances.length ? runningBalances[runningBalances.length - 1] : '-'} | Closing Balance: ₹${startBalance !== null ? startBalance : '-'}</p>`
       : '';
@@ -304,7 +303,6 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
 
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-      // Title and generation date
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.text("Fright Report", 14, 10);
@@ -312,9 +310,8 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
       doc.setFont("helvetica", "normal");
       doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, 14, 15);
 
-      let startY = 20; // default start for main table
+      let startY = 20;
 
-      // Conditionally add summary line
       if (hasValidBalance) {
         const summaryY = 20;
         const margin = 14;
@@ -322,23 +319,19 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
         const summaryWidth = pageWidth - 2 * margin;
         const summaryText = `Opening Balance: ₹${runningBalances.length ? runningBalances[runningBalances.length - 1].toLocaleString('en-IN') : '-'}   |   Closing Balance: ₹${startBalance.toLocaleString('en-IN')}`;
 
-        // Light blue background
         doc.setFillColor(219, 234, 254);
         doc.rect(margin, summaryY - 3, summaryWidth, 6, 'F');
-        // Border
         doc.setDrawColor(147, 197, 253);
         doc.setLineWidth(0.3);
         doc.rect(margin, summaryY - 3, summaryWidth, 6, 'S');
-        // Text
         doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(30, 64, 175);
         doc.text(summaryText, margin + 2, summaryY);
 
-        startY = summaryY + 5; // table starts after summary
+        startY = summaryY + 5;
       }
 
-      // Main table
       autoTable(doc, {
         head: headers,
         body: [...rows, totalsRow],
@@ -494,16 +487,22 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
             </div>
             <div className="p-6 md:p-8 space-y-6">
               <div className="grid grid-cols-3 gap-3">
-                <input type="date" placeholder="Date" name="DateOfIssueOfInvoice" onChange={(e) => setDate(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
-                <input type="text" placeholder="Name" name="NameOfRecipient" onChange={(e) => setNameOfRecipient(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
-                <input type="text" placeholder="Vehicle No" name="VehicleNo" onChange={(e) => setVehicleNo(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
-                <input type="number" placeholder="Amount" name="Amount" onChange={(e) => setAmount(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
-                <input type="text" placeholder="Remark" name="remark" onChange={(e) => setRemark(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
-                <input type="text" placeholder="Destination" name="Destination" onChange={(e) => setDestination(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                <input type="date" placeholder="Date" name="DateOfIssueOfInvoice" onChange={(e) => setDate(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                <input type="text" placeholder="Name" name="NameOfRecipient" onChange={(e) => setNameOfRecipient(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                <input type="text" placeholder="Vehicle No" name="VehicleNo" onChange={(e) => setVehicleNo(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                <input type="number" placeholder="Amount" name="Amount" onChange={(e) => setAmount(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                <input type="text" placeholder="Remark" name="remark" onChange={(e) => setRemark(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                <input type="text" placeholder="Destination" name="Destination" onChange={(e) => setDestination(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
               </div>
               <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t dark:border-slate-700 font-bold">
                 <button type="button" onClick={() => setAddPayment(!addPayment)} className="px-6 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 order-2 sm:order-1">Cancel</button>
-                <button type="submit" onClick={handleAddPayment} className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-xl font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest">
+                <button type="submit" onClick={handleAddPayment} className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-xl font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest flex items-center justify-center">
                   {loading ? (<ButtonLoaders />) : "Save Payment"}
                 </button>
               </div>
@@ -518,9 +517,6 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
           <button onClick={downloadStyledExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-green-700 transition-colors">
             <ArrowDownToLine size={15} /> Excel
           </button>
-          {/* <button onClick={downloadPDF} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-700 transition-colors">
-            <ArrowDownToLine size={15} /> PDF
-          </button> */}
           <button onClick={printData} className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-purple-700 transition-colors">
             <Printer size={15} /> Print
           </button>
