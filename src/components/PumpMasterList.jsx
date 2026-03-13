@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Plus, Edit2, Trash2, Eye, Phone, User, MapPin } from "lucide-react";
+import { Plus, Edit2, Trash2, Eye, Phone, User, MapPin, FileSpreadsheet, Printer } from "lucide-react";
+import * as XLSX from 'xlsx';
 import { backendUrl } from "../utils/backendUrl";
 import ButtonLoaders from "./loaders/ButtonLoaders";
 import AddPumpModal from "./AddPumpModal";
@@ -76,6 +77,70 @@ const PumpMasterList = ({ showNotification, onSelectPump }) => {
         showNotification(true, "Pump saved");
     };
 
+    // Export to Excel
+    const exportToExcel = () => {
+        const exportData = pumps.map(pump => ({
+            'Pump Name': pump.name,
+            'Contact Person': pump.contactPerson || '',
+            'Phone': pump.phone || '',
+            'Address': pump.address || '',
+            'Opening Balance (₹)': pump.openingBalance || 0,
+            'Closing Balance (₹)': balances[pump._id] || 0
+        }));
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Pumps');
+        XLSX.writeFile(wb, `pumps_${new Date().toISOString().slice(0,10)}.xlsx`);
+    };
+
+    // Print
+    const handlePrint = () => {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Pump List</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        h1 { font-size: 20px; margin-bottom: 10px; }
+                        table { border-collapse: collapse; width: 100%; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Petrol Pumps</h1>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pump Name</th>
+                                <th>Contact Person</th>
+                                <th>Phone</th>
+                                <th>Address</th>
+                                <th>Opening Balance (₹)</th>
+                                <th>Closing Balance (₹)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${pumps.map(pump => `
+                                <tr>
+                                    <td>${pump.name}</td>
+                                    <td>${pump.contactPerson || '-'}</td>
+                                    <td>${pump.phone || '-'}</td>
+                                    <td>${pump.address || '-'}</td>
+                                    <td>${pump.openingBalance || 0}</td>
+                                    <td>${balances[pump._id] || 0}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+    };
+
     return (
         <div className="space-y-4">
             {/* Header */}
@@ -83,13 +148,29 @@ const PumpMasterList = ({ showNotification, onSelectPump }) => {
                 <h2 className="text-lg font-black uppercase text-slate-800 dark:text-white tracking-tighter">
                     Petrol Pumps
                 </h2>
-                <button
-                    onClick={() => { setEditingPump(null); setModalOpen(true); }}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg transition-all active:scale-95"
-                >
-                    <Plus size={16} />
-                    Add Pump
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={exportToExcel}
+                        className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg transition-all active:scale-95"
+                        title="Export to Excel"
+                    >
+                        <FileSpreadsheet size={14} /> Excel
+                    </button>
+                    <button
+                        onClick={handlePrint}
+                        className="flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg transition-all active:scale-95"
+                        title="Print"
+                    >
+                        <Printer size={14} /> Print
+                    </button>
+                    <button
+                        onClick={() => { setEditingPump(null); setModalOpen(true); }}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg transition-all active:scale-95"
+                    >
+                        <Plus size={16} />
+                        Add Pump
+                    </button>
+                </div>
             </div>
 
             {/* Pump Grid */}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Search, RotateCcw, Plus, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { RotateCcw, Plus, ChevronLeft, ChevronRight, Trash2, FileSpreadsheet, Printer } from "lucide-react";
+import * as XLSX from 'xlsx';
 import { backendUrl } from "../utils/backendUrl";
 import ButtonLoaders from "./loaders/ButtonLoaders";
 import AddPaymentModal from "./AddPaymentModal";
@@ -94,6 +95,96 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
     }
   };
 
+  // Export to Excel
+  const exportToExcel = () => {
+    const exportData = transactions.map(t => ({
+      Date: new Date(t.date).toLocaleDateString('en-GB'),
+      Description: t.description || '-',
+      Type: t.type === 'purchase' ? 'Purchase' : 'Payment',
+      'Amount (₹)': t.amount,
+      'Running Balance (₹)': t.runningBalance
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
+    
+    // Add summary sheet
+    const summaryData = [
+      { Item: 'Pump Name', Value: pumpName },
+      { Item: 'Period', Value: `${startDate || 'Start'} to ${endDate || 'End'}` },
+      { Item: 'Opening Balance', Value: openingBefore },
+      { Item: 'Total Purchases', Value: totals.totalPurchases },
+      { Item: 'Total Payments', Value: totals.totalPayments },
+      { Item: 'Closing Balance', Value: openingBefore + totals.totalPurchases - totals.totalPayments }
+    ];
+    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+    
+    XLSX.writeFile(wb, `${pumpName}_ledger_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
+
+  // Print
+  const handlePrint = () => {
+    const closingBalance = openingBefore + totals.totalPurchases - totals.totalPayments;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${pumpName} - Ledger</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { font-size: 20px; margin-bottom: 5px; }
+            h2 { font-size: 16px; margin: 15px 0 5px; }
+            table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .summary { margin: 10px 0; }
+            .summary p { margin: 5px 0; }
+          </style>
+        </head>
+        <body>
+          <h1>${pumpName} - Ledger</h1>
+          <p>Period: ${startDate || 'Start'} to ${endDate || 'End'}</p>
+          
+          <h2>Summary</h2>
+          <div class="summary">
+            <p><strong>Opening Balance:</strong> ₹${openingBefore.toLocaleString('en-IN')}</p>
+            <p><strong>Total Purchases:</strong> ₹${totals.totalPurchases.toLocaleString('en-IN')}</p>
+            <p><strong>Total Payments:</strong> ₹${totals.totalPayments.toLocaleString('en-IN')}</p>
+            <p><strong>Closing Balance:</strong> ₹${closingBalance.toLocaleString('en-IN')}</p>
+          </div>
+
+          <h2>Transactions</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Type</th>
+                <th>Amount (₹)</th>
+                <th>Balance (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${transactions.map(t => `
+                <tr>
+                  <td>${new Date(t.date).toLocaleDateString('en-GB')}</td>
+                  <td>${t.description || '-'}</td>
+                  <td>${t.type === 'purchase' ? 'Purchase' : 'Payment'}</td>
+                  <td>${t.amount.toLocaleString('en-IN')}</td>
+                  <td>${t.runningBalance.toLocaleString('en-IN')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('en-GB');
 
   const closingBalance = openingBefore + totals.totalPurchases - totals.totalPayments;
@@ -181,6 +272,23 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
         >
           <RotateCcw size={12} className="text-slate-700 dark:text-white" />
         </button>
+        
+        {/* Export/Print Buttons */}
+        <button
+          onClick={exportToExcel}
+          className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          title="Export to Excel"
+        >
+          <FileSpreadsheet size={14} />
+        </button>
+        <button
+          onClick={handlePrint}
+          className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          title="Print"
+        >
+          <Printer size={14} />
+        </button>
+
         <button
           onClick={() => setPaymentModalOpen(true)}
           className="ml-auto flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-green-700 transition-colors"
