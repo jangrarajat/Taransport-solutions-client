@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import axios from "axios";
 import { refreshToken } from "../api/api";
+import { backendUrl } from "../utils/backendUrl";
 
 const EditBiltyModal = ({ isOpen, onClose, bill, onSuccess }) => {
   const [formData, setFormData] = useState({});
@@ -39,7 +40,7 @@ const EditBiltyModal = ({ isOpen, onClose, bill, onSuccess }) => {
     if (e) e.preventDefault();
     setLoading(true);
     try {
-      const response = await axios.put(`http://localhost:5000/bill/update-bilty/${bill._id}`, formData, {
+      const response = await axios.put(`${backendUrl}/bill/update-bilty/${bill._id}`, formData, {
         withCredentials: true
       });
       if (response.data.success) {

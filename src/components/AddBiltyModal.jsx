@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 import axios from "axios";
 import { refreshToken } from "../api/api";
-
+import { backendUrl } from "../utils/backendUrl";
 const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
   // Aapke backend model aur controller ke hisaab se fields set ki gayi hain
   const initialState = {
@@ -38,7 +38,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
     setLoading(true);
     try {
       // Backend controller 'addBillEntry' par request bhej raha hai
-      const response = await axios.post(`${import.meta.env.VITE_URL}/bill/add-bill-entry`, formData, {
+      const response = await axios.post(`${backendUrl}/bill/add-bill-entry`, formData, {
         withCredentials: true
       });
       

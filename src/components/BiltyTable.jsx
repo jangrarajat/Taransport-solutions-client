@@ -7,6 +7,7 @@ import ButtonLoaders from "./loaders/ButtonLoaders";
 import EditBiltyModal from "./EditBiltyModal";
 import * as XLSX from 'xlsx';
 import { refreshToken } from "../api/api";
+import { backendUrl } from "../utils/backendUrl";
 
 // Delete Modal Component
 const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title }) => {
@@ -39,7 +40,7 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await axios.put(`http://localhost:5000/bill/update-maintenance/${bill._id}`,
+            const res = await axios.put(`${backendUrl}/bill/update-maintenance/${bill._id}`,
                 { amount: Number(amount), remark }, { withCredentials: true });
             if (res.data.success) {
                 onUpdate();
@@ -110,7 +111,7 @@ const BiltyTable = ({ data, loading, refreshData }) => {
 
     const handleDeleteClick = async () => {
         try {
-            const res = await axios.delete(`${import.meta.env.VITE_URL}/bill/delete-bilty/${deleteModal.id}`, { withCredentials: true });
+            const res = await axios.delete(`${backendUrl}/bill/delete-bilty/${deleteModal.id}`, { withCredentials: true });
 
             if (res.data.success) {
                 showNotification(true, "Bilty Deleted! 🗑️");

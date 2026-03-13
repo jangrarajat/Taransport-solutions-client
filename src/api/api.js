@@ -1,10 +1,10 @@
 import axios from "axios";
-
+import { backendUrl } from "../utils/backendUrl";
 const refreshToken = async () => {
     try {
         // Empty object {} bhej rahe hain kyunki POST request hai
         // withCredentials: true bahut zaroori hai cookies ke liye
-        const res = await axios.post(`${import.meta.env.VITE_URL}/user/refresh-token`, {}, {
+        const res = await axios.post(`${backendUrl}/user/refresh-token`, {}, {
             withCredentials: true 
         });
 

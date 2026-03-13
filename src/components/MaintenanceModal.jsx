@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 import axios from "axios";
 import { refreshToken } from "../api/api";
+import { backendUrl } from "../utils/backendUrl";
 
 const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate }) => {
     const [amount, setAmount] = useState("");
@@ -14,7 +15,7 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate }) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await axios.put(`${import.meta.env.VITE_URL}/bill/update-maintenance/${bill._id}`,
+            const res = await axios.put(`${backendUrl}/bill/update-maintenance/${bill._id}`,
                 { amount, remark }, { withCredentials: true });
 
             if (res.data.success) {

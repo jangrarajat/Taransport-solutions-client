@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 import axios from "axios";
 import { refreshToken } from "../api/api";
+import { backendUrl } from "../utils/backendUrl";
 
 const AddExpenseModal = ({ isOpen, onClose, onSuccess, onError }) => {
     const initialState = {
@@ -30,7 +31,7 @@ const AddExpenseModal = ({ isOpen, onClose, onSuccess, onError }) => {
         console.log(payload)
 
         try {
-            const response = await axios.post(`${import.meta.env.VITE_URL}/persnol/expantion`, payload, {
+            const response = await axios.post(`${backendUrl}/persnol/expantion`, payload, {
                 withCredentials: true
             });
             if (response.data.success) {

@@ -4,7 +4,7 @@ import SuccessToster from '../toster/SuccessToster';
 import axios from 'axios';
 import ButtonLoaders from '../loaders/ButtonLoaders';
 import { useNavigate } from "react-router-dom";
-
+import { backendUrl } from '../../utils/backendUrl';
 function Login({ setAuthForm }) {
 
     const navigate = useNavigate();
@@ -24,7 +24,7 @@ function Login({ setAuthForm }) {
 
         try {
             setLoading(true)
-            const response = await axios.post(`${import.meta.env.VITE_URL}/user/login`, { email, password }, {
+            const response = await axios.post(`${backendUrl}/user/login`, { email, password }, {
                 withCredentials: true  
             })
             console.log(response.data.responseUser)

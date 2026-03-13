@@ -9,6 +9,7 @@ import axios from "axios";
 import { refreshToken } from "../api/api";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from 'xlsx';
+import { backendUrl } from "../utils/backendUrl";
 
 // Components
 import BiltyTable from "../components/BiltyTable";
@@ -31,7 +32,7 @@ const ProfileModal = ({ isOpen, onClose, user, showNotification }) => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.put(`${import.meta.env.VITE_URL}/user/update-profile`, formData, { withCredentials: true });
+      const res = await axios.put(`${backendUrl}/user/update-profile`, formData, { withCredentials: true });
       if (res.data.success) {
         localStorage.setItem("transportUser", JSON.stringify(res.data.user));
         showNotification(true, "Profile Updated Successfully! ✨");
@@ -163,7 +164,7 @@ function Home() {
 
   const getDashboardData = useCallback(async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_URL}/user/dashbord?filter=${dashFilter}`, { withCredentials: true });
+      const response = await axios.get(`${backendUrl}/user/dashbord?filter=${dashFilter}`, { withCredentials: true });
       if (response.data.success) setDashData(response.data.data);
     } catch (error) {
       if (error.response?.status === 401) {
@@ -176,7 +177,7 @@ function Home() {
   const getBilty = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const url = `${import.meta.env.VITE_URL}/bill/get-bills?page=${page}&limit=50&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
+      const url = `${backendUrl}/bill/get-bills?page=${page}&limit=50&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {
         const formattedBills = response.data.bills.map(bill => ({
@@ -203,7 +204,7 @@ function Home() {
   const getPetrolPumps = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const url = `${import.meta.env.VITE_URL}/bill/get-petrolPumps?page=${page}&startDate=${startDate}&endDate=${endDate}`;
+      const url = `${backendUrl}/bill/get-petrolPumps?page=${page}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {
         const formattedPumps = response.data.pumpData.map(pump => ({
@@ -225,7 +226,7 @@ function Home() {
   const getExpenses = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const url = `${import.meta.env.VITE_URL}/persnol/get-expantion?page=${page}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
+      const url = `${backendUrl}/persnol/get-expantion?page=${page}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {
         const formattedExpenses = response.data.expantions.map(exp => ({
@@ -272,7 +273,7 @@ function Home() {
   const handleUpdatePumpPayment = async (pumpId, currentStatus) => {
     try {
       const newStatus = currentStatus === "payed" ? "unpayed" : "payed";
-      const res = await axios.put(`${import.meta.env.VITE_URL}/bill/update-petrolpump-payment/${pumpId}?payment=${newStatus}`, {}, { withCredentials: true });
+      const res = await axios.put(`${backendUrl}/bill/update-petrolpump-payment/${pumpId}?payment=${newStatus}`, {}, { withCredentials: true });
       if (res.data.success) {
         showNotification(true, "Payment Status Updated! ✅");
         getPetrolPumps(currentPage);

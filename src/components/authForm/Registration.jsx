@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import SuccessToster from '../toster/SuccessToster';
 import axios from 'axios';
 import ButtonLoaders from '../loaders/ButtonLoaders';
-
+import { backendUrl } from '../../utils/backendUrl';
 function Registration({ setAuthForm }) {
 
     const { } = useAuth();
@@ -27,7 +27,7 @@ function Registration({ setAuthForm }) {
 
         try {
             setLoading(true)
-            const response = await axios.post(`${import.meta.env.VITE_URL}/user/registration`, { name, number, email, password, companyName })
+            const response = await axios.post(`${backendUrl}/user/registration`, { name, number, email, password, companyName })
             console.log(response)
             setToast({
                 id: Date.now(),

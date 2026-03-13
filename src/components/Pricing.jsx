@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { X, CheckCircle2 } from 'lucide-react';
 import SuccessToster from './toster/SuccessToster';
+import { backendUrl } from '../utils/backendUrl';
 
 const Pricing = ({ isOpen, onClose }) => {
     const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
@@ -27,7 +28,7 @@ const Pricing = ({ isOpen, onClose }) => {
                 return;
             }
 
-            const { data } = await axios.post(`${import.meta.env.VITE_URL}/user/create-order`, { planId }, { withCredentials: true });
+            const { data } = await axios.post(`${backendUrl}/user/create-order`, { planId }, { withCredentials: true });
             
             const options = {
                 key: rzpKey,
@@ -36,7 +37,7 @@ const Pricing = ({ isOpen, onClose }) => {
                 name: "Sawariya Logistic",
                 order_id: data.order.id,
                 handler: async (response) => {
-                    const verifyRes = await axios.post(`${import.meta.env.VITE_URL}/user/verify-payment`, { ...response, planId }, { withCredentials: true });
+                    const verifyRes = await axios.post(`${backendUrl}/user/verify-payment`, { ...response, planId }, { withCredentials: true });
                     if (verifyRes.data.success) {
                         // FIXED: Pure user object ko update karein taaki isPremium true ho jaye
                         localStorage.setItem("transportUser", JSON.stringify(verifyRes.data.user));

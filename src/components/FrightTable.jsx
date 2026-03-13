@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 import { refreshToken } from "../api/api";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { backendUrl } from "../utils/backendUrl";
 
 // --- Delete Confirmation Modal ---
 const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title }) => {
@@ -43,7 +44,7 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.put(`${import.meta.env.VITE_URL}/bill/update-maintenance/${bill._id}`,
+      const res = await axios.put(`${backendUrl}/bill/update-maintenance/${bill._id}`,
         { amount: Number(amount), remark }, { withCredentials: true });
       if (res.data.success) {
         onUpdate();
@@ -442,7 +443,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
 
   const handleDeleteClick = async () => {
     try {
-      const res = await axios.delete(`${import.meta.env.VITE_URL}/bill/delete-bilty/${deleteModal.id}`, { withCredentials: true });
+      const res = await axios.delete(`${backendUrl}/bill/delete-bilty/${deleteModal.id}`, { withCredentials: true });
       if (res.data.success) {
         showNotification(true, "Record Deleted! 🗑️");
         refreshData();
@@ -454,7 +455,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
   const handleAddPayment = async () => {
     console.log(date, nameOfRecipient, vehicleNo, amount, remark, destination);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_URL}/bill/add-tranjaction-entry`,
+      const response = await axios.post(`${backendUrl}/bill/add-tranjaction-entry`,
         { DateOfIssueOfInvoice: date, NameOfRecipient: nameOfRecipient, VehicleNo: vehicleNo, Amount: amount, remark: remark, Destination: destination },
         { withCredentials: true }
       );
