@@ -14,12 +14,14 @@ import { backendUrl } from "../utils/backendUrl";
 // Components
 import BiltyTable from "../components/BiltyTable";
 import AddBiltyModal from "../components/AddBiltyModal";
-import PetrolPumpTable from "../components/PetrolPumpTable";
+// import PetrolPumpTable from "../components/PetrolPumpTable"; // old – remove
 import ExpenseTable from "../components/ExpenseTable";
 import AddExpenseModal from "../components/AddExpenseModal";
 import SuccessToster from "../components/toster/SuccessToster";
 import Pricing from "../components/Pricing";
 import FrightTable from "../components/FrightTable";
+import PumpMasterList from "../components/PumpMasterList";   // new
+import PumpLedger from "../components/PumpLedger";           // new
 
 // --- Profile Edit Modal Component ---
 const ProfileModal = ({ isOpen, onClose, user, showNotification }) => {
@@ -75,7 +77,7 @@ const ProfileModal = ({ isOpen, onClose, user, showNotification }) => {
 function Home() {
   const navigate = useNavigate();
   const [menuOption, setMenuOption] = useState("home");
-  const [sidebarOpen, setSidebarOpen] = useState(false); // 👈 initially closed on mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -85,7 +87,7 @@ function Home() {
   const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
 
   const [biltyData, setBiltyData] = useState([]);
-  const [pumpData, setPumpData] = useState([]);
+  // const [pumpData, setPumpData] = useState([]); // old – remove
   const [expenseData, setExpenseData] = useState([]);
   const [dashData, setDashData] = useState({ totalRevenue: 0, totalTripBalance: 0 });
 
@@ -97,6 +99,9 @@ function Home() {
   const [vehicleTotalBalance, setVehicleTotalBalance] = useState(null);
   const [openingBalance, setOpeningBalance] = useState(null);
   const [closingBalance, setClosingBalance] = useState(null);
+
+  // New state for pump ledger navigation
+  const [selectedPump, setSelectedPump] = useState(null);
 
   // Helper to get current month's date range
   const getCurrentMonthRange = () => {
@@ -164,6 +169,7 @@ function Home() {
 
   const getDashboardData = useCallback(async () => {
     try {
+      console.log(`${backendUrl}/user/dashbord?filter=${dashFilter}`)
       const response = await axios.get(`${backendUrl}/user/dashbord?filter=${dashFilter}`, { withCredentials: true });
       if (response.data.success) setDashData(response.data.data);
     } catch (error) {
@@ -201,27 +207,8 @@ function Home() {
     } finally { setLoading(false); }
   }, [searchTerm, startDate, endDate]);
 
-  const getPetrolPumps = useCallback(async (page = 1) => {
-    setLoading(true);
-    try {
-      const url = `${backendUrl}/bill/get-petrolPumps?page=${page}&startDate=${startDate}&endDate=${endDate}`;
-      const response = await axios.get(url, { withCredentials: true });
-      if (response.data.success) {
-        const formattedPumps = response.data.pumpData.map(pump => ({
-          ...pump,
-          createdAt: formatDate(pump.createdAt),
-          updatedAt: formatDate(pump.updatedAt)
-        }));
-        setPumpData(formattedPumps);
-        setTotalPages(response.data.totalPage);
-      }
-    } catch (error) {
-      if (error.response?.status === 401) {
-        const isRefreshed = await refreshToken();
-        if (isRefreshed) getPetrolPumps(page);
-      }
-    } finally { setLoading(false); }
-  }, [startDate, endDate]);
+  // Old petrol pump function – no longer needed
+  // const getPetrolPumps = useCallback(async ... ) { ... }
 
   const getExpenses = useCallback(async (page = 1) => {
     setLoading(true);
@@ -251,11 +238,10 @@ function Home() {
     setCurrentPage(1);
     if (menuOption === "biltiy" || menuOption === "accounts") {
       getBilty(1);
-    } else if (menuOption === "petrolPump") {
-      getPetrolPumps(1);
     } else if (menuOption === "expantion") {
       getExpenses(1);
     }
+    // PetrolPump section now uses its own internal filtering, so no need to call anything here
   };
 
   const handleKeyDown = (e) => {
@@ -265,27 +251,14 @@ function Home() {
   useEffect(() => {
     if (menuOption === "home") {
       getDashboardData();
-    } else {
+    } else if (menuOption !== "petrolPump") {
+      // For petrol pump, we don't auto-fetch anything; the list component handles it
       handleSearch();
     }
   }, [menuOption]);
 
-  const handleUpdatePumpPayment = async (pumpId, currentStatus) => {
-    try {
-      const newStatus = currentStatus === "payed" ? "unpayed" : "payed";
-      const res = await axios.put(`${backendUrl}/bill/update-petrolpump-payment/${pumpId}?payment=${newStatus}`, {}, { withCredentials: true });
-      if (res.data.success) {
-        showNotification(true, "Payment Status Updated! ✅");
-        getPetrolPumps(currentPage);
-      }
-    } catch (error) {
-      if (error.response?.status === 401) {
-        const isRefreshed = await refreshToken();
-        if (isRefreshed) handleUpdatePumpPayment(pumpId, currentStatus);
-      }
-      showNotification(false, "Update failed");
-    }
-  };
+  // Old payment update function – no longer needed
+  // const handleUpdatePumpPayment = async ... { ... }
 
   return (
     <div className="flex fixed h-screen w-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden uppercase font-bold text-xs">
@@ -296,7 +269,7 @@ function Home() {
       <Pricing isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} user={user} showNotification={showNotification} />
 
-      {/* Sidebar - hidden by default on mobile, toggled by menu button */}
+      {/* Sidebar */}
       <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-white dark:bg-gray-900 text-gray-700 transition-all duration-300 flex flex-col shadow-2xl w-64`}>
         <div className="p-5 flex items-center justify-between border-b border-slate-800 dark:border-slate-900">
           <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded-lg">
@@ -315,7 +288,7 @@ function Home() {
           ].map((item) => (
             <button
               key={item.name}
-              onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); setSidebarOpen(false); }}
+              onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); setSidebarOpen(false); setSelectedPump(null); }}
               className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"}`}
             >
               {item.icon}
@@ -346,7 +319,6 @@ function Home() {
           </div>
          
           <div className="flex items-center gap-2 sm:gap-3">
-
             <div onClick={() => setIsProfileOpen(true)} className="cursor-pointer group flex items-center gap-2">
               <div className="text-right hidden sm:block">
                 <p className="text-[10px] font-black text-slate-900 dark:text-white truncate max-w-[80px]">{user?.name}</p>
@@ -400,7 +372,7 @@ function Home() {
 
           {(menuOption === "biltiy" || menuOption === "accounts") && (
             <div className="space-y-3 animate-in fade-in duration-500">
-              {/* Filter bar - stacked on mobile */}
+              {/* Filter bar */}
               <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
                   <div className="relative flex-1 min-w-0">
@@ -450,7 +422,7 @@ function Home() {
                 </button>
               </div>
 
-              {/* Table container - horizontal scroll */}
+              {/* Table container */}
               <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden rounded-xl">
                 <div className="overflow-x-auto">
                   {menuOption === "biltiy" ? (
@@ -479,38 +451,22 @@ function Home() {
             </div>
           )}
 
+          {/* ✅ New Petrol Pump Section */}
           {menuOption === "petrolPump" && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="border rounded-lg px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+            <div className="space-y-4">
+              {!selectedPump ? (
+                <PumpMasterList
+                  showNotification={showNotification}
+                  onSelectPump={(pump) => setSelectedPump(pump)}
                 />
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="border rounded-lg px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+              ) : (
+                <PumpLedger
+                  pumpId={selectedPump._id}
+                  pumpName={selectedPump.name}
+                  onBack={() => setSelectedPump(null)}
+                  showNotification={showNotification}
                 />
-                <button
-                  onClick={handleSearch}
-                  className="px-3 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-1 text-[10px] font-black shadow-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Search size={12} /> Search
-                </button>
-                <button
-                  onClick={resetToCurrentMonth}
-                  className="p-2 bg-gray-200 dark:bg-slate-600 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
-                  title="Reset to current month"
-                >
-                  <RotateCcw size={12} className="text-slate-700 dark:text-white" />
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <PetrolPumpTable data={pumpData} loading={loading} onUpdatePayment={handleUpdatePumpPayment} />
-              </div>
+              )}
             </div>
           )}
 
@@ -570,7 +526,7 @@ function Home() {
             </div>
           )}
 
-          {menuOption !== "home" && totalPages > 1 && (
+          {menuOption !== "home" && menuOption !== "petrolPump" && totalPages > 1 && (
             <div className="flex items-center justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4 rounded-xl border dark:border-slate-700 shadow-sm">
               <p className="text-[8px] uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">
                 Page {currentPage} of {totalPages}

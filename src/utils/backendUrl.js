@@ -1,3 +1,3 @@
-const backendUrl = import.meta.env.VITE_URL || "/api"
+const backendUrl = import.meta.env.VITE_URL 
 
 export {backendUrl};
