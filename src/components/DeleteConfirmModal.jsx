@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import ButtonLoaders from './loaders/ButtonLoaders';
+import { refreshToken } from '../api/api'; // Add this import
 
 const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, count = 1, showNotification }) => {
   const [confirmText, setConfirmText] = useState('');
@@ -19,8 +20,11 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, count = 1, show
       onClose();
     } catch (error) {
       if (error.response?.status === 401) {
-        const isRefreshed = await refreshToken()
-        if (isRefreshed) handleConfirm()
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) {
+          setLoading(false);
+          return handleConfirm();
+        }
       }
       showNotification(false, error.message || `Failed to delete ${title}${count > 1 ? 's' : ''}`);
     } finally {
