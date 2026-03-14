@@ -1,3 +1,4 @@
+// components/authForm/Login.jsx
 import React, { useContext, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import SuccessToster from '../toster/SuccessToster';
@@ -5,6 +6,7 @@ import axios from 'axios';
 import ButtonLoaders from '../loaders/ButtonLoaders';
 import { useNavigate } from "react-router-dom";
 import { backendUrl } from '../../utils/backendUrl';
+import { updateUserInStorage } from '../../utils/userUtils';
 
 function Login({ setAuthForm }) {
     const navigate = useNavigate();
@@ -25,8 +27,12 @@ function Login({ setAuthForm }) {
             const response = await axios.post(`${backendUrl}/user/login`, { email, password }, {
                 withCredentials: true
             });
-            setUser(response.data.responseUser);
-            localStorage.setItem("transportUser", JSON.stringify(response.data.responseUser));
+            
+            // Update user in context and storage using utility
+            const userData = response.data.responseUser;
+            setUser(userData);
+            updateUserInStorage(userData);
+            
             setToast({
                 id: Date.now(),
                 show: true,

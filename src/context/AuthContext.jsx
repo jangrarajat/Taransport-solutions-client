@@ -1,23 +1,50 @@
-import { createContext, useContext, useState } from "react";
+// context/AuthContext.jsx
+import { createContext, useContext, useState, useEffect } from "react";
+import { getUserFromStorage, updateUserInStorage } from "../utils/userUtils";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(() => {
+        // Initial state localStorage se load karo
+        return getUserFromStorage();
+    });
 
-    const [user, setUser] = useState(null);
+    // User update events listen karo
+    useEffect(() => {
+        const handleUserUpdate = (event) => {
+            setUser(event.detail);
+        };
+        
+        window.addEventListener('userUpdated', handleUserUpdate);
+        return () => window.removeEventListener('userUpdated', handleUserUpdate);
+    }, []);
 
-    // Login function
-    const login = () => {
-        setUser("");
+    // Login function - user set karo aur storage update karo
+    const login = (userData) => {
+        setUser(userData);
+        updateUserInStorage(userData);
     };
 
-    // Logout function
+    // Logout function - user clear karo aur storage clear karo
     const logout = () => {
         setUser(null);
+        localStorage.removeItem("transportUser");
+    };
+
+    // Update user function - profile update ke liye
+    const updateUser = (userData) => {
+        setUser(userData);
+        updateUserInStorage(userData);
     };
 
     return (
-        <AuthContext.Provider value={{ user , setUser, login, logout }}>
+        <AuthContext.Provider value={{ 
+            user, 
+            setUser: updateUser,  // setUser ab updateUser ko call karega
+            login, 
+            logout 
+        }}>
             {children}
         </AuthContext.Provider>
     );

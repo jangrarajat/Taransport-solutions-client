@@ -1,3 +1,4 @@
+// Home.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import {
   Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound, ClipboardPlus,
@@ -6,9 +7,11 @@ import {
   RotateCcw, AlertCircle, RefreshCw
 } from "lucide-react";
 import axios from "axios";
-import { refreshToken } from "../api/api";
+import { refreshToken, fetchLatestUserData } from "../api/api";
 import { useNavigate } from "react-router-dom";
 import { backendUrl } from "../utils/backendUrl";
+import { useAuth } from "../context/AuthContext";
+import { getSubscriptionRemaining, updateUserInStorage } from "../utils/userUtils";
 
 // Components
 import BiltyTable from "../components/bill/BiltyTable";
@@ -72,6 +75,8 @@ const EmptyState = ({ message }) => (
 
 function Home() {
   const navigate = useNavigate();
+  const { user, setUser, logout } = useAuth(); // AuthContext se user le rahe hain
+  
   const [menuOption, setMenuOption] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -126,6 +131,9 @@ function Home() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
+  // Subscription time remaining - real-time update
+  const [timeRemaining, setTimeRemaining] = useState(null);
+
   // Date helpers
   const getCurrentMonthRange = () => {
     const now = new Date();
@@ -146,6 +154,7 @@ function Home() {
   const [startDate, setStartDate] = useState(initialRange.start);
   const [endDate, setEndDate] = useState(initialRange.end);
 
+  // Dark mode effect
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -156,17 +165,31 @@ function Home() {
     }
   }, [darkMode]);
 
-  const user = JSON.parse(localStorage.getItem("transportUser")) || {};
+  // Real-time countdown for subscription
+  useEffect(() => {
+    if (!user?.subscriptionEndDate) return;
+    
+    const updateRemaining = () => {
+      const remaining = getSubscriptionRemaining(user.subscriptionEndDate);
+      setTimeRemaining(remaining);
+    };
+    
+    updateRemaining();
+    const interval = setInterval(updateRemaining, 60000); // Har minute update
+    
+    return () => clearInterval(interval);
+  }, [user]);
 
-  // Calculate remaining days for premium
-  const getRemainingDays = () => {
-    if (!user.subscriptionEndDate) return null;
-    const endDate = new Date(user.subscriptionEndDate);
-    const today = new Date();
-    const diffTime = endDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
-  };
+  // User update events listen karein
+  useEffect(() => {
+    const handleUserUpdate = (event) => {
+      // AuthContext already updates, but we need to force re-render
+      setUser(event.detail);
+    };
+    
+    window.addEventListener('userUpdated', handleUserUpdate);
+    return () => window.removeEventListener('userUpdated', handleUserUpdate);
+  }, [setUser]);
 
   const showNotification = (success, msg) => {
     setToast({ show: true, success, msg, id: Date.now() });
@@ -367,6 +390,7 @@ function Home() {
     return () => window.removeEventListener('openPricing', handleOpenPricing);
   }, []);
 
+  // Initial data fetch based on menu option
   useEffect(() => {
     if (menuOption === "home") {
       getDashboardData();
@@ -384,6 +408,12 @@ function Home() {
       handleSearch();
     }
   }, [menuOption]);
+
+  // Logout handler
+  const handleLogout = () => {
+    logout(); // AuthContext ka logout use karo
+    navigate("/auth");
+  };
 
   // If profile page is open, show it
   if (showProfile) {
@@ -435,7 +465,7 @@ function Home() {
           </button>
         </nav>
         <div className="p-4 dark:border-slate-900">
-          <button onClick={() => { localStorage.clear(); navigate("/auth") }} className="w-full flex items-center gap-4 p-4 rounded-xl text-red-400 font-bold hover:bg-red-500/10">
+          <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 rounded-xl text-red-400 font-bold hover:bg-red-500/10">
             <LogOut size={20} /> <span>Logout</span>
           </button>
         </div>
@@ -468,43 +498,52 @@ function Home() {
         <main className="p-3 sm:p-4 md:p-6 lg:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
           {menuOption === "home" && (
             <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black">
-              {/* Premium Status Banner - Only on Dashboard */}
-              {user.isPremium && (
+              {/* Premium Status Banner - Updated with real-time countdown */}
+              {user?.isPremium && (
                 <div className={`mb-6 p-4 rounded-xl shadow-lg border-l-4 ${
-                  getRemainingDays() <= 7 
-                    ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-500' 
-                    : 'bg-green-50 dark:bg-green-900/20 border-green-500'
+                  timeRemaining?.expired 
+                    ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
+                    : timeRemaining?.days <= 7 
+                      ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-500' 
+                      : 'bg-green-50 dark:bg-green-900/20 border-green-500'
                 }`}>
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-full ${
-                        getRemainingDays() <= 7 
-                          ? 'bg-orange-100 dark:bg-orange-900/40' 
-                          : 'bg-green-100 dark:bg-green-900/40'
+                        timeRemaining?.expired
+                          ? 'bg-red-100 dark:bg-red-900/40'
+                          : timeRemaining?.days <= 7 
+                            ? 'bg-orange-100 dark:bg-orange-900/40' 
+                            : 'bg-green-100 dark:bg-green-900/40'
                       }`}>
                         <Crown size={20} className={
-                          getRemainingDays() <= 7 
-                            ? 'text-orange-600 dark:text-orange-400' 
-                            : 'text-green-600 dark:text-green-400'
+                          timeRemaining?.expired
+                            ? 'text-red-600 dark:text-red-400'
+                            : timeRemaining?.days <= 7 
+                              ? 'text-orange-600 dark:text-orange-400' 
+                              : 'text-green-600 dark:text-green-400'
                         } />
                       </div>
                       <div>
                         <p className="text-sm font-black text-slate-900 dark:text-white">
-                          Premium {user.premiumVersion} Plan Active
+                          Premium {user.premiumVersion} Plan {timeRemaining?.expired ? 'Expired' : 'Active'}
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {getRemainingDays() > 0 
-                            ? `${getRemainingDays()} days remaining` 
-                            : 'Expired today'}
-                        </p>
+                        {!timeRemaining?.expired && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {timeRemaining?.days > 0 && `${timeRemaining?.days} days `}
+                            {timeRemaining?.hours > 0 && `${timeRemaining?.hours} hours `}
+                            {timeRemaining?.days === 0 && timeRemaining?.hours === 0 && 
+                              `${timeRemaining?.minutes} minutes`} remaining
+                          </p>
+                        )}
                       </div>
                     </div>
-                    {getRemainingDays() <= 7 && (
+                    {(timeRemaining?.days <= 7 || timeRemaining?.expired) && (
                       <button
                         onClick={() => setIsPricingOpen(true)}
                         className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hover:bg-blue-700 transition-colors"
                       >
-                        Renew Now
+                        {timeRemaining?.expired ? 'Renew Now' : 'Extend'}
                       </button>
                     )}
                   </div>

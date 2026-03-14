@@ -1,25 +1,46 @@
+// api/api.js
 import axios from "axios";
 import { backendUrl } from "../utils/backendUrl";
-const refreshToken = async () => {
+import { updateUserInStorage } from "../utils/userUtils";
+
+// Latest user data fetch karne ka function
+export const fetchLatestUserData = async () => {
     try {
-        // Empty object {} bhej rahe hain kyunki POST request hai
-        // withCredentials: true bahut zaroori hai cookies ke liye
+        const res = await axios.get(`${backendUrl}/user/me`, {
+            withCredentials: true
+        });
+        
+        if (res.data.success) {
+            // Local storage update karein
+            updateUserInStorage(res.data.user);
+            return res.data.user;
+        }
+    } catch (error) {
+        console.error("Failed to fetch latest user data", error);
+    }
+    return null;
+};
+
+export const refreshToken = async () => {
+    try {
         const res = await axios.post(`${backendUrl}/user/refresh-token`, {}, {
             withCredentials: true 
         });
 
         if (res.data.success) {
             console.log("Token Refreshed via Cookies! ✅");
-            return true; // Return true taaki caller ko pata chale refresh ho gaya
+            
+            // Token refresh ke baad latest user data bhi fetch karein
+            await fetchLatestUserData();
+            
+            return true;
         }
         
         return false;
     } catch (error) {
         console.error("Refresh token failed! ❌", error.response?.data);
-        localStorage.removeItem("transportUser"); // Profile data hatao
+        localStorage.removeItem("transportUser");
         window.location.href = "/auth"; 
         return false;
     }
 };
-
-export { refreshToken };

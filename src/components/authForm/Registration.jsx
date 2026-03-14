@@ -1,8 +1,10 @@
+// components/authForm/Registration.jsx
 import React, { useState } from 'react'
 import SuccessToster from '../toster/SuccessToster';
 import axios from 'axios';
 import ButtonLoaders from '../loaders/ButtonLoaders';
 import { backendUrl } from '../../utils/backendUrl';
+
 function Registration({ setAuthForm }) {
     const [name, setName] = useState("")
     const [number, setNumber] = useState("")

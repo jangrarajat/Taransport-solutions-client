@@ -1,22 +1,56 @@
-import React, { useState } from "react";
-import { X, User, Building, Mail, Crown, Calendar, Edit2, Save } from "lucide-react";
+// components/ProfilePage.jsx
+import React, { useState, useEffect } from "react";
+import { X, User, Building, Mail, Crown, Calendar, Edit2, Save, Clock } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { backendUrl } from "../utils/backendUrl";
+import { updateUserInStorage, getSubscriptionRemaining, getUserFromStorage } from "../utils/userUtils";
 import ButtonLoaders from "./loaders/ButtonLoaders";
 import SuccessToster from "./toster/SuccessToster";
 import { refreshToken } from "../api/api";
 
-const ProfilePage = ({ user, onClose, showNotification }) => {
+const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotification }) => {
   const navigate = useNavigate();
+  const [user, setUser] = useState(initialUser || getUserFromStorage() || {});
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
+  const [timeRemaining, setTimeRemaining] = useState(null);
   const [formData, setFormData] = useState({
     name: user?.name || "",
     companyName: user?.companyName || "",
     email: user?.email || ""
   });
+
+  // Real-time countdown ke liye
+  useEffect(() => {
+    if (!user?.subscriptionEndDate) return;
+    
+    const updateRemaining = () => {
+      const remaining = getSubscriptionRemaining(user.subscriptionEndDate);
+      setTimeRemaining(remaining);
+    };
+    
+    updateRemaining();
+    const interval = setInterval(updateRemaining, 60000); // Har minute update
+    
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // User update events listen karein
+  useEffect(() => {
+    const handleUserUpdate = (event) => {
+      setUser(event.detail);
+      setFormData({
+        name: event.detail?.name || "",
+        companyName: event.detail?.companyName || "",
+        email: event.detail?.email || ""
+      });
+    };
+    
+    window.addEventListener('userUpdated', handleUserUpdate);
+    return () => window.removeEventListener('userUpdated', handleUserUpdate);
+  }, []);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -34,6 +68,7 @@ const ProfilePage = ({ user, onClose, showNotification }) => {
   const internalShowNotification = (success, msg) => {
     setToast({ show: true, success, msg, id: Date.now() });
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
+    if (parentNotification) parentNotification(success, msg);
   };
 
   const handleSave = async () => {
@@ -41,13 +76,11 @@ const ProfilePage = ({ user, onClose, showNotification }) => {
     try {
       const res = await axios.put(`${backendUrl}/user/update-profile`, formData, { withCredentials: true });
       if (res.data.success) {
-        localStorage.setItem("transportUser", JSON.stringify(res.data.user));
+        // Update user in storage and state
+        const updatedUser = updateUserInStorage(res.data.user);
+        setUser(updatedUser);
         internalShowNotification(true, "Profile Updated Successfully! ✨");
         setIsEditing(false);
-        // Update user object in parent
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
       }
     } catch (error) {
       if (error.response?.status === 401) {
@@ -65,32 +98,25 @@ const ProfilePage = ({ user, onClose, showNotification }) => {
     navigate("/auth");
   };
 
-  const getRemainingDays = () => {
-    if (!user?.subscriptionEndDate) return null;
-    const endDate = new Date(user.subscriptionEndDate);
-    const today = new Date();
-    const diffTime = endDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toLocaleDateString('en-IN', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 pt-4 md:p-6">
       {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
       
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full md:max-w-4xl  mx-auto">
         {/* Header with Back Button */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 px-3">
           <h1 className="text-3xl font-black uppercase text-slate-800 dark:text-white tracking-tighter">
             My Profile
           </h1>
@@ -103,7 +129,7 @@ const ProfilePage = ({ user, onClose, showNotification }) => {
         </div>
 
         {/* Profile Card */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className=" bg-white dark:bg-slate-900 rounded-t-3xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           {/* Cover Photo */}
           <div className="h-32 bg-gradient-to-r from-blue-500 to-purple-600"></div>
 
@@ -117,7 +143,7 @@ const ProfilePage = ({ user, onClose, showNotification }) => {
               {!isEditing ? (
                 <button
                   onClick={handleEdit}
-                  className="flex items-center gap-2  px-4 py-2 bg-blue-600 text-white rounded-xl font-black text-xs uppercase hover:bg-blue-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-black text-xs uppercase hover:bg-blue-700 transition-colors"
                 >
                   <Edit2 size={14} /> Edit Profile
                 </button>
@@ -162,7 +188,7 @@ const ProfilePage = ({ user, onClose, showNotification }) => {
                     ) : (
                       <div>
                         <p className="text-xs text-slate-500 dark:text-slate-400">Full Name</p>
-                        <p className="text-sm font-black text-slate-900 dark:text-white">{user?.name || 'N/A'}</p>
+                        <p className="text-sm font-sans  text-slate-900 dark:text-white">{user?.name || 'N/A'}</p>
                       </div>
                     )}
                   </div>
@@ -180,7 +206,7 @@ const ProfilePage = ({ user, onClose, showNotification }) => {
                     ) : (
                       <div>
                         <p className="text-xs text-slate-500 dark:text-slate-400">Company Name</p>
-                        <p className="text-sm font-black text-slate-900 dark:text-white">{user?.companyName || 'N/A'}</p>
+                        <p className="text-sm font-sans text-slate-900 dark:text-white">{user?.companyName || 'N/A'}</p>
                       </div>
                     )}
                   </div>
@@ -198,7 +224,7 @@ const ProfilePage = ({ user, onClose, showNotification }) => {
                     ) : (
                       <div>
                         <p className="text-xs text-slate-500 dark:text-slate-400">Email Address</p>
-                        <p className="text-sm font-black text-slate-900 dark:text-white">{user?.email || 'N/A'}</p>
+                        <p className="text-sm font-sans text-slate-900 dark:text-white">{user?.email || 'N/A'}</p>
                       </div>
                     )}
                   </div>
@@ -216,36 +242,51 @@ const ProfilePage = ({ user, onClose, showNotification }) => {
                     <Crown size={18} className="text-slate-400" />
                     <div>
                       <p className="text-xs text-slate-500 dark:text-slate-400">Current Plan</p>
-                      <p className="text-sm font-black text-slate-900 dark:text-white">
+                      <p className="text-sm font-sans text-slate-900 dark:text-white">
                         {user?.isPremium ? user?.premiumVersion || 'Premium' : 'Free Trial'}
                       </p>
                     </div>
                   </div>
 
                   {user?.isPremium && (
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                      <Calendar size={18} className="text-slate-400" />
-                      <div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Expires On</p>
-                        <p className="text-sm font-black text-slate-900 dark:text-white">
-                          {formatDate(user?.subscriptionEndDate)}
-                        </p>
+                    <>
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                        <Calendar size={18} className="text-slate-400" />
+                        <div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Expires On</p>
+                          <p className="text-sm font-sans text-slate-900 dark:text-white">
+                            {formatDate(user?.subscriptionEndDate)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  )}
 
-                  {user?.isPremium && (
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                      <div className={`p-1 rounded-full ${getRemainingDays() <= 7 ? 'bg-orange-100' : 'bg-green-100'}`}>
-                        <div className={`w-2 h-2 rounded-full ${getRemainingDays() <= 7 ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                        <Clock size={18} className="text-slate-400" />
+                        <div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Time Remaining</p>
+                          {timeRemaining && !timeRemaining.expired ? (
+                            <div>
+                              <p className={`text-sm font-sans ${
+                                timeRemaining.color === 'orange' ? 'text-orange-600' : 'text-green-600'
+                              }`}>
+                                {timeRemaining.days > 0 && `${timeRemaining.days}d `}
+                                {timeRemaining.hours > 0 && `${timeRemaining.hours}h `}
+                                {timeRemaining.minutes > 0 && `${timeRemaining.minutes}m`}
+                              </p>
+                              <p className="text-[10px] text-slate-400 mt-1">
+                                {timeRemaining.days > 0 
+                                  ? `${timeRemaining.days} days ${timeRemaining.hours} hours` 
+                                  : timeRemaining.hours > 0
+                                    ? `${timeRemaining.hours} hours ${timeRemaining.minutes} minutes`
+                                    : `${timeRemaining.minutes} minutes`}
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-sm font-sans text-red-600">Expired</p>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Days Remaining</p>
-                        <p className={`text-sm font-black ${getRemainingDays() <= 7 ? 'text-orange-600' : 'text-green-600'}`}>
-                          {getRemainingDays()} days
-                        </p>
-                      </div>
-                    </div>
+                    </>
                   )}
                 </div>
               </div>
