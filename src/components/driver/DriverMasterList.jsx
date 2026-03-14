@@ -89,7 +89,7 @@ const DriverMasterList = ({ showNotification, onSelectDriver }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+      <div className="flex flex-col md:flex-row  justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
         <h2 className="text-lg font-black uppercase text-slate-800 dark:text-white tracking-tighter">Drivers</h2>
         <div className="flex gap-2">
           <button onClick={exportToExcel} className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg transition-all active:scale-95" title="Export to Excel"><FileSpreadsheet size={14} /> Excel</button>
