@@ -31,7 +31,7 @@ const AddExpenseModal = ({ isOpen, onClose, onSuccess, onError }) => {
         };
 
         try {
-            const response = await axios.post(`${backendUrl}/persnol/expantion`, payload, {
+            const response = await axios.post(`${backendUrl}/api/persnol/expantion`, payload, {
                 withCredentials: true
             });
             if (response.data.success) {

@@ -201,7 +201,7 @@ function Login({ setAuthForm, setInfo }) {
     }
     setLoading(true);
     try {
-      const response = await axios.post(`${backendUrl}/user/login`, { email, password }, { withCredentials: true });
+      const response = await axios.post(`${backendUrl}/api/user/login`, { email, password }, { withCredentials: true });
       const userData = response.data.responseUser;
       setUser(userData);
       updateUserInStorage(userData);

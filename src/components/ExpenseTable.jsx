@@ -61,7 +61,7 @@ const ExpenseTable = ({ data, loading, refreshData, filterTerm = "" }) => {
   const handleDeleteConfirm = async () => {
     try {
       const deletePromises = deleteModal.ids.map(id => 
-        axios.delete(`${backendUrl}/persnol/delete-expense/${id}`, { 
+        axios.delete(`${backendUrl}/api/persnol/delete-expense/${id}`, { 
           withCredentials: true 
         })
       );

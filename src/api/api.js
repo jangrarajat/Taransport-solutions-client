@@ -6,7 +6,7 @@ import { updateUserInStorage } from "../utils/userUtils";
 // Latest user data fetch karne ka function
 export const fetchLatestUserData = async () => {
     try {
-        const res = await axios.get(`${backendUrl}/user/me`, {
+        const res = await axios.get(`${backendUrl}/api/user/me`, {
             withCredentials: true
         });
         
@@ -23,7 +23,7 @@ export const fetchLatestUserData = async () => {
 
 export const refreshToken = async () => {
     try {
-        const res = await axios.post(`${backendUrl}/user/refresh-token`, {}, {
+        const res = await axios.post(`${backendUrl}/api/user/refresh-token`, {}, {
             withCredentials: true 
         });
 

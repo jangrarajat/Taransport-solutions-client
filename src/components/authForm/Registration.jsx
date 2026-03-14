@@ -331,7 +331,7 @@ function Registration({ setAuthForm }) {
   const registrationApi = async () => {
     setLoading(true);
     try {
-      const response = await axios.post(`${backendUrl}/user/registration`, { name, number, email, password, companyName });
+      const response = await axios.post(`${backendUrl}/api/user/registration`, { name, number, email, password, companyName });
       setToast({ id: Date.now(), show: true, success: true, message: "Registration Successful 🚛" });
       if (response.data.success) {
         setTimeout(() => setAuthForm("login"), 3000);

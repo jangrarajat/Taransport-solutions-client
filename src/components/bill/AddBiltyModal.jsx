@@ -104,7 +104,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
 
     setLoading(true);
     try {
-      const response = await axios.post(`${backendUrl}/bill/add-bill-entry`, formData, {
+      const response = await axios.post(`${backendUrl}/api/bill/add-bill-entry`, formData, {
         withCredentials: true
       });
 
@@ -181,7 +181,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
                   onChange={handleChange}
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
                   placeholder="Enter vehicle number"
-                  required
+                 
                 />
                 <datalist id="vehicleList">
                   {fetchingVehicles ? (

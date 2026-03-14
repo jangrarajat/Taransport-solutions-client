@@ -21,7 +21,7 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await axios.put(`${backendUrl}/bill/update-maintenance/${bill._id}`,
+            const res = await axios.put(`${backendUrl}/api/bill/update-maintenance/${bill._id}`,
                 { amount: Number(amount), remark }, { withCredentials: true });
             if (res.data.success) {
                 onUpdate();
@@ -91,7 +91,7 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
     const handleDeleteClick = async () => {
         try {
             const deletePromises = deleteModal.ids.map(id => 
-                axios.delete(`${backendUrl}/bill/delete-bilty/${id}`, { withCredentials: true })
+                axios.delete(`${backendUrl}/api/bill/delete-bilty/${id}`, { withCredentials: true })
             );
             
             await Promise.all(deletePromises);

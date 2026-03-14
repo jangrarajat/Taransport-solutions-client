@@ -195,7 +195,7 @@ const EditBiltyModal = ({ isOpen, onClose, bill, onSuccess, showNotification }) 
       }
 
       // Update the bilty
-      const response = await axios.put(`${backendUrl}/bill/update-bilty/${bill._id}`, formData, {
+      const response = await axios.put(`${backendUrl}/api/bill/update-bilty/${bill._id}`, formData, {
         withCredentials: true
       });
       

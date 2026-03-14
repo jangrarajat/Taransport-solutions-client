@@ -508,7 +508,7 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
   const handleSave = async () => {
     setLoading(true);
     try {
-      const res = await axios.put(`${backendUrl}/user/update-profile`, formData, { withCredentials: true });
+      const res = await axios.put(`${backendUrl}/api/user/update-profile`, formData, { withCredentials: true });
       if (res.data.success) {
         const updatedUser = updateUserInStorage(res.data.user);
         setUser(updatedUser);

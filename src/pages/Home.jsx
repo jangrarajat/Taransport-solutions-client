@@ -235,7 +235,7 @@ function Home() {
     setLoading(prev => ({ ...prev, dashboard: true }));
     setError(prev => ({ ...prev, dashboard: null }));
     try {
-      const response = await axios.get(`${backendUrl}/user/dashbord?filter=${dashFilter}`, { withCredentials: true });
+      const response = await axios.get(`${backendUrl}/api/user/dashbord?filter=${dashFilter}`, { withCredentials: true });
       if (response.data.success) setDashData(response.data.data);
     } catch (error) {
       if (error.response?.status === 401) {
@@ -319,7 +319,7 @@ function Home() {
   const getBilty = useCallback(async (page = 1) => {
     setLoading(prev => ({ ...prev, bilty: true }));
     try {
-      const url = `${backendUrl}/bill/get-bills?page=${page}&limit=50&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
+      const url = `${backendUrl}/api/bill/get-bills?page=${page}&limit=50&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {
         const formattedBills = response.data.bills.map(bill => ({
@@ -347,7 +347,7 @@ function Home() {
   const getExpenses = useCallback(async (page = 1) => {
     setLoading(prev => ({ ...prev, expense: true }));
     try {
-      const url = `${backendUrl}/persnol/get-expantion?page=${page}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
+      const url = `${backendUrl}/api/persnol/get-expantion?page=${page}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       console.log("Fetching expenses with URL:", url);
       const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {

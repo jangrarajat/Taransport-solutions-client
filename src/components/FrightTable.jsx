@@ -23,7 +23,7 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.put(`${backendUrl}/bill/update-maintenance/${bill._id}`,
+      const res = await axios.put(`${backendUrl}/api/bill/update-maintenance/${bill._id}`,
         { amount: Number(amount), remark }, { withCredentials: true });
       if (res.data.success) {
         onUpdate();
@@ -424,7 +424,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
   const handleDeleteClick = async () => {
     try {
       const deletePromises = deleteModal.ids.map(id => 
-        axios.delete(`${backendUrl}/bill/delete-bilty/${id}`, { withCredentials: true })
+        axios.delete(`${backendUrl}/api/bill/delete-bilty/${id}`, { withCredentials: true })
       );
       
       await Promise.all(deletePromises);
@@ -438,7 +438,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
 
   const handleAddPayment = async () => {
     try {
-      const response = await axios.post(`${backendUrl}/bill/add-tranjaction-entry`,
+      const response = await axios.post(`${backendUrl}/api/bill/add-tranjaction-entry`,
         { DateOfIssueOfInvoice: date, NameOfRecipient: nameOfRecipient, VehicleNo: vehicleNo, Amount: amount, remark: remark, Destination: destination },
         { withCredentials: true }
       );

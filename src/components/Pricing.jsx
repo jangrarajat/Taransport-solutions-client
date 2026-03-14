@@ -28,7 +28,7 @@ const Pricing = ({ isOpen, onClose }) => {
                 return;
             }
 
-            const { data } = await axios.post(`${backendUrl}/user/create-order`, { planId }, { withCredentials: true });
+            const { data } = await axios.post(`${backendUrl}/api/user/create-order`, { planId }, { withCredentials: true });
             
             const options = {
                 key: rzpKey,
@@ -37,7 +37,7 @@ const Pricing = ({ isOpen, onClose }) => {
                 name: "Sawariya Logistic",
                 order_id: data.order.id,
                 handler: async (response) => {
-                    const verifyRes = await axios.post(`${backendUrl}/user/verify-payment`, { ...response, planId }, { withCredentials: true });
+                    const verifyRes = await axios.post(`${backendUrl}/api/user/verify-payment`, { ...response, planId }, { withCredentials: true });
                     if (verifyRes.data.success) {
                         localStorage.setItem("transportUser", JSON.stringify(verifyRes.data.user));
                         showNotification(true, "Premium Activated! 🚛");
