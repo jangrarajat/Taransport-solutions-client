@@ -1,3 +1,3 @@
-const backendUrl =  ""
+const backendUrl = ""
 
 export {backendUrl};

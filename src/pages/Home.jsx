@@ -76,7 +76,7 @@ const EmptyState = ({ message }) => (
 function Home() {
   const navigate = useNavigate();
   const { user, setUser, logout } = useAuth(); // AuthContext se user le rahe hain
-  
+
   const [menuOption, setMenuOption] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -168,15 +168,15 @@ function Home() {
   // Real-time countdown for subscription
   useEffect(() => {
     if (!user?.subscriptionEndDate) return;
-    
+
     const updateRemaining = () => {
       const remaining = getSubscriptionRemaining(user.subscriptionEndDate);
       setTimeRemaining(remaining);
     };
-    
+
     updateRemaining();
     const interval = setInterval(updateRemaining, 60000); // Har minute update
-    
+
     return () => clearInterval(interval);
   }, [user]);
 
@@ -186,7 +186,7 @@ function Home() {
       // AuthContext already updates, but we need to force re-render
       setUser(event.detail);
     };
-    
+
     window.addEventListener('userUpdated', handleUserUpdate);
     return () => window.removeEventListener('userUpdated', handleUserUpdate);
   }, [setUser]);
@@ -418,8 +418,8 @@ function Home() {
   // If profile page is open, show it
   if (showProfile) {
     return (
-      <ProfilePage 
-        user={user} 
+      <ProfilePage
+        user={user}
         onClose={() => setShowProfile(false)}
         showNotification={showNotification}
       />
@@ -500,27 +500,25 @@ function Home() {
             <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black">
               {/* Premium Status Banner - Updated with real-time countdown */}
               {user?.isPremium && (
-                <div className={`mb-6 p-4 rounded-xl shadow-lg border-l-4 ${
-                  timeRemaining?.expired 
+                <div className={`mb-6 p-4 rounded-xl shadow-lg border-l-4 ${timeRemaining?.expired
                     ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
-                    : timeRemaining?.days <= 7 
-                      ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-500' 
+                    : timeRemaining?.days <= 7
+                      ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-500'
                       : 'bg-green-50 dark:bg-green-900/20 border-green-500'
-                }`}>
+                  }`}>
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${
-                        timeRemaining?.expired
+                      <div className={`p-2 rounded-full ${timeRemaining?.expired
                           ? 'bg-red-100 dark:bg-red-900/40'
-                          : timeRemaining?.days <= 7 
-                            ? 'bg-orange-100 dark:bg-orange-900/40' 
+                          : timeRemaining?.days <= 7
+                            ? 'bg-orange-100 dark:bg-orange-900/40'
                             : 'bg-green-100 dark:bg-green-900/40'
-                      }`}>
+                        }`}>
                         <Crown size={20} className={
                           timeRemaining?.expired
                             ? 'text-red-600 dark:text-red-400'
-                            : timeRemaining?.days <= 7 
-                              ? 'text-orange-600 dark:text-orange-400' 
+                            : timeRemaining?.days <= 7
+                              ? 'text-orange-600 dark:text-orange-400'
                               : 'text-green-600 dark:text-green-400'
                         } />
                       </div>
@@ -532,7 +530,7 @@ function Home() {
                           <p className="text-xs text-slate-500 dark:text-slate-400">
                             {timeRemaining?.days > 0 && `${timeRemaining?.days} days `}
                             {timeRemaining?.hours > 0 && `${timeRemaining?.hours} hours `}
-                            {timeRemaining?.days === 0 && timeRemaining?.hours === 0 && 
+                            {timeRemaining?.days === 0 && timeRemaining?.hours === 0 &&
                               `${timeRemaining?.minutes} minutes`} remaining
                           </p>
                         )}
@@ -687,7 +685,7 @@ function Home() {
 
               {/* Driver Payments List */}
               {loading.stats ? (
-                <div className="mt-6">
+                <div className="mt-6 ">
                   <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="p-8 text-center">
                       <ButtonLoaders />
@@ -699,7 +697,7 @@ function Home() {
                   <ErrorState message={error.stats} onRetry={fetchDriverMonthlyPayments} />
                 </div>
               ) : driverMonthlyPayments.length > 0 ? (
-                <div className="mt-6">
+                <div className="mt-6 pb-20">
                   <h4 className="text-sm font-black text-slate-900 dark:text-white mb-3 underline decoration-blue-500 decoration-4 underline-offset-8">Driver Payments This Month</h4>
                   <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="overflow-x-auto">
