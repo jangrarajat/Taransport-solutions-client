@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
   Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound, ClipboardPlus,
-  ChevronLeft, ChevronRight, Plus, LogOut,
+  ChevronLeft, ChevronRight, Plus, LogOut, Crown,
   TrendingUp, Wallet, Receipt, Search, User as UserIcon, Settings,
   RotateCcw, AlertCircle, RefreshCw
 } from "lucide-react";
@@ -22,6 +22,7 @@ import PumpMasterList from "../components/pump/PumpMasterList";
 import PumpLedger from "../components/pump/PumpLedger";
 import ReportsManager from "../components/ReportsManager";
 import ButtonLoaders from "../components/loaders/ButtonLoaders";
+import ProfilePage from "../components/ProfilePage";
 
 // Skeleton Loaders
 const DashboardCardSkeleton = () => (
@@ -69,61 +70,11 @@ const EmptyState = ({ message }) => (
   </div>
 );
 
-// Profile Modal Component
-const ProfileModal = ({ isOpen, onClose, user, showNotification }) => {
-  const [formData, setFormData] = useState({
-    name: user?.name || "",
-    companyName: user?.companyName || "",
-    email: user?.email || ""
-  });
-
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await axios.put(`${backendUrl}/user/update-profile`, formData, { withCredentials: true });
-      if (res.data.success) {
-        localStorage.setItem("transportUser", JSON.stringify(res.data.user));
-        showNotification(true, "Profile Updated Successfully! ✨");
-        onClose();
-        window.location.reload();
-      }
-    } catch (error) {
-      showNotification(false, error.response?.data?.message || "Update failed");
-    }
-  };
-
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[200] bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <form onSubmit={handleUpdate} className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-300">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-black uppercase tracking-tighter underline decoration-blue-500 decoration-4 dark:text-white">My Profile</h2>
-          <X onClick={onClose} className="cursor-pointer text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white" />
-        </div>
-        <div className="space-y-4 font-bold text-xs uppercase tracking-widest text-slate-900 dark:text-white">
-          <div>
-            <label className="text-slate-400 dark:text-slate-500">Owner Name</label>
-            <input className="w-full border border-slate-200 dark:border-slate-700 p-3 rounded-xl mt-1 outline-none focus:border-blue-500 dark:bg-slate-800 dark:text-white" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-slate-400 dark:text-slate-500">Company Name</label>
-            <input className="w-full border border-slate-200 dark:border-slate-700 p-3 rounded-xl mt-1 outline-none focus:border-blue-500 dark:bg-slate-800 dark:text-white" value={formData.companyName} onChange={(e) => setFormData({ ...formData, companyName: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-slate-400 dark:text-slate-500">Email Address</label>
-            <input className="w-full border border-slate-200 dark:border-slate-700 p-3 rounded-xl mt-1 outline-none focus:border-blue-500 dark:bg-slate-800 dark:text-white" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-          </div>
-        </div>
-        <button className="w-full bg-slate-900 dark:bg-black text-white py-4 rounded-2xl mt-8 font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">Save Changes</button>
-      </form>
-    </div>
-  );
-};
-
 function Home() {
   const navigate = useNavigate();
   const [menuOption, setMenuOption] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [loading, setLoading] = useState({
     dashboard: false,
     bilty: false,
@@ -140,7 +91,6 @@ function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [isExModalOpen, setIsExModalOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
 
   const [biltyData, setBiltyData] = useState([]);
@@ -207,6 +157,16 @@ function Home() {
   }, [darkMode]);
 
   const user = JSON.parse(localStorage.getItem("transportUser")) || {};
+
+  // Calculate remaining days for premium
+  const getRemainingDays = () => {
+    if (!user.subscriptionEndDate) return null;
+    const endDate = new Date(user.subscriptionEndDate);
+    const today = new Date();
+    const diffTime = endDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
 
   const showNotification = (success, msg) => {
     setToast({ show: true, success, msg, id: Date.now() });
@@ -360,7 +320,7 @@ function Home() {
     } finally { setLoading(prev => ({ ...prev, bilty: false })); }
   }, [searchTerm, startDate, endDate]);
 
-  // ✅ Fixed Expenses function with proper date range
+  // Expenses function
   const getExpenses = useCallback(async (page = 1) => {
     setLoading(prev => ({ ...prev, expense: true }));
     try {
@@ -400,6 +360,13 @@ function Home() {
     if (e.key === 'Enter') handleSearch();
   };
 
+  // Event listener for opening pricing modal from other components
+  useEffect(() => {
+    const handleOpenPricing = () => setIsPricingOpen(true);
+    window.addEventListener('openPricing', handleOpenPricing);
+    return () => window.removeEventListener('openPricing', handleOpenPricing);
+  }, []);
+
   useEffect(() => {
     if (menuOption === "home") {
       getDashboardData();
@@ -418,6 +385,17 @@ function Home() {
     }
   }, [menuOption]);
 
+  // If profile page is open, show it
+  if (showProfile) {
+    return (
+      <ProfilePage 
+        user={user} 
+        onClose={() => setShowProfile(false)}
+        showNotification={showNotification}
+      />
+    );
+  }
+
   return (
     <div className="flex fixed h-screen w-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden uppercase font-bold text-xs">
       {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
@@ -425,7 +403,6 @@ function Home() {
       <AddBiltyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(msg) => { getBilty(1); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
       <AddExpenseModal isOpen={isExModalOpen} onClose={() => setIsExModalOpen(false)} onSuccess={(msg) => { getExpenses(1); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
       <Pricing isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
-      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} user={user} showNotification={showNotification} />
 
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-white dark:bg-gray-900 text-gray-700 transition-all duration-300 flex flex-col shadow-2xl w-64`}>
@@ -453,7 +430,7 @@ function Home() {
               <span>{item.label}</span>
             </button>
           ))}
-          <button onClick={() => setIsProfileOpen(true)} className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 mt-10">
+          <button onClick={() => setShowProfile(true)} className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 mt-10">
             <Settings size={20} /> <span>Edit Profile</span>
           </button>
         </nav>
@@ -476,7 +453,7 @@ function Home() {
             </h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div onClick={() => setIsProfileOpen(true)} className="cursor-pointer group flex items-center gap-2">
+            <div onClick={() => setShowProfile(true)} className="cursor-pointer group flex items-center gap-2">
               <div className="text-right hidden sm:block">
                 <p className="text-[10px] font-black text-slate-900 dark:text-white truncate max-w-[80px]">{user?.name}</p>
                 <p className="text-[8px] text-blue-500 dark:text-blue-400 truncate max-w-[80px]">{user?.companyName}</p>
@@ -491,6 +468,49 @@ function Home() {
         <main className="p-3 sm:p-4 md:p-6 lg:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
           {menuOption === "home" && (
             <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black">
+              {/* Premium Status Banner - Only on Dashboard */}
+              {user.isPremium && (
+                <div className={`mb-6 p-4 rounded-xl shadow-lg border-l-4 ${
+                  getRemainingDays() <= 7 
+                    ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-500' 
+                    : 'bg-green-50 dark:bg-green-900/20 border-green-500'
+                }`}>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${
+                        getRemainingDays() <= 7 
+                          ? 'bg-orange-100 dark:bg-orange-900/40' 
+                          : 'bg-green-100 dark:bg-green-900/40'
+                      }`}>
+                        <Crown size={20} className={
+                          getRemainingDays() <= 7 
+                            ? 'text-orange-600 dark:text-orange-400' 
+                            : 'text-green-600 dark:text-green-400'
+                        } />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-slate-900 dark:text-white">
+                          Premium {user.premiumVersion} Plan Active
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {getRemainingDays() > 0 
+                            ? `${getRemainingDays()} days remaining` 
+                            : 'Expired today'}
+                        </p>
+                      </div>
+                    </div>
+                    {getRemainingDays() <= 7 && (
+                      <button
+                        onClick={() => setIsPricingOpen(true)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hover:bg-blue-700 transition-colors"
+                      >
+                        Renew Now
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Revenue Overview */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <h2 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">
@@ -778,7 +798,7 @@ function Home() {
             <ReportsManager showNotification={showNotification} />
           )}
 
-          {/* ✅ Fixed Expenses Section with proper date filter */}
+          {/* Expenses Section */}
           {menuOption === "expantion" && (
             <div className="space-y-3 animate-in fade-in duration-500">
               <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">

@@ -127,7 +127,19 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
         const isRefreshed = await refreshToken();
         if (isRefreshed) return handleSubmit();
       }
-      showInternalNotification(false, error.response?.data?.message || "Failed to add Bilty");
+      
+      // Handle premium errors
+      if (error.response?.data?.code === "PREMIUM_REQUIRED" || error.response?.data?.code === "PREMIUM_EXPIRED") {
+        showInternalNotification(false, error.response?.data?.message);
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('openPricing'));
+          }
+          onClose();
+        }, 2000);
+      } else {
+        showInternalNotification(false, error.response?.data?.message || "Failed to add Bilty");
+      }
     } finally {
       setLoading(false);
     }

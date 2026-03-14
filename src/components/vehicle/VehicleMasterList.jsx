@@ -115,7 +115,7 @@ const VehicleMasterList = ({ showNotification, onSelectVehicle }) => {
                   {vehicle.ownerName && <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-1"><User size={12} /> {vehicle.ownerName}</p>}
                 </div>
                 <div className="flex gap-1">
-                  <button onClick={() => onSelectVehicle && onSelectVehicle(vehicle)} className="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg" title="View"><Eye size={16} /></button>
+                  {/* <button onClick={() => onSelectVehicle && onSelectVehicle(vehicle)} className="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg" title="View"><Eye size={16} /></button> */}
                   <button onClick={() => { setEditingVehicle(vehicle); setModalOpen(true); }} className="p-2 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/30 rounded-lg" title="Edit"><Edit2 size={16} /></button>
                   <button onClick={() => handleDelete(vehicle._id)} className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg" title="Delete"><Trash2 size={16} /></button>
                 </div>

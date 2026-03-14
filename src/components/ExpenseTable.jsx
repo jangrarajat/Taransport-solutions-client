@@ -83,7 +83,7 @@ const ExpenseTable = ({ data, loading, refreshData, filterTerm = "" }) => {
   };
 
   if (loading) {
-    return <div className="p-10 text-center font-black uppercase text-slate-300 dark:text-slate-600 tracking-widest italic animate-pulse">Fetching Expenses...</div>;
+    return <div className=" w-full flex justify-center p-10 text-center font-black uppercase text-slate-300 dark:text-slate-600 tracking-widest italic animate-pulse"><ButtonLoaders/></div>;
   }
 
   return (

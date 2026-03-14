@@ -41,7 +41,10 @@ const Pricing = ({ isOpen, onClose }) => {
                     if (verifyRes.data.success) {
                         localStorage.setItem("transportUser", JSON.stringify(verifyRes.data.user));
                         showNotification(true, "Premium Activated! 🚛");
-                        setTimeout(() => window.location.reload(), 2000);
+                        setTimeout(() => {
+                            onClose();
+                            window.location.reload();
+                        }, 2000);
                     }
                 },
                 theme: { color: "#1e293b" }
