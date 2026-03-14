@@ -4,7 +4,7 @@ import axios from "axios";
 import { refreshToken } from "../../api/api";
 import { backendUrl } from "../../utils/backendUrl";
 import AddPumpModal from "../pump/AddPumpModal";
-import SuccessToster from "../toster/SuccessToster"; // Add this import
+import SuccessToster from "../toster/SuccessToster";
 
 const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
   const initialState = {
@@ -38,6 +38,11 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
 
   const transportUser = JSON.parse(localStorage.getItem("transportUser")) || {};
 
+  const showInternalNotification = (success, msg) => {
+    setToast({ show: true, success, msg, id: Date.now() });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchPumps();
@@ -46,11 +51,6 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
       setFormData(initialState);
     }
   }, [isOpen]);
-
-  const showNotification = (success, msg) => {
-    setToast({ show: true, success, msg, id: Date.now() });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
-  };
 
   const fetchPumps = async () => {
     setFetchingPumps(true);
@@ -98,7 +98,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
     // Validate vehicle exists
     const vehicleExists = vehicleList.some(v => v.vehicleNo.toUpperCase() === formData.VehicleNo.toUpperCase());
     if (!vehicleExists) {
-      showNotification(false, "Vehicle number not registered. Please add it in Reports > Vehicles first.");
+      showInternalNotification(false, "Vehicle number not registered. Please add it in Reports > Vehicles first.");
       return;
     }
 
@@ -115,17 +115,19 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
         };
         localStorage.setItem("transportUser", JSON.stringify(updatedUser));
 
-        showNotification(true, "Bilty added successfully 🚛");
+        showInternalNotification(true, "Bilty added successfully 🚛");
         setFormData(initialState);
-        setTimeout(() => onClose(), 1000); // Close after toast shows
+        setTimeout(() => {
+          onSuccess("Bilty added successfully 🚛");
+          onClose();
+        }, 1000);
       }
     } catch (error) {
-      console.log(error.response.data.mussage)
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
         if (isRefreshed) return handleSubmit();
       }
-      showNotification(false, error.response.data.mussage || "Failed to add Bilty");
+      showInternalNotification(false, error.response?.data?.message || "Failed to add Bilty");
     } finally {
       setLoading(false);
     }
@@ -133,6 +135,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
 
   const handleAddPumpSuccess = () => {
     fetchPumps(); // refresh pump list after adding
+    showInternalNotification(true, "Pump added successfully");
   };
 
   if (!isOpen) return null;
@@ -175,11 +178,14 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
                     vehicleList.map(v => <option key={v._id} value={v.vehicleNo} />)
                   )}
                 </datalist>
+                {fetchingVehicles && (
+                  <p className="text-[8px] text-blue-500 mt-1">Loading vehicles...</p>
+                )}
               </div>
 
               {/* All other fields */}
               {Object.keys(formData).map((key) => {
-                if (key === "VehicleNo") return null;
+                if (key === "VehicleNo") return null; // already handled above
                 if (key === "petrolPump") {
                   return (
                     <div key={key} className="space-y-1">
@@ -255,7 +261,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
         onClose={() => setShowAddPumpModal(false)}
         pump={null}
         onSuccess={handleAddPumpSuccess}
-        showNotification={showNotification}
+        showNotification={showInternalNotification}
       />
     </>
   );

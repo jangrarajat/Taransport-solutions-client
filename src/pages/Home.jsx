@@ -151,6 +151,7 @@ function Home() {
   const [totalPages, setTotalPages] = useState(1);
   const [dashFilter, setDashFilter] = useState("month");
   const [searchTerm, setSearchTerm] = useState("");
+  const [vehicleList, setVehicleList] = useState([]);
   const [vehicleTotalBalance, setVehicleTotalBalance] = useState(null);
   const [openingBalance, setOpeningBalance] = useState(null);
   const [closingBalance, setClosingBalance] = useState(null);
@@ -228,6 +229,22 @@ function Home() {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
+  };
+
+  // Fetch vehicles for suggestions
+  const fetchVehicles = async () => {
+    try {
+      const res = await axios.get(`${backendUrl}/api/vehicle-master`, { withCredentials: true });
+      if (res.data.success) {
+        setVehicleList(res.data.vehicles);
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) return fetchVehicles();
+      }
+      console.error("Failed to fetch vehicles", error);
+    }
   };
 
   // Dashboard data
@@ -343,18 +360,19 @@ function Home() {
     } finally { setLoading(prev => ({ ...prev, bilty: false })); }
   }, [searchTerm, startDate, endDate]);
 
-  // Expenses
+  // ✅ Fixed Expenses function with proper date range
   const getExpenses = useCallback(async (page = 1) => {
     setLoading(prev => ({ ...prev, expense: true }));
     try {
       const url = `${backendUrl}/persnol/get-expantion?page=${page}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
+      console.log("Fetching expenses with URL:", url);
       const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {
         const formattedExpenses = response.data.expantions.map(exp => ({
           ...exp,
           createdAt: formatDate(exp.createdAt),
           updatedAt: formatDate(exp.updatedAt),
-          date: formatDate(exp.date)
+          expenseDate: formatDate(exp.expenseDate)
         }));
         setExpenseData(formattedExpenses);
         setTotalPages(response.data.totalPage);
@@ -365,6 +383,7 @@ function Home() {
         const isRefreshed = await refreshToken();
         if (isRefreshed) getExpenses(page);
       }
+      console.error("Error fetching expenses:", error);
     } finally { setLoading(prev => ({ ...prev, expense: false })); }
   }, [searchTerm, startDate, endDate]);
 
@@ -388,6 +407,12 @@ function Home() {
       fetchVehicleStats();
       fetchDriverStats();
       fetchDriverMonthlyPayments();
+      fetchVehicles();
+    } else if (menuOption === "biltiy" || menuOption === "accounts") {
+      fetchVehicles();
+      handleSearch();
+    } else if (menuOption === "expantion") {
+      handleSearch();
     } else if (menuOption !== "petrolPump" && menuOption !== "Reports") {
       handleSearch();
     }
@@ -404,7 +429,7 @@ function Home() {
 
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-white dark:bg-gray-900 text-gray-700 transition-all duration-300 flex flex-col shadow-2xl w-64`}>
-        <div className="p-5 flex items-center justify-between  dark:border-slate-900">
+        <div className="p-5 flex items-center justify-between dark:border-slate-900">
           <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded-lg">
             <X size={20} />
           </button>
@@ -432,7 +457,7 @@ function Home() {
             <Settings size={20} /> <span>Edit Profile</span>
           </button>
         </nav>
-        <div className="p-4  dark:border-slate-900">
+        <div className="p-4 dark:border-slate-900">
           <button onClick={() => { localStorage.clear(); navigate("/auth") }} className="w-full flex items-center gap-4 p-4 rounded-xl text-red-400 font-bold hover:bg-red-500/10">
             <LogOut size={20} /> <span>Logout</span>
           </button>
@@ -644,19 +669,25 @@ function Home() {
 
           {(menuOption === "biltiy" || menuOption === "accounts") && (
             <div className="space-y-3 animate-in fade-in duration-500">
-              {/* Filter bar */}
+              {/* Filter bar with vehicle suggestions */}
               <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
                   <div className="relative flex-1 min-w-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} />
                     <input
                       type="text"
+                      list="vehicleSearchList"
                       placeholder="Search LR, Vehicle..."
                       className="w-full pl-8 pr-3 py-2 border rounded-lg text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyDown={handleKeyDown}
                     />
+                    <datalist id="vehicleSearchList">
+                      {vehicleList.map(v => (
+                        <option key={v._id} value={v.vehicleNo} />
+                      ))}
+                    </datalist>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <input
@@ -747,6 +778,7 @@ function Home() {
             <ReportsManager showNotification={showNotification} />
           )}
 
+          {/* ✅ Fixed Expenses Section with proper date filter */}
           {menuOption === "expantion" && (
             <div className="space-y-3 animate-in fade-in duration-500">
               <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
@@ -755,7 +787,7 @@ function Home() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} />
                     <input
                       type="text"
-                      placeholder="Search by Title..."
+                      placeholder="Search by Title or Purpose..."
                       className="w-full pl-8 pr-3 py-2 border rounded-lg text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}

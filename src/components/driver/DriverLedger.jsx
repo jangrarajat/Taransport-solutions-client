@@ -431,7 +431,7 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
                   <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Month</th>
                   <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Amount (₹)</th>
                   <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Balance (₹)</th>
-                  <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-center">Action</th>
+                  {/* <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-center">Action</th> */}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -471,12 +471,12 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
                     <td className="px-4 py-2 font-black text-right text-slate-900 dark:text-white">
                       ₹{t.runningBalance.toLocaleString('en-IN')}
                     </td>
-                    <td className="px-4 py-2 text-center">
+                    {/* <td className="px-4 py-2 text-center">
                       <button onClick={() => handleSingleDelete(t._id)}
                         className="p-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded" title="Delete">
                         <Trash2 size={14} />
                       </button>
-                    </td>
+                    </td> */}
                   </tr>
                 )) : (
                   <tr><td colSpan="8" className="p-8 text-center text-slate-400 dark:text-slate-500 italic">No transactions in this period</td></tr>
@@ -494,7 +494,7 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
                     <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400">
                       {closingBalance.toLocaleString('en-IN')}
                     </td>
-                    <td></td>
+                    {/* <td></td> */}
                   </tr>
                 </tfoot>
               )}
