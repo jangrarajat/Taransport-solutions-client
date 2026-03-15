@@ -52,12 +52,12 @@ const AddDriverPaymentModal = ({ isOpen, onClose, onSubmit, showNotification, dr
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl animate-in zoom-in duration-300 my-auto">
-        <div className="sticky top-0 bg-white dark:bg-slate-900 border-b dark:border-slate-700 p-6 flex justify-between items-center rounded-t-2xl">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-md   shadow-2xl animate-in zoom-in duration-300 my-auto">
+        <div className="sticky top-0 bg-white dark:bg-slate-900 border-b dark:border-slate-700 p-6 flex justify-between items-center  ">
           <h2 className="text-xl font-black text-slate-800 dark:text-white underline decoration-green-500 decoration-4 underline-offset-8 uppercase tracking-widest">
             Add Driver Transaction
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800   transition-colors">
             <X size={20} className="text-slate-500 dark:text-slate-400" />
           </button>
         </div>
@@ -70,7 +70,7 @@ const AddDriverPaymentModal = ({ isOpen, onClose, onSubmit, showNotification, dr
             <select
               value={paymentType}
               onChange={(e) => setPaymentType(e.target.value)}
-              className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
+              className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
               required
             >
               <option value="payment">Payment (Extra/Advance)</option>
@@ -86,7 +86,7 @@ const AddDriverPaymentModal = ({ isOpen, onClose, onSubmit, showNotification, dr
                   <select
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                    className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
+                    className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
                   >
                     {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
                       <option key={m} value={m}>{new Date(2000, m-1, 1).toLocaleString('default', { month: 'long' })}</option>
@@ -98,7 +98,7 @@ const AddDriverPaymentModal = ({ isOpen, onClose, onSubmit, showNotification, dr
                   <select
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                    className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
+                    className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
                   >
                     {[2024, 2025, 2026].map(y => (
                       <option key={y} value={y}>{y}</option>
@@ -108,7 +108,7 @@ const AddDriverPaymentModal = ({ isOpen, onClose, onSubmit, showNotification, dr
               </div>
 
               {/* Salary Info Card */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3   border border-blue-200 dark:border-blue-800">
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-slate-600 dark:text-slate-300">Monthly Salary:</span>
                   <span className="font-black text-blue-600 dark:text-blue-400">₹{driverMonthlySalary.toLocaleString('en-IN')}</span>
@@ -132,7 +132,7 @@ const AddDriverPaymentModal = ({ isOpen, onClose, onSubmit, showNotification, dr
               <Calendar size={12} /> Date <span className="text-red-500">*</span>
             </label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} 
-              className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white" required />
+              className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white" required />
           </div>
 
           <div className="space-y-1">
@@ -144,7 +144,7 @@ const AddDriverPaymentModal = ({ isOpen, onClose, onSubmit, showNotification, dr
               placeholder={paymentType === "salary" ? `Enter amount (Max: ₹${remainingSalary})` : "e.g., 5000"} 
               value={amount} 
               onChange={(e) => setAmount(e.target.value)} 
-              className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white" 
+              className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white" 
               required 
               min="1" 
               step="1" 
@@ -161,15 +161,15 @@ const AddDriverPaymentModal = ({ isOpen, onClose, onSubmit, showNotification, dr
               placeholder={paymentType === "salary" ? "Monthly salary payment" : "e.g., Advance payment"} 
               value={description} 
               onChange={(e) => setDescription(e.target.value)} 
-              className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white" 
+              className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white" 
             />
           </div>
 
           <div className="flex gap-3 pt-4 border-t dark:border-slate-700">
-            <button type="button" onClick={onClose} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+            <button type="button" onClick={onClose} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300   font-black uppercase text-xs tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
               Cancel
             </button>
-            <button type="submit" disabled={loading} className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg shadow-green-200 dark:shadow-green-900/50 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center">
+            <button type="submit" disabled={loading} className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white   font-black uppercase text-xs tracking-widest shadow-lg shadow-green-200 dark:shadow-green-900/50 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center">
               {loading ? <ButtonLoaders /> : "Add Transaction"}
             </button>
           </div>

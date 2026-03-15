@@ -94,12 +94,12 @@ const AddDirectDieselModal = ({ isOpen, onClose, onSubmit, showNotification, pum
       {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
       
       <div className="fixed inset-0 z-[100] bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-        <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl animate-in zoom-in duration-300 my-auto">
-          <div className="sticky top-0 bg-white dark:bg-slate-900 border-b dark:border-slate-700 p-6 flex justify-between items-center rounded-t-2xl">
+        <div className="bg-white dark:bg-slate-900 w-full max-w-md   shadow-2xl animate-in zoom-in duration-300 my-auto">
+          <div className="sticky top-0 bg-white dark:bg-slate-900 border-b dark:border-slate-700 p-6 flex justify-between items-center  ">
             <h2 className="text-xl font-black text-slate-800 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 uppercase tracking-widest">
               Add Direct Diesel - {pumpName}
             </h2>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800   transition-colors">
               <X size={20} className="text-slate-500 dark:text-slate-400" />
             </button>
           </div>
@@ -113,7 +113,7 @@ const AddDirectDieselModal = ({ isOpen, onClose, onSubmit, showNotification, pum
                 list="vehicleList"
                 value={vehicleNo}
                 onChange={(e) => setVehicleNo(e.target.value)}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
+                className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
                 placeholder="Select or enter vehicle number"
                 required
               />
@@ -137,7 +137,7 @@ const AddDirectDieselModal = ({ isOpen, onClose, onSubmit, showNotification, pum
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
+                className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
                 required
               />
             </div>
@@ -151,7 +151,7 @@ const AddDirectDieselModal = ({ isOpen, onClose, onSubmit, showNotification, pum
                 placeholder="e.g., 5000"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
+                className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
                 required
                 min="1"
                 step="1"
@@ -167,7 +167,7 @@ const AddDirectDieselModal = ({ isOpen, onClose, onSubmit, showNotification, pum
                 placeholder="e.g., Direct diesel purchase"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
+                className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white"
               />
             </div>
 
@@ -175,14 +175,14 @@ const AddDirectDieselModal = ({ isOpen, onClose, onSubmit, showNotification, pum
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300   font-black uppercase text-xs tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center"
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white   font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center"
               >
                 {loading ? <ButtonLoaders /> : "Add Diesel Entry"}
               </button>
@@ -451,16 +451,16 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
   const SummarySkeleton = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pulse">
-          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-2"></div>
-          <div className="h-6 bg-slate-300 dark:bg-slate-600 rounded w-16"></div>
+        <div key={i} className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm animate-pulse">
+          <div className="h-3 bg-slate-200 dark:bg-slate-700   w-24 mb-2"></div>
+          <div className="h-6 bg-slate-300 dark:bg-slate-600   w-16"></div>
         </div>
       ))}
     </div>
   );
 
   const TableSkeleton = () => (
-    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="bg-white dark:bg-slate-900   shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
@@ -476,12 +476,12 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {[...Array(5)].map((_, i) => (
               <tr key={i} className="animate-pulse">
-                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16"></div></td>
-                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16"></div></td>
-                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32"></div></td>
-                <td className="px-4 py-2 text-right"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12 ml-auto"></div></td>
-                <td className="px-4 py-2 text-right"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12 ml-auto"></div></td>
-                <td className="px-4 py-2 text-center"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-6 mx-auto"></div></td>
+                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-16"></div></td>
+                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-16"></div></td>
+                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-32"></div></td>
+                <td className="px-4 py-2 text-right"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-12 ml-auto"></div></td>
+                <td className="px-4 py-2 text-right"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-12 ml-auto"></div></td>
+                <td className="px-4 py-2 text-center"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-6 mx-auto"></div></td>
               </tr>
             ))}
           </tbody>
@@ -505,22 +505,22 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
         </div>
 
         {/* Filter and Actions */}
-        <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 p-3   shadow-sm border border-slate-200 dark:border-slate-700">
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="border rounded-lg px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600"
+            className="border   px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600"
           />
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="border rounded-lg px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600"
+            className="border   px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600"
           />
           <button
             onClick={fetchLedger}
-            className="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors"
+            className="px-3 py-2 bg-blue-600 text-white   text-xs font-bold hover:bg-blue-700 transition-colors"
           >
             Apply
           </button>
@@ -530,7 +530,7 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
               setStartDate(range.start);
               setEndDate(range.end);
             }}
-            className="p-2 bg-gray-200 dark:bg-slate-600 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+            className="p-2 bg-gray-200 dark:bg-slate-600   hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
             title="Reset to current month"
           >
             <RotateCcw size={12} className="text-slate-700 dark:text-white" />
@@ -539,14 +539,14 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
           {/* Export/Print Buttons */}
           <button
             onClick={exportToExcel}
-            className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="p-2 bg-green-600 text-white   hover:bg-green-700 transition-colors"
             title="Export to Excel"
           >
             <FileSpreadsheet size={14} />
           </button>
           <button
             onClick={handlePrint}
-            className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            className="p-2 bg-purple-600 text-white   hover:bg-purple-700 transition-colors"
             title="Print"
           >
             <Printer size={14} />
@@ -555,12 +555,12 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
           {/* Selection Controls */}
           {selectedIds.length > 0 && (
             <>
-              <span className="bg-blue-600 text-white px-2 py-1 rounded-lg text-xs font-black">
+              <span className="bg-blue-600 text-white px-2 py-1   text-xs font-black">
                 {selectedIds.length} Selected
               </span>
               <button
                 onClick={handleBulkDelete}
-                className="flex items-center gap-1 bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-red-700"
+                className="flex items-center gap-1 bg-red-600 text-white px-3 py-2   text-xs font-bold hover:bg-red-700"
               >
                 <Trash2 size={12} /> Delete Selected
               </button>
@@ -570,7 +570,7 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
           {/* Action Buttons */}
           <button
             onClick={() => setDirectDieselModalOpen(true)}
-            className="flex items-center gap-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-1 bg-blue-600 text-white px-3 py-2   text-xs font-bold hover:bg-blue-700 transition-colors"
             title="Add direct diesel entry without trip"
           >
             <Fuel size={12} /> Add Diesel
@@ -578,7 +578,7 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
           
           <button
             onClick={() => setPaymentModalOpen(true)}
-            className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-green-700 transition-colors"
+            className="flex items-center gap-1 bg-green-600 text-white px-3 py-2   text-xs font-bold hover:bg-green-700 transition-colors"
           >
             <Plus size={12} /> Add Payment
           </button>
@@ -587,19 +587,19 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
         {/* Summary Cards */}
         {loading ? <SummarySkeleton /> : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
               <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Opening Balance (before {startDate || 'start'})</p>
               <p className="text-xl font-black text-gray-900 dark:text-white">₹{openingBefore.toLocaleString('en-IN')}</p>
             </div>
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
               <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Purchases</p>
               <p className="text-xl font-black text-red-600 dark:text-red-400">₹{(totals.totalPurchases || 0).toLocaleString('en-IN')}</p>
             </div>
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
               <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Payments</p>
               <p className="text-xl font-black text-green-600 dark:text-green-400">₹{(totals.totalPayments || 0).toLocaleString('en-IN')}</p>
             </div>
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
               <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Closing Balance</p>
               <p className={`text-xl font-black ${closingBalance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
                 ₹{closingBalance.toLocaleString('en-IN')}
@@ -610,7 +610,7 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
 
         {/* Transactions Table */}
         {loading ? <TableSkeleton /> : (
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900   shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
@@ -621,7 +621,7 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
                         ref={headerCheckboxRef}
                         onChange={handleSelectAll}
                         checked={transactions.length > 0 && selectedIds.length === transactions.length}
-                        className="rounded dark:bg-slate-700 dark:border-slate-600"
+                        className="  dark:bg-slate-700 dark:border-slate-600"
                       />
                     </th>
                     <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider">Date</th>
@@ -645,7 +645,7 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
                                 ? prev.filter(i => i !== t._id) 
                                 : [...prev, t._id]
                             )}
-                            className="rounded dark:bg-slate-700 dark:border-slate-600"
+                            className="  dark:bg-slate-700 dark:border-slate-600"
                           />
                         </td>
                         <td className="px-4 py-2 text-slate-700 dark:text-slate-300">{formatDate(t.date)}</td>
@@ -664,7 +664,7 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
                         <td className="px-4 py-2 text-center">
                           <button
                             onClick={() => handleSingleDelete(t._id)}
-                            className="p-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded transition-colors"
+                            className="p-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30   transition-colors"
                             title="Delete"
                           >
                             <Trash2 size={14} />
@@ -703,7 +703,7 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
 
         {/* Pagination */}
         {!loading && totalPages > 1 && (
-          <div className="flex justify-between items-center bg-white dark:bg-slate-800 px-4 py-3 rounded-xl border dark:border-slate-700 shadow-sm">
+          <div className="flex justify-between items-center bg-white dark:bg-slate-800 px-4 py-3   border dark:border-slate-700 shadow-sm">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Page {page} of {totalPages}
             </p>
@@ -711,14 +711,14 @@ const PumpLedger = ({ pumpId, pumpName, onBack, showNotification }) => {
               <button
                 disabled={page === 1}
                 onClick={() => setPage(p => p - 1)}
-                className="p-1 border border-slate-300 dark:border-slate-600 rounded-lg disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                className="p-1 border border-slate-300 dark:border-slate-600   disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
                 <ChevronLeft size={14} className="text-slate-700 dark:text-white" />
               </button>
               <button
                 disabled={page === totalPages}
                 onClick={() => setPage(p => p + 1)}
-                className="p-1 border border-slate-300 dark:border-slate-600 rounded-lg disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                className="p-1 border border-slate-300 dark:border-slate-600   disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
                 <ChevronRight size={14} className="text-slate-700 dark:text-white" />
               </button>

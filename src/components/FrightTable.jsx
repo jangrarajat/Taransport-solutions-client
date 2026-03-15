@@ -1,3 +1,4 @@
+// FrightTable.jsx
 import { Printer, TruckElectric, X, Trash2, Edit3, FileSpreadsheet, AlertTriangle, FileText, ArrowDownToLine } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import axios from "axios";
@@ -43,17 +44,17 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 uppercase">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl p-6">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-md  shadow-2xl p-6">
         <div className="flex justify-between items-center mb-6 border-b dark:border-slate-700 pb-4">
           <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase">Vehicle Maintenance</h2>
           <X onClick={onClose} className="cursor-pointer text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white" />
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input required type="number" placeholder="Amount (₹)" value={amount} onChange={(e) => setAmount(e.target.value)}
-            className="w-full border rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none focus:border-orange-400" />
+            className="w-full border   px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none focus:border-orange-400" />
           <input required type="text" placeholder="Remark" value={remark} onChange={(e) => setRemark(e.target.value)}
-            className="w-full border rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none focus:border-orange-400" />
-          <button disabled={loading} className="w-full bg-orange-500 text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+            className="w-full border   px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none focus:border-orange-400" />
+          <button disabled={loading} className="w-full bg-orange-500 text-white py-4   font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2">
             {loading ? <ButtonLoaders /> : "Save & Update"}
           </button>
         </form>
@@ -62,7 +63,16 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
   );
 };
 
-const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTotalBalance, openingBalance, closingBalance }) => {
+const FrightTable = ({
+  data,
+  loading,
+  refreshData,
+  showNotification,
+  vehicleTotalBalance,
+  openingBalance,
+  closingBalance,
+  vehicleList   // ← new prop
+}) => {
   const [addPayment, setAddPayment] = useState(false);
   const [printBityBtn, setPrintBityBtn] = useState(false);
   const [pData, setPData] = useState([]);
@@ -436,7 +446,17 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
     }
   };
 
+  // Updated handleAddPayment with vehicle validation
   const handleAddPayment = async () => {
+    // Check if vehicle number exists in master list (case‑insensitive)
+    const vehicleExists = vehicleList?.some(
+      v => v.vehicleNo.toUpperCase() === vehicleNo.toUpperCase()
+    );
+    if (!vehicleExists) {
+      showNotification(false, "Vehicle number not registered. Please add it first.");
+      return;
+    }
+
     try {
       const response = await axios.post(`${backendUrl}/api/bill/add-tranjaction-entry`,
         { DateOfIssueOfInvoice: date, NameOfRecipient: nameOfRecipient, VehicleNo: vehicleNo, Amount: amount, remark: remark, Destination: destination },
@@ -467,31 +487,48 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
 
   return (
     <>
+      {/* Add Payment Modal */}
       {addPayment && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 dark:bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl animate-in zoom-in duration-300 my-auto">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[90vh] overflow-y-auto  shadow-2xl animate-in zoom-in duration-300 my-auto">
             <div className="sticky top-0 bg-white dark:bg-slate-900 border-b dark:border-slate-700 p-6 flex justify-between items-center z-10">
               <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 uppercase tracking-widest">Add New Payment</h2>
-              <button onClick={() => setAddPayment(!addPayment)} type="button" className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors"><X size={24} className="dark:text-white" /></button>
+              <button onClick={() => setAddPayment(!addPayment)} type="button" className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800  transition-colors">
+                <X size={24} className="dark:text-white" />
+              </button>
             </div>
             <div className="p-6 md:p-8 space-y-6">
               <div className="grid grid-cols-3 gap-3">
                 <input type="date" placeholder="Date" name="DateOfIssueOfInvoice" onChange={(e) => setDate(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                  className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
                 <input type="text" placeholder="Name" name="NameOfRecipient" onChange={(e) => setNameOfRecipient(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
-                <input type="text" placeholder="Vehicle No" name="VehicleNo" onChange={(e) => setVehicleNo(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                  className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                {/* Vehicle input with datalist */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Vehicle No"
+                    list="vehicleAddList"
+                    name="VehicleNo"
+                    onChange={(e) => setVehicleNo(e.target.value)}
+                    className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
+                  />
+                  <datalist id="vehicleAddList">
+                    {vehicleList?.map(v => (
+                      <option key={v._id} value={v.vehicleNo} />
+                    ))}
+                  </datalist>
+                </div>
                 <input type="number" placeholder="Amount" name="Amount" onChange={(e) => setAmount(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                  className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
                 <input type="text" placeholder="Remark" name="remark" onChange={(e) => setRemark(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                  className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
                 <input type="text" placeholder="Destination" name="Destination" onChange={(e) => setDestination(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                  className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
               </div>
               <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t dark:border-slate-700 font-bold">
-                <button type="button" onClick={() => setAddPayment(!addPayment)} className="px-6 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 order-2 sm:order-1">Cancel</button>
-                <button type="submit" onClick={handleAddPayment} className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-xl font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest flex items-center justify-center">
+                <button type="button" onClick={() => setAddPayment(!addPayment)} className="px-6 py-3  text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 order-2 sm:order-1">Cancel</button>
+                <button type="submit" onClick={handleAddPayment} className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3  font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest flex items-center justify-center">
                   {loading ? (<ButtonLoaders />) : "Save Payment"}
                 </button>
               </div>
@@ -501,35 +538,32 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
       )}
       {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
 
-      <div className="mb-4 flex flex-wrap justify-between items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+      <div className="mb-4 flex flex-wrap justify-between items-center gap-3 bg-white dark:bg-slate-800 p-4 shadow-sm dark:border-slate-700">
         <div className="flex gap-2">
-          <button onClick={downloadStyledExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-green-700 transition-colors">
+          <button onClick={downloadStyledExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2   text-[10px] font-black uppercase hover:bg-green-700 transition-colors">
             <ArrowDownToLine size={15} /> Excel
           </button>
-          <button onClick={printData} className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-purple-700 transition-colors">
+          <button onClick={printData} className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2   text-[10px] font-black uppercase hover:bg-purple-700 transition-colors">
             <Printer size={15} /> Print
           </button>
-          {/* {selectedIds.length !== 0 && (
-            <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase">{selectedIds.length}</span>
-          )} */}
           {selectedIds.length > 0 && (
             <button 
               onClick={handleBulkDelete}
-              className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-700 transition-colors"
+              className="flex items-center gap-2 bg-red-600 text-white px-4 py-2   text-[10px] font-black uppercase hover:bg-red-700 transition-colors"
             >
               <Trash2 size={14} />{selectedIds.length} Delete Selected
             </button>
           )}
         </div>
         <div>
-          <button className="uppercase text-white bg-yellow-600 p-2 rounded-md" onClick={() => setAddPayment(!addPayment)}>
+          <button className="uppercase text-white bg-yellow-600 p-2 " onClick={() => setAddPayment(!addPayment)}>
             Add Payments
           </button>
         </div>
       </div>
 
       {sortedData.length > 0 && hasValidBalance && (
-        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-center font-bold text-sm">
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800  text-center font-bold text-sm">
           <span className="mr-6 text-slate-700 dark:text-slate-300">
             Opening Balance:{' '}
             <span className={
@@ -559,7 +593,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden rounded-xl">
+      <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden  ">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 z-20 bg-slate-800 dark:bg-black text-white">
@@ -591,8 +625,7 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
                   </td>
                   <td className="px-4 py-3 border-r dark:border-slate-700">
                     <div className="flex items-center justify-center gap-2">
-                      <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><Edit3 size={14} /></button>
-                      {/* <button onClick={() => handleSingleDelete(bill._id)} className="text-red-400 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg"><Trash2 size={14} /></button> */}
+                      <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 "><Edit3 size={14} /></button>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{bill.DateOfIssueOfInvoice}</td>
@@ -628,7 +661,6 @@ const FrightTable = ({ data, loading, refreshData, showNotification, vehicleTota
                     { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
                     { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
                     { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
-                    // { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
                     { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
                     { content: totals.qty, className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" },
                     { content: "", className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" },

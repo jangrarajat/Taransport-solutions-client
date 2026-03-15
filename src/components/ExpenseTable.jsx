@@ -92,15 +92,15 @@ const ExpenseTable = ({ data, loading, refreshData, filterTerm = "" }) => {
       
       {/* Selection Controls */}
       {filteredData.length > 0 && (
-        <div className="mb-4 flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+        <div className="mb-4 flex justify-between items-center bg-white dark:bg-slate-800 p-4   shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="flex items-center gap-3">
-            <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase">
+            <span className="bg-blue-600 text-white px-3 py-1   text-[10px] font-black uppercase">
               {selectedIds.length} Selected
             </span>
             {selectedIds.length > 0 && (
               <button 
                 onClick={handleBulkDelete}
-                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-700 transition-colors"
+                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2   text-[10px] font-black uppercase hover:bg-red-700 transition-colors"
               >
                 <Trash2 size={14} /> Delete Selected
               </button>
@@ -109,7 +109,7 @@ const ExpenseTable = ({ data, loading, refreshData, filterTerm = "" }) => {
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden font-bold uppercase tracking-tighter">
+      <div className="bg-white dark:bg-slate-900   shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden font-bold uppercase tracking-tighter">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 font-black italic">
@@ -120,7 +120,7 @@ const ExpenseTable = ({ data, loading, refreshData, filterTerm = "" }) => {
                     ref={headerCheckboxRef}
                     onChange={handleSelectAll}
                     checked={filteredData.length > 0 && selectedIds.length === filteredData.length}
-                    className="rounded dark:bg-slate-700 dark:border-slate-600"
+                    className="  dark:bg-slate-700 dark:border-slate-600"
                   />
                 </th>
                 <th className="px-6 py-5 text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest border-r dark:border-slate-700">Date</th>
@@ -142,14 +142,14 @@ const ExpenseTable = ({ data, loading, refreshData, filterTerm = "" }) => {
                           ? prev.filter(i => i !== ex._id) 
                           : [...prev, ex._id]
                       )}
-                      className="rounded dark:bg-slate-700 dark:border-slate-600"
+                      className="  dark:bg-slate-700 dark:border-slate-600"
                     />
                   </td>
                   <td className="px-6 py-4 text-slate-500 dark:text-slate-400 border-r dark:border-slate-700">
                     {ex.expenseDate || new Date(ex.createdAt).toLocaleDateString('en-GB')}
                   </td>
                   <td className="px-6 py-4 border-r dark:border-slate-700">
-                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter shadow-sm ${
+                    <span className={`px-3 py-1   text-[9px] font-black uppercase tracking-tighter shadow-sm ${
                       ex.title === 'salary' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 
                       ex.title === 'bills' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
                       'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
@@ -168,7 +168,7 @@ const ExpenseTable = ({ data, loading, refreshData, filterTerm = "" }) => {
                   {/* <td className="px-6 py-4 text-center">
                     <button 
                       onClick={() => handleSingleDelete(ex._id)}
-                      className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                      className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30   transition-colors"
                       title="Delete Expense"
                     >
                       <Trash2 size={16} />

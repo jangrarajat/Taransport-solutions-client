@@ -5,7 +5,7 @@ const PetrolPumpTable = ({ data, loading, onUpdatePayment }) => {
   if (loading) return <div className="p-20 text-center font-black uppercase text-slate-400 dark:text-slate-600 tracking-widest italic">Loading Records...</div>;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="bg-white dark:bg-slate-900   shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 font-black">
@@ -30,7 +30,7 @@ const PetrolPumpTable = ({ data, loading, onUpdatePayment }) => {
                   <p className="text-slate-400 dark:text-slate-500">{new Date(pump.createdAt).toLocaleDateString('en-GB')}</p>
                 </td>
                 <td className="px-6 py-4 border-r dark:border-slate-700 text-center">
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black tracking-tighter ${
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1   text-[9px] font-black tracking-tighter ${
                     pump.payment === "payed" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
                   }`}>
                     {pump.payment === "payed" ? <CheckCircle size={10}/> : <Clock size={10}/>}
@@ -40,7 +40,7 @@ const PetrolPumpTable = ({ data, loading, onUpdatePayment }) => {
                 <td className="px-6 py-4 text-center">
                   <button 
                     onClick={() => onUpdatePayment && onUpdatePayment(pump._id, pump.payment)} 
-                    className={`p-2 rounded-xl transition-all active:scale-90 shadow-md border ${
+                    className={`p-2   transition-all active:scale-90 shadow-md border ${
                       pump.payment === "payed" 
                       ? "bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600" 
                       : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100 dark:shadow-blue-900/50"

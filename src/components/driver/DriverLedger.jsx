@@ -277,16 +277,16 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
   const SummarySkeleton = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pulse">
-          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-2"></div>
-          <div className="h-6 bg-slate-300 dark:bg-slate-600 rounded w-16"></div>
+        <div key={i} className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm animate-pulse">
+          <div className="h-3 bg-slate-200 dark:bg-slate-700   w-24 mb-2"></div>
+          <div className="h-6 bg-slate-300 dark:bg-slate-600   w-16"></div>
         </div>
       ))}
     </div>
   );
 
   const TableSkeleton = () => (
-    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="bg-white dark:bg-slate-900   shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-50 dark:bg-slate-800 border-b dark:border-slate-700">
@@ -303,13 +303,13 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {[...Array(5)].map((_, i) => (
               <tr key={i} className="animate-pulse">
-                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16"></div></td>
-                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12"></div></td>
-                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32"></div></td>
-                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12"></div></td>
-                <td className="px-4 py-2 text-right"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12 ml-auto"></div></td>
-                <td className="px-4 py-2 text-right"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12 ml-auto"></div></td>
-                <td className="px-4 py-2 text-center"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-6 mx-auto"></div></td>
+                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-16"></div></td>
+                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-12"></div></td>
+                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-32"></div></td>
+                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-12"></div></td>
+                <td className="px-4 py-2 text-right"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-12 ml-auto"></div></td>
+                <td className="px-4 py-2 text-right"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-12 ml-auto"></div></td>
+                <td className="px-4 py-2 text-center"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-6 mx-auto"></div></td>
               </tr>
             ))}
           </tbody>
@@ -329,37 +329,37 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
         <h2 className="text-xl font-black uppercase text-gray-800 dark:text-white">{driverName} - Ledger</h2>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 p-3   shadow-sm border border-slate-200 dark:border-slate-700">
         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-          className="border rounded-lg px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 flex-1 min-w-[120px]" />
+          className="border   px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 flex-1 min-w-[120px]" />
         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-          className="border rounded-lg px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 flex-1 min-w-[120px]" />
+          className="border   px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 flex-1 min-w-[120px]" />
         <button onClick={fetchLedger}
-          className="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
+          className="px-3 py-2 bg-blue-600 text-white   text-xs font-bold hover:bg-blue-700">
           Apply
         </button>
         <button onClick={() => { const range = getCurrentMonthRange(); setStartDate(range.start); setEndDate(range.end); }}
-          className="p-2 bg-gray-200 dark:bg-slate-600 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500" title="Reset">
+          className="p-2 bg-gray-200 dark:bg-slate-600   hover:bg-gray-300 dark:hover:bg-slate-500" title="Reset">
           <RotateCcw size={12} className="text-slate-700 dark:text-white" />
         </button>
         <button onClick={exportToExcel}
-          className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700" title="Excel">
+          className="p-2 bg-green-600 text-white   hover:bg-green-700" title="Excel">
           <FileSpreadsheet size={14} />
         </button>
         <button onClick={handlePrint}
-          className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700" title="Print">
+          className="p-2 bg-purple-600 text-white   hover:bg-purple-700" title="Print">
           <Printer size={14} />
         </button>
         
         {/* Selection Controls */}
         {selectedIds.length > 0 && (
           <>
-            <span className="bg-blue-600 text-white px-2 py-1 rounded-lg text-xs font-black">
+            <span className="bg-blue-600 text-white px-2 py-1   text-xs font-black">
               {selectedIds.length} Selected
             </span>
             <button
               onClick={handleBulkDelete}
-              className="flex items-center gap-1 bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-red-700"
+              className="flex items-center gap-1 bg-red-600 text-white px-3 py-2   text-xs font-bold hover:bg-red-700"
             >
               <Trash2 size={12} /> Delete Selected
             </button>
@@ -367,7 +367,7 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
         )}
 
         <button onClick={() => setPaymentModalOpen(true)}
-          className="ml-auto flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-green-700">
+          className="ml-auto flex items-center gap-1 bg-green-600 text-white px-3 py-2   text-xs font-bold hover:bg-green-700">
           <Plus size={12} /> Add Transaction
         </button>
       </div>
@@ -375,21 +375,21 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
       {/* Salary Summary Cards */}
       {loading ? <SummarySkeleton /> : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
             <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Monthly Salary</p>
             <p className="text-xl font-black text-blue-600 dark:text-blue-400">₹{salarySummary.monthlySalary.toLocaleString('en-IN')}</p>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
             <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Salary Paid (This Month)</p>
             <p className="text-xl font-black text-green-600 dark:text-green-400">₹{currentMonthSalary.toLocaleString('en-IN')}</p>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
             <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending Salary</p>
             <p className={`text-xl font-black ${pendingSalary > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
               ₹{pendingSalary.toLocaleString('en-IN')}
             </p>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
             <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Extra Payments</p>
             <p className="text-xl font-black text-orange-600 dark:text-orange-400">₹{salarySummary.extraPayments.toLocaleString('en-IN')}</p>
           </div>
@@ -399,11 +399,11 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
       {/* Balance Summary Cards */}
       {!loading && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
             <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Opening Balance (before {startDate || 'start'})</p>
             <p className="text-xl font-black text-gray-900 dark:text-white">₹{openingBefore.toLocaleString('en-IN')}</p>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
             <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Transactions</p>
             <p className="text-xl font-black text-purple-600 dark:text-purple-400">₹{(totalPayments + totalSalary).toLocaleString('en-IN')}</p>
           </div>
@@ -411,7 +411,7 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
       )}
 
       {loading ? <TableSkeleton /> : (
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="bg-white dark:bg-slate-900   shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800 border-b dark:border-slate-700">
@@ -422,7 +422,7 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
                       ref={headerCheckboxRef}
                       onChange={handleSelectAll}
                       checked={transactions.length > 0 && selectedIds.length === transactions.length}
-                      className="rounded dark:bg-slate-700 dark:border-slate-600"
+                      className="  dark:bg-slate-700 dark:border-slate-600"
                     />
                   </th>
                   <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Date</th>
@@ -446,12 +446,12 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
                             ? prev.filter(i => i !== t._id) 
                             : [...prev, t._id]
                         )}
-                        className="rounded dark:bg-slate-700 dark:border-slate-600"
+                        className="  dark:bg-slate-700 dark:border-slate-600"
                       />
                     </td>
                     <td className="px-4 py-2 text-slate-700 dark:text-slate-300">{formatDate(t.date)}</td>
                     <td className="px-4 py-2">
-                      <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase ${
+                      <span className={`px-2 py-1  -full text-[9px] font-black uppercase ${
                         t.type === 'salary' 
                           ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' 
                           : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
@@ -473,7 +473,7 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
                     </td>
                     {/* <td className="px-4 py-2 text-center">
                       <button onClick={() => handleSingleDelete(t._id)}
-                        className="p-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded" title="Delete">
+                        className="p-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30  " title="Delete">
                         <Trash2 size={14} />
                       </button>
                     </td> */}
@@ -504,15 +504,15 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
       )}
 
       {!loading && totalPages > 1 && (
-        <div className="flex justify-between items-center bg-white dark:bg-slate-800 px-4 py-3 rounded-xl border dark:border-slate-700 shadow-sm">
+        <div className="flex justify-between items-center bg-white dark:bg-slate-800 px-4 py-3   border dark:border-slate-700 shadow-sm">
           <p className="text-xs text-slate-500 dark:text-slate-400">Page {page} of {totalPages}</p>
           <div className="flex gap-2">
             <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-              className="p-1 border border-slate-300 dark:border-slate-600 rounded-lg disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700">
+              className="p-1 border border-slate-300 dark:border-slate-600   disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700">
               <ChevronLeft size={14} className="text-slate-700 dark:text-white" />
             </button>
             <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)}
-              className="p-1 border border-slate-300 dark:border-slate-600 rounded-lg disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700">
+              className="p-1 border border-slate-300 dark:border-slate-600   disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700">
               <ChevronRight size={14} className="text-slate-700 dark:text-white" />
             </button>
           </div>

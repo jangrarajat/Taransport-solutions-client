@@ -40,15 +40,15 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
 
     return (
         <div className="fixed inset-0 z-[100] bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 uppercase">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl p-8">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-lg   shadow-2xl p-8">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tighter">Add Maintenance</h2>
                     <X onClick={onClose} className="cursor-pointer dark:text-white" />
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4 font-bold">
-                    <input required type="number" placeholder="Amount (₹)" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-orange-500 dark:bg-slate-800 dark:text-white" />
-                    <textarea required placeholder="Remark" value={remark} onChange={(e) => setRemark(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-orange-500 h-24 dark:bg-slate-800 dark:text-white" />
-                    <button disabled={loading} className="w-full bg-orange-600 text-white py-4 rounded-xl font-black text-xs tracking-widest">{loading ? "Saving..." : "Save Entry"}</button>
+                    <input required type="number" placeholder="Amount (₹)" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 outline-none focus:border-orange-500 dark:bg-slate-800 dark:text-white" />
+                    <textarea required placeholder="Remark" value={remark} onChange={(e) => setRemark(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 outline-none focus:border-orange-500 h-24 dark:bg-slate-800 dark:text-white" />
+                    <button disabled={loading} className="w-full bg-orange-600 text-white py-4   font-black text-xs tracking-widest">{loading ? "Saving..." : "Save Entry"}</button>
                 </form>
             </div>
         </div>
@@ -133,14 +133,14 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
         <>
             {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
 
-            <div className="mb-4 flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+            <div className="mb-4 flex justify-between items-center bg-white dark:bg-slate-800 p-4   shadow-sm border border-slate-100 dark:border-slate-700">
                 <div className="flex items-center gap-3">
-                    {/* <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase">{selectedIds.length} Selected</span> */}
-                    <button onClick={downloadExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase"><FileSpreadsheet size={14} /> Export</button>
+                    {/* <span className="bg-blue-600 text-white px-3 py-1   text-[10px] font-black uppercase">{selectedIds.length} Selected</span> */}
+                    <button onClick={downloadExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2   text-[10px] font-black uppercase"><FileSpreadsheet size={14} /> Export</button>
                     {selectedIds.length > 0 && (
                         <button 
                             onClick={handleBulkDelete}
-                            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-700 transition-colors"
+                            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2   text-[10px] font-black uppercase hover:bg-red-700 transition-colors"
                         >
                             <Trash2 size={14} />{selectedIds.length} Delete Selected
                         </button>
@@ -148,7 +148,7 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden rounded-xl">
+            <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden  ">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead className="sticky top-0 z-20 bg-slate-800 dark:bg-black text-white">
@@ -159,7 +159,7 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
                                         ref={headerCheckboxRef}
                                         onChange={handleSelectAll}
                                         checked={selectedIds.length === data.length && data.length > 0}
-                                        className="w-4 h-4 rounded dark:bg-slate-700 dark:border-slate-600"
+                                        className="w-4 h-4   dark:bg-slate-700 dark:border-slate-600"
                                     />
                                 </th>
                                 <th className="px-4 py-4 text-center border-r border-slate-700 dark:border-slate-800">Actions</th>
@@ -180,7 +180,7 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
                                     <td className="px-4 py-3 text-center border-r dark:border-slate-700">
                                         <input
                                             type="checkbox"
-                                            className="w-4 h-4 rounded dark:bg-slate-700 dark:border-slate-600"
+                                            className="w-4 h-4   dark:bg-slate-700 dark:border-slate-600"
                                             checked={selectedIds.includes(bill._id)}
                                             onChange={() => setSelectedIds(prev => 
                                                 prev.includes(bill._id) 
@@ -192,8 +192,8 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
                                     <td className="px-4 py-3 border-r dark:border-slate-700">
                                         <div className="flex items-center justify-center gap-2">
                                             <Printer className="mx-auto cursor-pointer hover:text-blue-600 dark:hover:text-blue-400" onClick={() => { setPData(bill); setPrintBityBtn(true); }} size={18} />
-                                            <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><Edit3 size={14} /></button>
-                                            {/* <button onClick={() => handleSingleDelete(bill._id)} className="text-red-400 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg"><Trash2 size={14} /></button> */}
+                                            <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30  "><Edit3 size={14} /></button>
+                                            {/* <button onClick={() => handleSingleDelete(bill._id)} className="text-red-400 p-1.5 bg-red-50 dark:bg-red-900/30  "><Trash2 size={14} /></button> */}
                                         </div>
                                     </td>
 

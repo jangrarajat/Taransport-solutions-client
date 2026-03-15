@@ -67,8 +67,8 @@ const Pricing = ({ isOpen, onClose }) => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-bold">
                     {plans.map(plan => (
-                        <div key={plan.id} className={`bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] relative flex flex-col transition-all hover:scale-[1.02] ${plan.popular ? 'ring-4 ring-blue-500 shadow-2xl' : ''}`}>
-                            {plan.popular && <span className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-6 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Most Popular</span>}
+                        <div key={plan.id} className={`bg-white dark:bg-slate-900 p-8  relative flex flex-col transition-all hover:scale-[1.02] ${plan.popular ? 'ring-4 ring-blue-500 shadow-2xl' : ''}`}>
+                            {plan.popular && <span className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-6 py-1   text-[10px] font-black uppercase tracking-widest">Most Popular</span>}
                             <h3 className={`text-xl font-black uppercase ${plan.color}`}>{plan.name}</h3>
                             <div className="flex items-baseline gap-1 mt-4 mb-6 font-black">
                                 <span className="text-4xl dark:text-white">₹{plan.price}</span>
@@ -79,7 +79,7 @@ const Pricing = ({ isOpen, onClose }) => {
                                     <li key={i} className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300"><CheckCircle2 size={18} className="text-green-500 shrink-0"/>{f}</li>
                                 ))}
                             </ul>
-                            <button onClick={() => handlePayment(plan.id)} className={`w-full py-4 ${plan.btn} text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl active:scale-95 transition-all`}>Activate Now</button>
+                            <button onClick={() => handlePayment(plan.id)} className={`w-full py-4 ${plan.btn} text-white   font-black uppercase tracking-widest text-[10px] shadow-xl active:scale-95 transition-all`}>Activate Now</button>
                         </div>
                     ))}
                 </div>

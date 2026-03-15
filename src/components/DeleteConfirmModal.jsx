@@ -36,9 +36,9 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, count = 1, show
 
   return (
     <div className="fixed inset-0 z-[200] bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl animate-in zoom-in duration-300">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-md   p-6 shadow-2xl animate-in zoom-in duration-300">
         <div className="flex items-center gap-4 text-red-600 dark:text-red-400 mb-4">
-          <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
+          <div className="p-3 bg-red-100 dark:bg-red-900/30  ">
             <AlertTriangle size={24} />
           </div>
           <h2 className="text-xl font-black uppercase tracking-tighter dark:text-white">
@@ -59,7 +59,7 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, count = 1, show
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
           placeholder={`Type "${requiredText}"`}
-          className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-red-500/10 focus:border-red-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white mb-4"
+          className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-red-500/10 focus:border-red-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white mb-4"
           disabled={loading}
         />
 
@@ -67,14 +67,14 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, count = 1, show
           <button
             onClick={onClose}
             disabled={loading}
-            className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-black uppercase text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+            className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300   font-black uppercase text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleConfirm}
             disabled={loading || confirmText !== requiredText}
-            className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black uppercase text-xs shadow-lg shadow-red-200 dark:shadow-red-900/50 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white   font-black uppercase text-xs shadow-lg shadow-red-200 dark:shadow-red-900/50 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? <ButtonLoaders /> : 'Yes, Delete'}
           </button>

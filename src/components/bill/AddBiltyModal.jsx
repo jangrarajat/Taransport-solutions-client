@@ -157,12 +157,12 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
       {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
       
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 dark:bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-        <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl animate-in zoom-in duration-300 my-auto">
+        <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[90vh] overflow-y-auto   shadow-2xl animate-in zoom-in duration-300 my-auto">
           <div className="sticky top-0 bg-white dark:bg-slate-900 border-b dark:border-slate-700 p-6 flex justify-between items-center z-10">
             <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 uppercase tracking-widest">
               New Bilty & Trip Entry
             </h2>
-            <button onClick={onClose} type="button" className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+            <button onClick={onClose} type="button" className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800   transition-colors">
               <X size={24} className="dark:text-white" />
             </button>
           </div>
@@ -179,7 +179,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
                   name="VehicleNo"
                   value={formData.VehicleNo}
                   onChange={handleChange}
-                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
+                  className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
                   placeholder="Enter vehicle number"
                  
                 />
@@ -209,7 +209,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
                           name={key}
                           value={formData[key]}
                           onChange={handleChange}
-                          className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
+                          className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
                         >
                           <option value="">Select Pump (optional)</option>
                           {fetchingPumps ? (
@@ -225,7 +225,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
                         <button
                           type="button"
                           onClick={() => setShowAddPumpModal(true)}
-                          className="px-3 py-2 bg-blue-600 text-white rounded-xl text-xs font-black flex items-center gap-1 whitespace-nowrap"
+                          className="px-3 py-2 bg-blue-600 text-white   text-xs font-black flex items-center gap-1 whitespace-nowrap"
                         >
                           <Plus size={14} /> New
                         </button>
@@ -244,7 +244,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
                       name={key}
                       value={formData[key]}
                       onChange={handleChange}
-                      className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
+                      className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
                       placeholder={`Enter ${key}`}
                     />
                   </div>
@@ -253,13 +253,13 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
             </div>
 
             <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t dark:border-slate-700 font-bold">
-              <button type="button" onClick={onClose} className="px-6 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 order-2 sm:order-1">
+              <button type="button" onClick={onClose} className="px-6 py-3   text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 order-2 sm:order-1">
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-xl font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3   font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest"
               >
                 {loading ? "Saving..." : "Save Bilty & Trip"}
               </button>

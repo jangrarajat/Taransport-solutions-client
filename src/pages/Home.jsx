@@ -29,12 +29,12 @@ import ProfilePage from "../components/ProfilePage";
 
 // Skeleton Loaders
 const DashboardCardSkeleton = () => (
-  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 animate-pulse">
+  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6   shadow-sm border border-slate-100 dark:border-slate-700 animate-pulse">
     <div className="flex items-center gap-3">
-      <div className="p-2 sm:p-3 bg-slate-200 dark:bg-slate-700 rounded-xl w-10 h-10 sm:w-12 sm:h-12"></div>
+      <div className="p-2 sm:p-3 bg-slate-200 dark:bg-slate-700   w-10 h-10 sm:w-12 sm:h-12"></div>
       <div className="flex-1">
-        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-2"></div>
-        <div className="h-6 bg-slate-300 dark:bg-slate-600 rounded w-32"></div>
+        <div className="h-3 bg-slate-200 dark:bg-slate-700   w-24 mb-2"></div>
+        <div className="h-6 bg-slate-300 dark:bg-slate-600   w-32"></div>
       </div>
     </div>
   </div>
@@ -44,22 +44,22 @@ const TableRowSkeleton = ({ rows = 3 }) => (
   <>
     {[...Array(rows)].map((_, i) => (
       <tr key={i} className="animate-pulse">
-        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24"></div></td>
-        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32"></div></td>
+        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-24"></div></td>
+        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-32"></div></td>
       </tr>
     ))}
   </>
 );
 
 const ErrorState = ({ message, onRetry }) => (
-  <div className="bg-white dark:bg-slate-800 rounded-xl p-8 text-center border border-red-200 dark:border-red-900">
+  <div className="bg-white dark:bg-slate-800   p-8 text-center border border-red-200 dark:border-red-900">
     <AlertCircle className="mx-auto mb-3 text-red-500" size={40} />
     <h3 className="text-lg font-black text-red-600 dark:text-red-400 mb-2">Oops! Something went wrong</h3>
     <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{message}</p>
     {onRetry && (
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-black text-xs hover:bg-red-700 transition-colors"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white   font-black text-xs hover:bg-red-700 transition-colors"
       >
         <RefreshCw size={14} /> Retry
       </button>
@@ -68,7 +68,7 @@ const ErrorState = ({ message, onRetry }) => (
 );
 
 const EmptyState = ({ message }) => (
-  <div className="bg-white dark:bg-slate-800 rounded-xl p-8 text-center border border-slate-200 dark:border-slate-700">
+  <div className="bg-white dark:bg-slate-800   p-8 text-center border border-slate-200 dark:border-slate-700">
     <p className="text-slate-400 dark:text-slate-500 italic">{message}</p>
   </div>
 );
@@ -437,7 +437,7 @@ function Home() {
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-white dark:bg-gray-900 text-gray-700 transition-all duration-300 flex flex-col shadow-2xl w-64`}>
         <div className="p-5 flex items-center justify-between dark:border-slate-900">
-          <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded-lg">
+          <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900  ">
             <X size={20} />
           </button>
           <span className="text-sm font-black">MENU</span>
@@ -454,18 +454,18 @@ function Home() {
             <button
               key={item.name}
               onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); setSidebarOpen(false); setSelectedPump(null); }}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"}`}
+              className={`w-full flex items-center gap-4 p-4   transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"}`}
             >
               {item.icon}
               <span>{item.label}</span>
             </button>
           ))}
-          <button onClick={() => setShowProfile(true)} className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 mt-10">
+          <button onClick={() => setShowProfile(true)} className="w-full flex items-center gap-4 p-4   text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 mt-10">
             <Settings size={20} /> <span>Edit Profile</span>
           </button>
         </nav>
         <div className="p-4 dark:border-slate-900">
-          <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 rounded-xl text-red-400 font-bold hover:bg-red-500/10">
+          <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4   text-red-400 font-bold hover:bg-red-500/10">
             <LogOut size={20} /> <span>Logout</span>
           </button>
         </div>
@@ -475,7 +475,7 @@ function Home() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-20 bg-white dark:bg-slate-900 border-b dark:border-slate-800 flex items-center justify-between px-3 md:px-8 shrink-0 shadow-sm uppercase italic">
           <div className="flex items-center gap-2">
-            <button className="md:hidden p-2 bg-slate-100 dark:bg-slate-800 rounded-lg" onClick={() => setSidebarOpen(true)}>
+            <button className="md:hidden p-2 bg-slate-100 dark:bg-slate-800  " onClick={() => setSidebarOpen(true)}>
               <Menu size={20} className="dark:text-white" />
             </button>
             <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-slate-800 dark:text-white tracking-tighter truncate max-w-[120px] sm:max-w-[200px] md:max-w-full">
@@ -488,7 +488,7 @@ function Home() {
                 <p className="text-[10px] font-black text-slate-900 dark:text-white truncate max-w-[80px]">{user?.name}</p>
                 <p className="text-[8px] text-blue-500 dark:text-blue-400 truncate max-w-[80px]">{user?.companyName}</p>
               </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-900 dark:bg-black rounded-xl flex items-center justify-center text-white font-black group-hover:bg-blue-600 dark:group-hover:bg-blue-700 transition-colors shadow-lg">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-900 dark:bg-black   flex items-center justify-center text-white font-black group-hover:bg-blue-600 dark:group-hover:bg-blue-700 transition-colors shadow-lg">
                 {user?.companyName?.[0] || <UserIcon size={14} />}
               </div>
             </div>
@@ -500,19 +500,19 @@ function Home() {
             <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black">
               {/* Premium Status Banner - Updated with real-time countdown */}
               {user?.isPremium && (
-                <div className={`mb-6 p-4 rounded-xl shadow-lg border-l-4 ${timeRemaining?.expired
-                    ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
-                    : timeRemaining?.days <= 7
-                      ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-500'
-                      : 'bg-green-50 dark:bg-green-900/20 border-green-500'
+                <div className={`mb-6 p-4  shadow-lg border-l-4 ${timeRemaining?.expired
+                  ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
+                  : timeRemaining?.days <= 7
+                    ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-500'
+                    : 'bg-green-50 dark:bg-green-900/20 border-green-500'
                   }`}>
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${timeRemaining?.expired
-                          ? 'bg-red-100 dark:bg-red-900/40'
-                          : timeRemaining?.days <= 7
-                            ? 'bg-orange-100 dark:bg-orange-900/40'
-                            : 'bg-green-100 dark:bg-green-900/40'
+                      <div className={`p-2   ${timeRemaining?.expired
+                        ? 'bg-red-100 dark:bg-red-900/40'
+                        : timeRemaining?.days <= 7
+                          ? 'bg-orange-100 dark:bg-orange-900/40'
+                          : 'bg-green-100 dark:bg-green-900/40'
                         }`}>
                         <Crown size={20} className={
                           timeRemaining?.expired
@@ -539,7 +539,7 @@ function Home() {
                     {(timeRemaining?.days <= 7 || timeRemaining?.expired) && (
                       <button
                         onClick={() => setIsPricingOpen(true)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hover:bg-blue-700 transition-colors"
+                        className="px-4 py-2 bg-blue-600 text-white   text-xs font-black uppercase hover:bg-blue-700 transition-colors"
                       >
                         {timeRemaining?.expired ? 'Renew Now' : 'Extend'}
                       </button>
@@ -551,12 +551,12 @@ function Home() {
               {/* Revenue Overview */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <h2 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">
-                  Revenue Overview
+                  Dashboard
                 </h2>
                 <select
                   value={dashFilter}
                   onChange={(e) => setDashFilter(e.target.value)}
-                  className="border rounded-lg px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700"
+                  className="border  px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700"
                 >
                   <option value="week">This Week</option>
                   <option value="month">This Month</option>
@@ -573,9 +573,9 @@ function Home() {
               ) : error.dashboard ? (
                 <ErrorState message={error.dashboard} onRetry={getDashboardData} />
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 hover:shadow-xl transition-all group">
-                    <div className="p-2 sm:p-3 bg-blue-600 rounded-xl text-white shadow-lg group-hover:scale-110 duration-300">
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 sm:gap-4">
+                  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6  shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 hover:shadow-xl transition-all group">
+                    <div className="p-2 sm:p-3 bg-blue-600   text-white shadow-lg group-hover:scale-110 duration-300">
                       <TrendingUp size={18} />
                     </div>
                     <div>
@@ -587,8 +587,8 @@ function Home() {
                       </h3>
                     </div>
                   </div>
-                  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 hover:shadow-xl transition-all group">
-                    <div className="p-2 sm:p-3 bg-orange-500 rounded-xl text-white shadow-lg group-hover:scale-110 duration-300">
+                  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6  shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 hover:shadow-xl transition-all group">
+                    <div className="p-2 sm:p-3 bg-orange-500   text-white shadow-lg group-hover:scale-110 duration-300">
                       <Wallet size={18} />
                     </div>
                     <div>
@@ -599,30 +599,24 @@ function Home() {
                         ₹{dashData.totalTripBalance?.toLocaleString('en-IN')}
                       </h3>
                     </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Vehicle & Driver Stats */}
-              <div className="mt-8">
-                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 underline decoration-purple-500 decoration-4 underline-offset-8">
-                  Fleet Overview
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                  </div>
+                  <div className="bg-white dark:bg-slate-800 p-5  shadow-sm border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Vehicles</p>
                     <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">{vehicleCount}</p>
                   </div>
-                  <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                  <div className="bg-white dark:bg-slate-800 p-5  shadow-sm border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Drivers</p>
                     <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">{driverCount}</p>
                   </div>
-                  <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                  <div className="bg-white dark:bg-slate-800 p-5  shadow-sm border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Payments to Drivers (This Month)</p>
                     <p className="text-2xl font-black text-green-600 dark:text-green-400 mt-1">₹{totalDriverPayments.toLocaleString('en-IN')}</p>
                   </div>
                 </div>
-              </div>
+              )}
+
+            
 
               {/* Pump Summary */}
               <div className="mt-8">
@@ -630,7 +624,7 @@ function Home() {
                   Petrol Pumps Payable
                 </h3>
                 {loading.pumpSummary ? (
-                  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="bg-white dark:bg-slate-800  shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
@@ -650,7 +644,7 @@ function Home() {
                 ) : pumpSummary.length === 0 ? (
                   <EmptyState message="No pumps found. Add a pump in Petrol Pump section." />
                 ) : (
-                  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="bg-white dark:bg-slate-800  shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
@@ -685,8 +679,8 @@ function Home() {
 
               {/* Driver Payments List */}
               {loading.stats ? (
-                <div className="mt-6 ">
-                  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="mt-6">
+                  <div className="bg-white dark:bg-slate-800  shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="p-8 text-center">
                       <ButtonLoaders />
                     </div>
@@ -699,7 +693,7 @@ function Home() {
               ) : driverMonthlyPayments.length > 0 ? (
                 <div className="mt-6 pb-20">
                   <h4 className="text-sm font-black text-slate-900 dark:text-white mb-3 underline decoration-blue-500 decoration-4 underline-offset-8">Driver Payments This Month</h4>
-                  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="bg-white dark:bg-slate-800  shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
@@ -727,7 +721,7 @@ function Home() {
           {(menuOption === "biltiy" || menuOption === "accounts") && (
             <div className="space-y-3 animate-in fade-in duration-500">
               {/* Filter bar with vehicle suggestions */}
-              <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+              <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3   shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
                   <div className="relative flex-1 min-w-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} />
@@ -735,7 +729,7 @@ function Home() {
                       type="text"
                       list="vehicleSearchList"
                       placeholder="Search LR, Vehicle..."
-                      className="w-full pl-8 pr-3 py-2 border rounded-lg text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
+                      className="w-full pl-8 pr-3 py-2 border   text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyDown={handleKeyDown}
@@ -751,23 +745,23 @@ function Home() {
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="border rounded-lg px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                      className="border   px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="border rounded-lg px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                      className="border   px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <button
                       onClick={handleSearch}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-1 text-[10px] font-black shadow-lg hover:bg-blue-700 transition-colors"
+                      className="px-3 py-2 bg-blue-600 text-white   flex items-center gap-1 text-[10px] font-black shadow-lg hover:bg-blue-700 transition-colors"
                     >
                       <Search size={12} /> Search
                     </button>
                     <button
                       onClick={resetToCurrentMonth}
-                      className="p-2 bg-gray-200 dark:bg-slate-600 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+                      className="p-2 bg-gray-200 dark:bg-slate-600   hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
                       title="Reset to current month"
                     >
                       <RotateCcw size={12} className="text-slate-700 dark:text-white" />
@@ -776,14 +770,14 @@ function Home() {
                 </div>
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-1 text-[10px] font-black shadow-lg shadow-blue-100 dark:shadow-blue-900/50 w-full sm:w-auto"
+                  className="bg-blue-600 text-white px-4 py-2   flex items-center justify-center gap-1 text-[10px] font-black shadow-lg shadow-blue-100 dark:shadow-blue-900/50 w-full sm:w-auto"
                 >
                   <Plus size={14} /> New Bilty
                 </button>
               </div>
 
               {/* Table container */}
-              <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden rounded-xl">
+              <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden  ">
                 <div className="overflow-x-auto">
                   {menuOption === "biltiy" ? (
                     <BiltyTable
@@ -804,6 +798,7 @@ function Home() {
                       vehicleTotalBalance={vehicleTotalBalance}
                       openingBalance={openingBalance}
                       closingBalance={closingBalance}
+                      vehicleList={vehicleList}   // ← PASS VEHICLE LIST HERE
                     />
                   )}
                 </div>
@@ -838,14 +833,14 @@ function Home() {
           {/* Expenses Section */}
           {menuOption === "expantion" && (
             <div className="space-y-3 animate-in fade-in duration-500">
-              <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+              <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3   shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
                   <div className="relative flex-1 min-w-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} />
                     <input
                       type="text"
                       placeholder="Search by Title or Purpose..."
-                      className="w-full pl-8 pr-3 py-2 border rounded-lg text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
+                      className="w-full pl-8 pr-3 py-2 border   text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyDown={handleKeyDown}
@@ -856,23 +851,23 @@ function Home() {
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="border rounded-lg px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                      className="border   px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="border rounded-lg px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                      className="border   px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <button
                       onClick={handleSearch}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-1 text-[10px] font-black shadow-lg hover:bg-blue-700 transition-colors"
+                      className="px-3 py-2 bg-blue-600 text-white   flex items-center gap-1 text-[10px] font-black shadow-lg hover:bg-blue-700 transition-colors"
                     >
                       <Search size={12} /> Search
                     </button>
                     <button
                       onClick={resetToCurrentMonth}
-                      className="p-2 bg-gray-200 dark:bg-slate-600 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+                      className="p-2 bg-gray-200 dark:bg-slate-600   hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
                       title="Reset to current month"
                     >
                       <RotateCcw size={12} className="text-slate-700 dark:text-white" />
@@ -881,7 +876,7 @@ function Home() {
                 </div>
                 <button
                   onClick={() => setIsExModalOpen(true)}
-                  className="bg-slate-900 dark:bg-black text-white px-4 py-2 rounded-xl flex items-center justify-center gap-1 text-[10px] font-black shadow-xl w-full sm:w-auto"
+                  className="bg-slate-900 dark:bg-black text-white px-4 py-2   flex items-center justify-center gap-1 text-[10px] font-black shadow-xl w-full sm:w-auto"
                 >
                   <Plus size={14} /> New Expense
                 </button>
@@ -898,7 +893,7 @@ function Home() {
           )}
 
           {menuOption !== "home" && menuOption !== "petrolPump" && menuOption !== "Reports" && totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4 rounded-xl border dark:border-slate-700 shadow-sm">
+            <div className="flex items-center justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4   border dark:border-slate-700 shadow-sm">
               <p className="text-[8px] uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">
                 Page {currentPage} of {totalPages}
               </p>
@@ -906,14 +901,14 @@ function Home() {
                 <button
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(p => p - 1)}
-                  className="p-1 border border-gray-300 dark:border-slate-600 rounded-lg disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                  className="p-1 border border-gray-300 dark:border-slate-600   disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
                 >
                   <ChevronLeft size={14} className="dark:text-white" />
                 </button>
                 <button
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(p => p + 1)}
-                  className="p-1 border border-gray-300 dark:border-slate-600 rounded-lg disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                  className="p-1 border border-gray-300 dark:border-slate-600   disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
                 >
                   <ChevronRight size={14} className="dark:text-white" />
                 </button>
