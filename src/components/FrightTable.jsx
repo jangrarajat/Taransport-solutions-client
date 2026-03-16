@@ -529,7 +529,7 @@ const FrightTable = ({
               <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t dark:border-slate-700 font-bold">
                 <button type="button" onClick={() => setAddPayment(!addPayment)} className="px-6 py-3  text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 order-2 sm:order-1">Cancel</button>
                 <button type="submit" onClick={handleAddPayment} className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3  font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest flex items-center justify-center">
-                  {loading ? (<ButtonLoaders />) : "Save Payment"}
+                  {loading ? (<ButtonLoaders/>) : "Save Payment"}
                 </button>
               </div>
             </div>

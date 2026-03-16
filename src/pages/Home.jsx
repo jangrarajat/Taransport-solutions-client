@@ -75,7 +75,7 @@ const EmptyState = ({ message }) => (
 
 function Home() {
   const navigate = useNavigate();
-  const { user, setUser, logout } = useAuth(); // AuthContext se user le rahe hain
+  const { user, setUser, logout } = useAuth();
 
   const [menuOption, setMenuOption] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -104,7 +104,6 @@ function Home() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [dashFilter, setDashFilter] = useState("month");
   const [searchTerm, setSearchTerm] = useState("");
   const [vehicleList, setVehicleList] = useState([]);
   const [vehicleTotalBalance, setVehicleTotalBalance] = useState(null);
@@ -154,6 +153,22 @@ function Home() {
   const [startDate, setStartDate] = useState(initialRange.start);
   const [endDate, setEndDate] = useState(initialRange.end);
 
+  // Dashboard filter states
+  const [dashFilterType, setDashFilterType] = useState("month"); // "week", "month", "year", "custom"
+  const [dashStartDate, setDashStartDate] = useState(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
+  });
+  const [dashEndDate, setDashEndDate] = useState(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+    return `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+  });
+
   // Dark mode effect
   useEffect(() => {
     if (darkMode) {
@@ -175,7 +190,7 @@ function Home() {
     };
 
     updateRemaining();
-    const interval = setInterval(updateRemaining, 60000); // Har minute update
+    const interval = setInterval(updateRemaining, 60000);
 
     return () => clearInterval(interval);
   }, [user]);
@@ -183,7 +198,6 @@ function Home() {
   // User update events listen karein
   useEffect(() => {
     const handleUserUpdate = (event) => {
-      // AuthContext already updates, but we need to force re-render
       setUser(event.detail);
     };
 
@@ -230,30 +244,40 @@ function Home() {
     }
   };
 
-  // Dashboard data
-  const getDashboardData = useCallback(async () => {
+  // Dashboard data fetch with new filter
+  const getDashboardData = useCallback(async (type = dashFilterType, start = dashStartDate, end = dashEndDate) => {
     setLoading(prev => ({ ...prev, dashboard: true }));
     setError(prev => ({ ...prev, dashboard: null }));
     try {
-      const response = await axios.get(`${backendUrl}/api/user/dashbord?filter=${dashFilter}`, { withCredentials: true });
+      let url = `${backendUrl}/api/user/dashbord?`;
+      if (type === "custom") {
+        url += `startDate=${start}&endDate=${end}`;
+      } else {
+        url += `filter=${type}`;
+      }
+      const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) setDashData(response.data.data);
     } catch (error) {
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
-        if (isRefreshed) return getDashboardData();
+        if (isRefreshed) return getDashboardData(type, start, end);
       }
       setError(prev => ({ ...prev, dashboard: error.response?.data?.message || "Failed to load dashboard data" }));
     } finally {
       setLoading(prev => ({ ...prev, dashboard: false }));
     }
-  }, [dashFilter]);
+  }, []);
 
-  // Pump summary
-  const fetchPumpSummary = async () => {
+  // Pump summary with date filter
+  const fetchPumpSummary = useCallback(async (start, end) => {
     setLoading(prev => ({ ...prev, pumpSummary: true }));
     setError(prev => ({ ...prev, pumpSummary: null }));
     try {
-      const res = await axios.get(`${backendUrl}/api/pump-transactions/summary`, { withCredentials: true });
+      let url = `${backendUrl}/api/pump-transactions/summary`;
+      if (start && end) {
+        url += `?startDate=${start}&endDate=${end}`;
+      }
+      const res = await axios.get(url, { withCredentials: true });
       if (res.data.success) {
         setPumpSummary(res.data.summary);
         const total = res.data.summary.reduce((acc, p) => acc + p.balance, 0);
@@ -262,15 +286,15 @@ function Home() {
     } catch (error) {
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
-        if (isRefreshed) return fetchPumpSummary();
+        if (isRefreshed) return fetchPumpSummary(start, end);
       }
       setError(prev => ({ ...prev, pumpSummary: error.response?.data?.message || "Failed to load pump summary" }));
     } finally {
       setLoading(prev => ({ ...prev, pumpSummary: false }));
     }
-  };
+  }, []);
 
-  // Vehicle & Driver stats
+  // Vehicle & Driver stats (not date‑dependent)
   const fetchVehicleStats = async () => {
     try {
       const res = await axios.get(`${backendUrl}/api/vehicle-master/stats`, { withCredentials: true });
@@ -295,11 +319,16 @@ function Home() {
     }
   };
 
-  const fetchDriverMonthlyPayments = async () => {
+  // Driver payments with date filter
+  const fetchDriverMonthlyPayments = useCallback(async (start, end) => {
     setLoading(prev => ({ ...prev, stats: true }));
     setError(prev => ({ ...prev, stats: null }));
     try {
-      const res = await axios.get(`${backendUrl}/api/driver-transactions/current-month`, { withCredentials: true });
+      let url = `${backendUrl}/api/driver-transactions/current-month`;
+      if (start && end) {
+        url += `?startDate=${start}&endDate=${end}`;
+      }
+      const res = await axios.get(url, { withCredentials: true });
       if (res.data.success) {
         setDriverMonthlyPayments(res.data.drivers);
         setTotalDriverPayments(res.data.totalPayments);
@@ -307,13 +336,13 @@ function Home() {
     } catch (error) {
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
-        if (isRefreshed) return fetchDriverMonthlyPayments();
+        if (isRefreshed) return fetchDriverMonthlyPayments(start, end);
       }
       setError(prev => ({ ...prev, stats: error.response?.data?.message || "Failed to load driver payments" }));
     } finally {
       setLoading(prev => ({ ...prev, stats: false }));
     }
-  };
+  }, []);
 
   // Bilty data
   const getBilty = useCallback(async (page = 1) => {
@@ -348,7 +377,6 @@ function Home() {
     setLoading(prev => ({ ...prev, expense: true }));
     try {
       const url = `${backendUrl}/api/persnol/get-expantion?page=${page}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
-      console.log("Fetching expenses with URL:", url);
       const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {
         const formattedExpenses = response.data.expantions.map(exp => ({
@@ -393,11 +421,11 @@ function Home() {
   // Initial data fetch based on menu option
   useEffect(() => {
     if (menuOption === "home") {
-      getDashboardData();
-      fetchPumpSummary();
+      getDashboardData(dashFilterType, dashStartDate, dashEndDate);
+      fetchPumpSummary(dashStartDate, dashEndDate);
       fetchVehicleStats();
       fetchDriverStats();
-      fetchDriverMonthlyPayments();
+      fetchDriverMonthlyPayments(dashStartDate, dashEndDate);
       fetchVehicles();
     } else if (menuOption === "biltiy" || menuOption === "accounts") {
       fetchVehicles();
@@ -407,11 +435,20 @@ function Home() {
     } else if (menuOption !== "petrolPump" && menuOption !== "Reports") {
       handleSearch();
     }
-  }, [menuOption]);
+  }, [menuOption]); // No dependencies on functions because they are stable with useCallback
+
+  // Fetch dashboard data when filter changes
+  useEffect(() => {
+    if (menuOption === "home") {
+      getDashboardData(dashFilterType, dashStartDate, dashEndDate);
+      fetchPumpSummary(dashStartDate, dashEndDate);
+      fetchDriverMonthlyPayments(dashStartDate, dashEndDate);
+    }
+  }, [dashFilterType, dashStartDate, dashEndDate, menuOption, getDashboardData, fetchPumpSummary, fetchDriverMonthlyPayments]);
 
   // Logout handler
   const handleLogout = () => {
-    logout(); // AuthContext ka logout use karo
+    logout();
     navigate("/auth");
   };
 
@@ -498,7 +535,7 @@ function Home() {
         <main className="p-3 sm:p-4 md:p-6 lg:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
           {menuOption === "home" && (
             <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black">
-              {/* Premium Status Banner - Updated with real-time countdown */}
+              {/* Premium Status Banner */}
               {user?.isPremium && (
                 <div className={`mb-6 p-4  shadow-lg border-l-4 ${timeRemaining?.expired
                   ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
@@ -548,21 +585,57 @@ function Home() {
                 </div>
               )}
 
-              {/* Revenue Overview */}
+              {/* Dashboard Filter Bar */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <h2 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">
                   Dashboard
                 </h2>
-                <select
-                  value={dashFilter}
-                  onChange={(e) => setDashFilter(e.target.value)}
-                  className="border  px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700"
-                >
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                  <option value="year">This Year</option>
-                </select>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setDashFilterType("week")}
+                    className={`px-3 py-1.5 text-xs font-black uppercase transition-colors ${dashFilterType === "week" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
+                  >
+                    Week
+                  </button>
+                  <button
+                    onClick={() => setDashFilterType("month")}
+                    className={`px-3 py-1.5 text-xs font-black uppercase transition-colors ${dashFilterType === "month" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
+                  >
+                    Month
+                  </button>
+                  <button
+                    onClick={() => setDashFilterType("year")}
+                    className={`px-3 py-1.5 text-xs font-black uppercase transition-colors ${dashFilterType === "year" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
+                  >
+                    Year
+                  </button>
+                  <button
+                    onClick={() => setDashFilterType("custom")}
+                    className={`px-3 py-1.5 text-xs font-black uppercase transition-colors ${dashFilterType === "custom" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
+                  >
+                    Custom
+                  </button>
+                </div>
               </div>
+
+              {/* Custom date range inputs */}
+              {dashFilterType === "custom" && (
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <input
+                    type="date"
+                    value={dashStartDate}
+                    onChange={(e) => setDashStartDate(e.target.value)}
+                    className="border px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700"
+                  />
+                  <span className="text-slate-500 dark:text-slate-400">to</span>
+                  <input
+                    type="date"
+                    value={dashEndDate}
+                    onChange={(e) => setDashEndDate(e.target.value)}
+                    className="border px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700"
+                  />
+                </div>
+              )}
 
               {/* Dashboard Cards */}
               {loading.dashboard ? (
@@ -599,7 +672,6 @@ function Home() {
                         ₹{dashData.totalTripBalance?.toLocaleString('en-IN')}
                       </h3>
                     </div>
-
                   </div>
                   <div className="bg-white dark:bg-slate-800 p-5  shadow-sm border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Vehicles</p>
@@ -610,18 +682,16 @@ function Home() {
                     <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">{driverCount}</p>
                   </div>
                   <div className="bg-white dark:bg-slate-800 p-5  shadow-sm border border-slate-200 dark:border-slate-700">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Payments to Drivers (This Month)</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Payments to Drivers (Selected Period)</p>
                     <p className="text-2xl font-black text-green-600 dark:text-green-400 mt-1">₹{totalDriverPayments.toLocaleString('en-IN')}</p>
                   </div>
                 </div>
               )}
 
-            
-
               {/* Pump Summary */}
               <div className="mt-8">
                 <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 underline decoration-green-500 decoration-4 underline-offset-8">
-                  Petrol Pumps Payable
+                  Petrol Pumps Payable (as of {dashEndDate})
                 </h3>
                 {loading.pumpSummary ? (
                   <div className="bg-white dark:bg-slate-800  shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -640,7 +710,7 @@ function Home() {
                     </div>
                   </div>
                 ) : error.pumpSummary ? (
-                  <ErrorState message={error.pumpSummary} onRetry={fetchPumpSummary} />
+                  <ErrorState message={error.pumpSummary} onRetry={() => fetchPumpSummary(dashStartDate, dashEndDate)} />
                 ) : pumpSummary.length === 0 ? (
                   <EmptyState message="No pumps found. Add a pump in Petrol Pump section." />
                 ) : (
@@ -688,11 +758,11 @@ function Home() {
                 </div>
               ) : error.stats ? (
                 <div className="mt-6">
-                  <ErrorState message={error.stats} onRetry={fetchDriverMonthlyPayments} />
+                  <ErrorState message={error.stats} onRetry={() => fetchDriverMonthlyPayments(dashStartDate, dashEndDate)} />
                 </div>
               ) : driverMonthlyPayments.length > 0 ? (
                 <div className="mt-6 pb-20">
-                  <h4 className="text-sm font-black text-slate-900 dark:text-white mb-3 underline decoration-blue-500 decoration-4 underline-offset-8">Driver Payments This Month</h4>
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white mb-3 underline decoration-blue-500 decoration-4 underline-offset-8">Driver Payments (Selected Period)</h4>
                   <div className="bg-white dark:bg-slate-800  shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
@@ -798,7 +868,7 @@ function Home() {
                       vehicleTotalBalance={vehicleTotalBalance}
                       openingBalance={openingBalance}
                       closingBalance={closingBalance}
-                      vehicleList={vehicleList}   // ← PASS VEHICLE LIST HERE
+                      vehicleList={vehicleList}
                     />
                   )}
                 </div>
