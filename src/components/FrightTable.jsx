@@ -44,17 +44,17 @@ const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification })
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 uppercase">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-md  shadow-2xl p-6">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded shadow-2xl p-6">
         <div className="flex justify-between items-center mb-6 border-b dark:border-slate-700 pb-4">
           <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase">Vehicle Maintenance</h2>
           <X onClick={onClose} className="cursor-pointer text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white" />
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input required type="number" placeholder="Amount (₹)" value={amount} onChange={(e) => setAmount(e.target.value)}
-            className="w-full border   px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none focus:border-orange-400" />
+            className="w-full border rounded px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none focus:border-orange-400" />
           <input required type="text" placeholder="Remark" value={remark} onChange={(e) => setRemark(e.target.value)}
-            className="w-full border   px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none focus:border-orange-400" />
-          <button disabled={loading} className="w-full bg-orange-500 text-white py-4   font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+            className="w-full border rounded px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none focus:border-orange-400" />
+          <button disabled={loading} className="w-full bg-orange-500 text-white py-4 rounded font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2">
             {loading ? <ButtonLoaders /> : "Save & Update"}
           </button>
         </form>
@@ -71,7 +71,10 @@ const FrightTable = ({
   vehicleTotalBalance,
   openingBalance,
   closingBalance,
-  vehicleList   // ← new prop
+  vehicleList,
+  startDate,
+  endDate,
+  searchTerm
 }) => {
   const [addPayment, setAddPayment] = useState(false);
   const [printBityBtn, setPrintBityBtn] = useState(false);
@@ -82,30 +85,91 @@ const FrightTable = ({
   const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleteModal, setDeleteModal] = useState({ open: false, ids: [] });
-  const [date, setDate] = useState();
-  const [nameOfRecipient, setNameOfRecipient] = useState('');
-  const [vehicleNo, setVehicleNo] = useState('');
-  const [amount, setAmount] = useState();
-  const [remark, setRemark] = useState('');
-  const [destination, setDestination] = useState('');
+  const [date, setDate] = useState("");
+  const [nameOfRecipient, setNameOfRecipient] = useState("");
+  const [vehicleNo, setVehicleNo] = useState("");
+  const [amount, setAmount] = useState("");
+  const [remark, setRemark] = useState("");
+  const [destination, setDestination] = useState("");
+  const [paymentType, setPaymentType] = useState("credit");
+  const [pumpList, setPumpList] = useState([]);
+  const [fetchingPumps, setFetchingPumps] = useState(false);
+  const [desilEntries, setDesilEntries] = useState([]);
+  const [loadingDesil, setLoadingDesil] = useState(false);
 
   const headerCheckboxRef = useRef(null);
 
-  const sortedData = useMemo(() => {
-    return [...data].sort((a, b) => {
+  useEffect(() => {
+    if (addPayment) {
+      fetchPumps();
+    }
+  }, [addPayment]);
+
+  useEffect(() => {
+    if (startDate && endDate) {
+      fetchDesilEntries();
+    }
+  }, [startDate, endDate, searchTerm]);
+
+  const fetchPumps = async () => {
+    setFetchingPumps(true);
+    try {
+      const res = await axios.get(`${backendUrl}/api/pump-master`, { withCredentials: true });
+      if (res.data.success) {
+        setPumpList(res.data.pumps);
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) return fetchPumps();
+      }
+      console.error("Failed to fetch pumps", error);
+    } finally {
+      setFetchingPumps(false);
+    }
+  };
+
+  const fetchDesilEntries = async () => {
+    setLoadingDesil(true);
+    try {
+      let url = `${backendUrl}/api/pump-transactions/purchases?startDate=${startDate}&endDate=${endDate}&unlinked=true`;
+      if (searchTerm) {
+        url += `&vehicleNo=${searchTerm}`;
+      }
+      const res = await axios.get(url, { withCredentials: true });
+      if (res.data.success) {
+        setDesilEntries(res.data.purchases);
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) return fetchDesilEntries();
+      }
+      console.error("Failed to fetch desil entries", error);
+    } finally {
+      setLoadingDesil(false);
+    }
+  };
+
+  const mergedData = useMemo(() => {
+    const all = [...data, ...desilEntries];
+    return all.sort((a, b) => {
       const dateA = new Date(a.DateOfIssueOfInvoice);
       const dateB = new Date(b.DateOfIssueOfInvoice);
       return dateA - dateB;
     });
-  }, [data]);
+  }, [data, desilEntries]);
+
+  const sortedData = mergedData;
 
   const runningBalances = useMemo(() => {
     if (!sortedData.length) return [];
     const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
     if (startBalance === null || startBalance === undefined) return [];
     let running = startBalance;
-    return sortedData.map((bill) => {
-      running = running - (bill.tripBalanceAmmount || 0);
+    return sortedData.map((item) => {
+      const amount = item.isDesil ? item.desil : (item.tripBalanceAmmount || 0);
+      running = running - amount;
       return running;
     });
   }, [sortedData, openingBalance, vehicleTotalBalance]);
@@ -130,15 +194,20 @@ const FrightTable = ({
   };
 
   const calculateTotals = (exportData) => {
-    return exportData.reduce((acc, bill) => {
-      acc.qty += parseQty(bill.Quantity);
-      acc.freight += bill.frightAmount || 0;
-      acc.commission += bill.commeion || 0;
-      acc.advance += bill.advanceCash || 0;
-      acc.diesel += bill.desil || 0;
-      acc.maintenance += (bill.maintenance?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0);
-      acc.balance += bill.tripBalanceAmmount || 0;
-      acc.final += bill.faynalAmmount || 0;
+    return exportData.reduce((acc, item) => {
+      if (item.isDesil) {
+        acc.diesel += item.desil || 0;
+        acc.balance += item.tripBalanceAmmount || 0;
+      } else {
+        acc.qty += parseQty(item.Quantity);
+        acc.freight += item.frightAmount || 0;
+        acc.commission += item.commeion || 0;
+        acc.advance += item.advanceCash || 0;
+        acc.diesel += item.desil || 0;
+        acc.maintenance += (item.maintenance?.reduce((sum, m) => sum + (m.amount || 0), 0) || 0);
+        acc.balance += item.tripBalanceAmmount || 0;
+        acc.final += item.faynalAmmount || 0;
+      }
       return acc;
     }, {
       qty: 0,
@@ -163,42 +232,34 @@ const FrightTable = ({
       "Final Amount (₹)", "Remark", "Balance (₹)"
     ];
 
-    const rows = exportData.map((bill) => [
-      bill.DateOfIssueOfInvoice || "",
-      bill.LRNO || "",
-      bill.challanNO || "",
-      bill.VehicleNo || "",
-      bill.DINo || "",
-      bill.NameOfRecipient || "",
-      bill.Destination || "",
-      parseQty(bill.Quantity),
-      bill.pmt || "",
-      bill.frightAmount || 0,
-      bill.commeion || 0,
-      bill.advanceCash || 0,
-      bill.desil || 0,
-      bill.petrolPump || "N/A",
-      bill.faynalAmmount || 0,
-      bill.remark || "",
-      bill.tripBalanceAmmount || 0
+    const rows = exportData.map((item) => [
+      item.DateOfIssueOfInvoice || "",
+      item.LRNO || "",
+      item.challanNO || "",
+      item.VehicleNo || "",
+      item.DINo || "",
+      item.NameOfRecipient || "",
+      item.Destination || "",
+      parseQty(item.Quantity),
+      item.pmt || "",
+      item.frightAmount || 0,
+      item.commeion || 0,
+      item.advanceCash || 0,
+      item.desil || 0,
+      item.petrolPump || "N/A",
+      item.faynalAmmount || 0,
+      item.remark || "",
+      item.tripBalanceAmmount || 0
     ]);
 
     const totalsRow = [
-      "TOTAL", "", "", "", "", "", "",
-      totals.qty,
-      "",
-      totals.freight,
-      totals.commission,
-      totals.advance,
-      totals.diesel,
-      "",
-      totals.final,
-      "",
-      totals.balance
+      "TOTAL", "", "", "", "", "", "", totals.qty, "",
+      totals.freight, totals.commission, totals.advance, totals.diesel, "",
+      totals.final, "", totals.balance
     ];
 
     const summaryLine = hasValidBalance
-      ? `<p style="font-weight: bold; margin-bottom: 8px;">Opening Balance: ₹${runningBalances.length ? runningBalances[runningBalances.length - 1] : '-'} | Closing Balance: ₹${startBalance !== null ? startBalance : '-'}</p>`
+      ? `<p style="font-weight: bold; margin-bottom: 8px;">Opening Balance: ₹${runningBalances.length ? runningBalances[runningBalances.length - 1] : '-'} | Closing Balance: ₹${startBalance}</p>`
       : '';
 
     const htmlContent = `
@@ -252,38 +313,30 @@ const FrightTable = ({
           "Freight", "Comm.", "Advance", "Diesel", "Pump", "Final", "Remark", "Balance"]
       ];
 
-      const rows = exportData.map((bill) => [
-        bill.DateOfIssueOfInvoice || "",
-        bill.LRNO || "",
-        bill.challanNO || "",
-        bill.VehicleNo || "",
-        bill.DINo || "",
-        bill.NameOfRecipient || "",
-        bill.Destination || "",
-        String(parseQty(bill.Quantity)),
-        bill.pmt || "",
-        String(bill.frightAmount || 0),
-        String(bill.commeion || 0),
-        String(bill.advanceCash || 0),
-        String(bill.desil || 0),
-        bill.petrolPump || "N/A",
-        String(bill.faynalAmmount || 0),
-        bill.remark || "",
-        String(bill.tripBalanceAmmount || 0)
+      const rows = exportData.map((item) => [
+        item.DateOfIssueOfInvoice || "",
+        item.LRNO || "",
+        item.challanNO || "",
+        item.VehicleNo || "",
+        item.DINo || "",
+        item.NameOfRecipient || "",
+        item.Destination || "",
+        String(parseQty(item.Quantity)),
+        item.pmt || "",
+        String(item.frightAmount || 0),
+        String(item.commeion || 0),
+        String(item.advanceCash || 0),
+        String(item.desil || 0),
+        item.petrolPump || "N/A",
+        String(item.faynalAmmount || 0),
+        item.remark || "",
+        String(item.tripBalanceAmmount || 0)
       ]);
 
       const totalsRow = [
-        "TOTAL", "", "", "", "", "", "",
-        String(totals.qty),
-        "",
-        String(totals.freight),
-        String(totals.commission),
-        String(totals.advance),
-        String(totals.diesel),
-        "",
-        String(totals.final),
-        "",
-        String(totals.balance)
+        "TOTAL", "", "", "", "", "", "", String(totals.qty), "",
+        String(totals.freight), String(totals.commission), String(totals.advance), String(totals.diesel), "",
+        String(totals.final), "", String(totals.balance)
       ];
 
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
@@ -346,38 +399,30 @@ const FrightTable = ({
       "Final Amount (₹)", "Remark", "Balance (₹)"
     ];
 
-    const rows = exportData.map((bill) => [
-      bill.DateOfIssueOfInvoice || "",
-      bill.LRNO || "",
-      bill.challanNO || "",
-      bill.VehicleNo || "",
-      bill.DINo || "",
-      bill.NameOfRecipient || "",
-      bill.Destination || "",
-      parseQty(bill.Quantity),
-      bill.pmt || "",
-      bill.frightAmount || 0,
-      bill.commeion || 0,
-      bill.advanceCash || 0,
-      bill.desil || 0,
-      bill.petrolPump || "N/A",
-      bill.faynalAmmount || 0,
-      bill.remark || "",
-      bill.tripBalanceAmmount || 0
+    const rows = exportData.map((item) => [
+      item.DateOfIssueOfInvoice || "",
+      item.LRNO || "",
+      item.challanNO || "",
+      item.VehicleNo || "",
+      item.DINo || "",
+      item.NameOfRecipient || "",
+      item.Destination || "",
+      parseQty(item.Quantity),
+      item.pmt || "",
+      item.frightAmount || 0,
+      item.commeion || 0,
+      item.advanceCash || 0,
+      item.desil || 0,
+      item.petrolPump || "N/A",
+      item.faynalAmmount || 0,
+      item.remark || "",
+      item.tripBalanceAmmount || 0
     ]);
 
     const totalsRow = [
-      "TOTAL", "", "", "", "", "", "",
-      totals.qty,
-      "",
-      totals.freight,
-      totals.commission,
-      totals.advance,
-      totals.diesel,
-      "",
-      totals.final,
-      "",
-      totals.balance
+      "TOTAL", "", "", "", "", "", "", totals.qty, "",
+      totals.freight, totals.commission, totals.advance, totals.diesel, "",
+      totals.final, "", totals.balance
     ];
 
     const summaryLine = hasValidBalance
@@ -433,22 +478,38 @@ const FrightTable = ({
 
   const handleDeleteClick = async () => {
     try {
-      const deletePromises = deleteModal.ids.map(id => 
-        axios.delete(`${backendUrl}/api/bill/delete-bilty/${id}`, { withCredentials: true })
-      );
+      const biltyIds = deleteModal.ids.filter(id => {
+        const item = sortedData.find(d => d._id === id);
+        return item && !item.isDesil;
+      });
+      const desilIds = deleteModal.ids.filter(id => {
+        const item = sortedData.find(d => d._id === id);
+        return item && item.isDesil;
+      });
+
+      const promises = [];
+      if (biltyIds.length > 0) {
+        promises.push(...biltyIds.map(id => 
+          axios.delete(`${backendUrl}/api/bill/delete-bilty/${id}`, { withCredentials: true })
+        ));
+      }
+      if (desilIds.length > 0) {
+        promises.push(...desilIds.map(id => 
+          axios.delete(`${backendUrl}/api/pump-transactions/${id}`, { withCredentials: true })
+        ));
+      }
       
-      await Promise.all(deletePromises);
+      await Promise.all(promises);
       
       setSelectedIds([]);
       refreshData();
+      fetchDesilEntries();
     } catch (error) { 
       throw new Error(error.response?.data?.message || "Delete Failed");
     }
   };
 
-  // Updated handleAddPayment with vehicle validation
   const handleAddPayment = async () => {
-    // Check if vehicle number exists in master list (case‑insensitive)
     const vehicleExists = vehicleList?.some(
       v => v.vehicleNo.toUpperCase() === vehicleNo.toUpperCase()
     );
@@ -458,18 +519,30 @@ const FrightTable = ({
     }
 
     try {
-      const response = await axios.post(`${backendUrl}/api/bill/add-tranjaction-entry`,
-        { DateOfIssueOfInvoice: date, NameOfRecipient: nameOfRecipient, VehicleNo: vehicleNo, Amount: amount, remark: remark, Destination: destination },
-        { withCredentials: true }
-      );
-      showNotification(true, "Record Added ");
-      refreshData();
-    } catch (error) {
-      showNotification(false, error.response?.message);
-      if (error.response?.status === 401) {
-        const isRefreshed = await refreshToken();
-        if (isRefreshed) handleAddPayment();
+      if (paymentType === "credit") {
+        await axios.post(`${backendUrl}/api/bill/add-tranjaction-entry`,
+          { DateOfIssueOfInvoice: date, NameOfRecipient: nameOfRecipient, VehicleNo: vehicleNo, Amount: Number(amount), remark: remark, Destination: destination },
+          { withCredentials: true }
+        );
+        showNotification(true, "Credit Entry Added");
+        refreshData();
+      } else if (paymentType === "debit") {
+        await axios.post(`${backendUrl}/api/bill/add-tranjaction-entry`,
+          { DateOfIssueOfInvoice: date, NameOfRecipient: nameOfRecipient, VehicleNo: vehicleNo, Amount: -Number(amount), remark: remark, Destination: destination },
+          { withCredentials: true }
+        );
+        showNotification(true, "Debit Entry Added");
+        refreshData();
+      } else if (paymentType === "desil") {
+        await axios.post(`${backendUrl}/api/pump-transactions/manual-desil`,
+          { pumpName: nameOfRecipient, amount: Number(amount), date, vehicleNo, description: remark },
+          { withCredentials: true }
+        );
+        showNotification(true, "Desil Added");
+        fetchDesilEntries();
       }
+    } catch (error) {
+      showNotification(false, error.response?.data?.message || "Failed");
     } finally {
       setAddPayment(false);
     }
@@ -483,27 +556,64 @@ const FrightTable = ({
     "Amount", "Remark", "Balance"
   ];
 
-  if (loading) return <div className="h-64 flex items-center justify-center"><ButtonLoaders /></div>;
+  if (loading || loadingDesil) return <div className="h-64 flex items-center justify-center"><ButtonLoaders /></div>;
 
   return (
     <>
-      {/* Add Payment Modal */}
       {addPayment && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 dark:bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[90vh] overflow-y-auto  shadow-2xl animate-in zoom-in duration-300 my-auto">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded shadow-2xl animate-in zoom-in duration-300 my-auto">
             <div className="sticky top-0 bg-white dark:bg-slate-900 border-b dark:border-slate-700 p-6 flex justify-between items-center z-10">
-              <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 uppercase tracking-widest">Add New Payment</h2>
-              <button onClick={() => setAddPayment(!addPayment)} type="button" className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800  transition-colors">
+              <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 uppercase tracking-widest">Add New Entry</h2>
+              <button onClick={() => setAddPayment(!addPayment)} type="button" className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition-colors">
                 <X size={24} className="dark:text-white" />
               </button>
             </div>
             <div className="p-6 md:p-8 space-y-6">
+              <div className="flex gap-4 mb-4">
+                <label className={`flex items-center gap-2 px-4 py-2 rounded cursor-pointer transition-colors ${paymentType === "credit" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}>
+                  <input type="radio" value="credit" checked={paymentType === "credit"} onChange={() => setPaymentType("credit")} className="hidden" />
+                  <span className="text-xs font-black">💰 Credit (+)</span>
+                </label>
+                <label className={`flex items-center gap-2 px-4 py-2 rounded cursor-pointer transition-colors ${paymentType === "debit" ? "bg-red-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}>
+                  <input type="radio" value="debit" checked={paymentType === "debit"} onChange={() => setPaymentType("debit")} className="hidden" />
+                  <span className="text-xs font-black">💸 Debit (-)</span>
+                </label>
+                <label className={`flex items-center gap-2 px-4 py-2 rounded cursor-pointer transition-colors ${paymentType === "desil" ? "bg-orange-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}>
+                  <input type="radio" value="desil" checked={paymentType === "desil"} onChange={() => setPaymentType("desil")} className="hidden" />
+                  <span className="text-xs font-black">⛽ Desil</span>
+                </label>
+              </div>
+
               <div className="grid grid-cols-3 gap-3">
                 <input type="date" placeholder="Date" name="DateOfIssueOfInvoice" onChange={(e) => setDate(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
-                <input type="text" placeholder="Name" name="NameOfRecipient" onChange={(e) => setNameOfRecipient(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
-                {/* Vehicle input with datalist */}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+
+                {paymentType === "desil" ? (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Pump Name"
+                      list="pumpList"
+                      value={nameOfRecipient}
+                      onChange={(e) => setNameOfRecipient(e.target.value)}
+                      className="w-full border border-slate-200 dark:border-slate-700 rounded px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
+                    />
+                    <datalist id="pumpList">
+                      {fetchingPumps ? (
+                        <option value="" disabled>Loading pumps...</option>
+                      ) : (
+                        pumpList.map(pump => (
+                          <option key={pump._id} value={pump.name} />
+                        ))
+                      )}
+                    </datalist>
+                  </div>
+                ) : (
+                  <input type="text" placeholder="Name/Party" name="NameOfRecipient" onChange={(e) => setNameOfRecipient(e.target.value)}
+                    className="w-full border border-slate-200 dark:border-slate-700 rounded px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                )}
+
                 <div className="relative">
                   <input
                     type="text"
@@ -511,7 +621,7 @@ const FrightTable = ({
                     list="vehicleAddList"
                     name="VehicleNo"
                     onChange={(e) => setVehicleNo(e.target.value)}
-                    className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
+                    className="w-full border border-slate-200 dark:border-slate-700 rounded px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
                   />
                   <datalist id="vehicleAddList">
                     {vehicleList?.map(v => (
@@ -519,17 +629,23 @@ const FrightTable = ({
                     ))}
                   </datalist>
                 </div>
-                <input type="number" placeholder="Amount" name="Amount" onChange={(e) => setAmount(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
-                <input type="text" placeholder="Remark" name="remark" onChange={(e) => setRemark(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
-                <input type="text" placeholder="Destination" name="Destination" onChange={(e) => setDestination(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700   px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+
+                <input type="number" placeholder="Amount (₹)" name="Amount" onChange={(e) => setAmount(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+
+                <input type="text" placeholder={paymentType === "desil" ? "Description" : "Remark"} name="remark" onChange={(e) => setRemark(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+
+                {paymentType !== "desil" && (
+                  <input type="text" placeholder="Destination" name="Destination" onChange={(e) => setDestination(e.target.value)}
+                    className="w-full border border-slate-200 dark:border-slate-700 rounded px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium" />
+                )}
               </div>
+
               <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t dark:border-slate-700 font-bold">
-                <button type="button" onClick={() => setAddPayment(!addPayment)} className="px-6 py-3  text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 order-2 sm:order-1">Cancel</button>
-                <button type="submit" onClick={handleAddPayment} className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3  font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest flex items-center justify-center">
-                  {loading ? (<ButtonLoaders/>) : "Save Payment"}
+                <button type="button" onClick={() => setAddPayment(!addPayment)} className="px-6 py-3 rounded text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 order-2 sm:order-1">Cancel</button>
+                <button type="submit" onClick={handleAddPayment} className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest flex items-center justify-center">
+                  {loading ? (<ButtonLoaders/>) : "Save Entry"}
                 </button>
               </div>
             </div>
@@ -540,30 +656,30 @@ const FrightTable = ({
 
       <div className="mb-4 flex flex-wrap justify-between items-center gap-3 bg-white dark:bg-slate-800 p-4 shadow-sm dark:border-slate-700">
         <div className="flex gap-2">
-          <button onClick={downloadStyledExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2   text-[10px] font-black uppercase hover:bg-green-700 transition-colors">
+          <button onClick={downloadStyledExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded text-[10px] font-black uppercase hover:bg-green-700 transition-colors">
             <ArrowDownToLine size={15} /> Excel
           </button>
-          <button onClick={printData} className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2   text-[10px] font-black uppercase hover:bg-purple-700 transition-colors">
+          <button onClick={printData} className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded text-[10px] font-black uppercase hover:bg-purple-700 transition-colors">
             <Printer size={15} /> Print
           </button>
           {selectedIds.length > 0 && (
             <button 
               onClick={handleBulkDelete}
-              className="flex items-center gap-2 bg-red-600 text-white px-4 py-2   text-[10px] font-black uppercase hover:bg-red-700 transition-colors"
+              className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded text-[10px] font-black uppercase hover:bg-red-700 transition-colors"
             >
               <Trash2 size={14} />{selectedIds.length} Delete Selected
             </button>
           )}
         </div>
         <div>
-          <button className="uppercase text-white bg-yellow-600 p-2 " onClick={() => setAddPayment(!addPayment)}>
-            Add Payments
+          <button className="uppercase text-white bg-yellow-600 p-2 rounded" onClick={() => setAddPayment(!addPayment)}>
+            Add Entry
           </button>
         </div>
       </div>
 
       {sortedData.length > 0 && hasValidBalance && (
-        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800  text-center font-bold text-sm">
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-center font-bold text-sm">
           <span className="mr-6 text-slate-700 dark:text-slate-300">
             Opening Balance:{' '}
             <span className={
@@ -593,7 +709,7 @@ const FrightTable = ({
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden  ">
+      <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden rounded">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 z-20 bg-slate-800 dark:bg-black text-white">
@@ -616,36 +732,38 @@ const FrightTable = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-bold uppercase text-[11px] text-slate-700 dark:text-slate-300">
-              {sortedData.map((bill) => (
-                <tr key={bill._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${selectedIds.includes(bill._id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
+              {sortedData.map((item) => (
+                <tr key={item._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${selectedIds.includes(item._id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''} ${item.isDesil ? 'bg-orange-50/30 dark:bg-orange-900/10' : ''}`}>
                   <td className="px-4 py-3 text-center border-r dark:border-slate-700">
-                    <input type="checkbox" checked={selectedIds.includes(bill._id)}
-                      onChange={() => setSelectedIds(prev => prev.includes(bill._id) ? prev.filter(i => i !== bill._id) : [...prev, bill._id])}
+                    <input type="checkbox" checked={selectedIds.includes(item._id)}
+                      onChange={() => setSelectedIds(prev => prev.includes(item._id) ? prev.filter(i => i !== item._id) : [...prev, item._id])}
                       className="dark:bg-slate-700 dark:border-slate-600" />
                   </td>
                   <td className="px-4 py-3 border-r dark:border-slate-700">
                     <div className="flex items-center justify-center gap-2">
-                      <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 "><Edit3 size={14} /></button>
+                      {!item.isDesil && (
+                        <button onClick={() => { setSelectedBill(item); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded"><Edit3 size={14} /></button>
+                      )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{bill.DateOfIssueOfInvoice}</td>
-                  <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{bill.LRNO}</td>
-                  <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{bill.challanNO}</td>
-                  <td className="px-4 py-3 text-center font-mono text-slate-800 dark:text-white">{bill.VehicleNo}</td>
-                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.DINo}</td>
-                  <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200 min-w-[150px]">{bill.NameOfRecipient}</td>
-                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.Destination}</td>
-                  <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(bill.Quantity)}</td>
-                  <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(bill.pmt)}</td>
-                  <td className="px-4 py-3 text-center text-blue-600 dark:text-blue-400">₹{bill.frightAmount || 0}</td>
-                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">₹{bill.commeion || 0}</td>
-                  <td className="px-4 py-3 text-center text-red-600 dark:text-red-400">₹{bill.advanceCash || 0}</td>
-                  <td className="px-4 py-3 text-center text-red-500 dark:text-red-400">₹{bill.desil || 0}</td>
-                  <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 uppercase">{bill.petrolPump || "N/A"}</td>
-                  <td className="px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black bg-blue-50 dark:bg-blue-900/20">₹{bill.faynalAmmount || 0}</td>
-                  <td className="px-4 py-3 text-center text-nowrap">{bill.remark}</td>
-                  <td className={`px-4 py-3 text-center font-black border-x dark:border-slate-700 ${bill.tripBalanceAmmount < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
-                    ₹{bill.tripBalanceAmmount || 0}
+                  <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{item.DateOfIssueOfInvoice}</td>
+                  <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{item.LRNO}</td>
+                  <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{item.challanNO}</td>
+                  <td className="px-4 py-3 text-center font-mono text-slate-800 dark:text-white">{item.VehicleNo}</td>
+                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{item.DINo}</td>
+                  <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200 min-w-[150px]">{item.NameOfRecipient}</td>
+                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{item.Destination}</td>
+                  <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(item.Quantity)}</td>
+                  <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(item.pmt)}</td>
+                  <td className="px-4 py-3 text-center text-blue-600 dark:text-blue-400">₹{item.frightAmount || 0}</td>
+                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">₹{item.commeion || 0}</td>
+                  <td className="px-4 py-3 text-center text-red-600 dark:text-red-400">₹{item.advanceCash || 0}</td>
+                  <td className="px-4 py-3 text-center text-red-500 dark:text-red-400">₹{item.desil || 0}</td>
+                  <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 uppercase">{item.petrolPump || "N/A"}</td>
+                  <td className="px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black bg-blue-50 dark:bg-blue-900/20">₹{item.faynalAmmount || 0}</td>
+                  <td className="px-4 py-3 text-center text-nowrap">{item.remark}</td>
+                  <td className={`px-4 py-3 text-center font-black border-x dark:border-slate-700 ${item.tripBalanceAmmount < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
+                    ₹{item.tripBalanceAmmount || 0}
                   </td>
                 </tr>
               ))}

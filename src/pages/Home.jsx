@@ -4,7 +4,7 @@ import {
   Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound, ClipboardPlus,
   ChevronLeft, ChevronRight, Plus, LogOut, Crown,
   TrendingUp, Wallet, Receipt, Search, User as UserIcon, Settings,
-  RotateCcw, AlertCircle, RefreshCw
+  RotateCcw, AlertCircle, RefreshCw, ListChecks
 } from "lucide-react";
 import axios from "axios";
 import { refreshToken, fetchLatestUserData } from "../api/api";
@@ -29,12 +29,12 @@ import ProfilePage from "../components/ProfilePage";
 
 // Skeleton Loaders
 const DashboardCardSkeleton = () => (
-  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6   shadow-sm border border-slate-100 dark:border-slate-700 animate-pulse">
+  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded shadow-sm border border-slate-100 dark:border-slate-700 animate-pulse">
     <div className="flex items-center gap-3">
-      <div className="p-2 sm:p-3 bg-slate-200 dark:bg-slate-700   w-10 h-10 sm:w-12 sm:h-12"></div>
+      <div className="p-2 sm:p-3 bg-slate-200 dark:bg-slate-700 rounded w-10 h-10 sm:w-12 sm:h-12"></div>
       <div className="flex-1">
-        <div className="h-3 bg-slate-200 dark:bg-slate-700   w-24 mb-2"></div>
-        <div className="h-6 bg-slate-300 dark:bg-slate-600   w-32"></div>
+        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-2"></div>
+        <div className="h-6 bg-slate-300 dark:bg-slate-600 rounded w-32"></div>
       </div>
     </div>
   </div>
@@ -44,22 +44,22 @@ const TableRowSkeleton = ({ rows = 3 }) => (
   <>
     {[...Array(rows)].map((_, i) => (
       <tr key={i} className="animate-pulse">
-        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-24"></div></td>
-        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-32"></div></td>
+        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24"></div></td>
+        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32"></div></td>
       </tr>
     ))}
   </>
 );
 
 const ErrorState = ({ message, onRetry }) => (
-  <div className="bg-white dark:bg-slate-800   p-8 text-center border border-red-200 dark:border-red-900">
+  <div className="bg-white dark:bg-slate-800 rounded p-8 text-center border border-red-200 dark:border-red-900">
     <AlertCircle className="mx-auto mb-3 text-red-500" size={40} />
     <h3 className="text-lg font-black text-red-600 dark:text-red-400 mb-2">Oops! Something went wrong</h3>
     <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{message}</p>
     {onRetry && (
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white   font-black text-xs hover:bg-red-700 transition-colors"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded font-black text-xs hover:bg-red-700 transition-colors"
       >
         <RefreshCw size={14} /> Retry
       </button>
@@ -68,7 +68,7 @@ const ErrorState = ({ message, onRetry }) => (
 );
 
 const EmptyState = ({ message }) => (
-  <div className="bg-white dark:bg-slate-800   p-8 text-center border border-slate-200 dark:border-slate-700">
+  <div className="bg-white dark:bg-slate-800 rounded p-8 text-center border border-slate-200 dark:border-slate-700">
     <p className="text-slate-400 dark:text-slate-500 italic">{message}</p>
   </div>
 );
@@ -104,6 +104,7 @@ function Home() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [searchTerm, setSearchTerm] = useState("");
   const [vehicleList, setVehicleList] = useState([]);
   const [vehicleTotalBalance, setVehicleTotalBalance] = useState(null);
@@ -119,6 +120,10 @@ function Home() {
   const [driverCount, setDriverCount] = useState(0);
   const [driverMonthlyPayments, setDriverMonthlyPayments] = useState([]);
   const [totalDriverPayments, setTotalDriverPayments] = useState(0);
+
+  // New dashboard totals
+  const [expenseTotal, setExpenseTotal] = useState(0);
+  const [driverPendingTotal, setDriverPendingTotal] = useState(0);
 
   // Pump ledger navigation
   const [selectedPump, setSelectedPump] = useState(null);
@@ -154,7 +159,7 @@ function Home() {
   const [endDate, setEndDate] = useState(initialRange.end);
 
   // Dashboard filter states
-  const [dashFilterType, setDashFilterType] = useState("month"); // "week", "month", "year", "custom"
+  const [dashFilterType, setDashFilterType] = useState("month");
   const [dashStartDate, setDashStartDate] = useState(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -344,11 +349,31 @@ function Home() {
     }
   }, []);
 
-  // Bilty data
-  const getBilty = useCallback(async (page = 1) => {
+  // New: fetch expense total
+  const fetchExpenseTotal = async () => {
+    try {
+      const res = await axios.get(`${backendUrl}/api/user/expense-total`, { withCredentials: true });
+      if (res.data.success) setExpenseTotal(res.data.total);
+    } catch (error) {
+      console.error("Failed to fetch expense total", error);
+    }
+  };
+
+  // New: fetch driver pending total
+  const fetchDriverPendingTotal = async () => {
+    try {
+      const res = await axios.get(`${backendUrl}/api/user/driver-pending`, { withCredentials: true });
+      if (res.data.success) setDriverPendingTotal(res.data.total);
+    } catch (error) {
+      console.error("Failed to fetch driver pending", error);
+    }
+  };
+
+  // Bilty data – with pageSize
+  const getBilty = useCallback(async (page = 1, limit = pageSize) => {
     setLoading(prev => ({ ...prev, bilty: true }));
     try {
-      const url = `${backendUrl}/api/bill/get-bills?page=${page}&limit=50&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
+      const url = `${backendUrl}/api/bill/get-bills?page=${page}&limit=${limit}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {
         const formattedBills = response.data.bills.map(bill => ({
@@ -367,16 +392,16 @@ function Home() {
     } catch (error) {
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
-        if (isRefreshed) getBilty(page);
+        if (isRefreshed) getBilty(page, limit);
       }
     } finally { setLoading(prev => ({ ...prev, bilty: false })); }
-  }, [searchTerm, startDate, endDate]);
+  }, [searchTerm, startDate, endDate, pageSize]);
 
-  // Expenses function
-  const getExpenses = useCallback(async (page = 1) => {
+  // Expenses function – with pageSize
+  const getExpenses = useCallback(async (page = 1, limit = pageSize) => {
     setLoading(prev => ({ ...prev, expense: true }));
     try {
-      const url = `${backendUrl}/api/persnol/get-expantion?page=${page}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
+      const url = `${backendUrl}/api/persnol/get-expantion?page=${page}&limit=${limit}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
       if (response.data.success) {
         const formattedExpenses = response.data.expantions.map(exp => ({
@@ -392,23 +417,35 @@ function Home() {
     } catch (error) {
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
-        if (isRefreshed) getExpenses(page);
+        if (isRefreshed) getExpenses(page, limit);
       }
       console.error("Error fetching expenses:", error);
     } finally { setLoading(prev => ({ ...prev, expense: false })); }
-  }, [searchTerm, startDate, endDate]);
+  }, [searchTerm, startDate, endDate, pageSize]);
 
   const handleSearch = () => {
     setCurrentPage(1);
     if (menuOption === "biltiy" || menuOption === "accounts") {
-      getBilty(1);
+      getBilty(1, pageSize);
     } else if (menuOption === "expantion") {
-      getExpenses(1);
+      getExpenses(1, pageSize);
     }
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') handleSearch();
+  };
+
+  // Handle page size change
+  const handlePageSizeChange = (e) => {
+    const newSize = parseInt(e.target.value);
+    setPageSize(newSize);
+    setCurrentPage(1);
+    if (menuOption === "biltiy" || menuOption === "accounts") {
+      getBilty(1, newSize);
+    } else if (menuOption === "expantion") {
+      getExpenses(1, newSize);
+    }
   };
 
   // Event listener for opening pricing modal from other components
@@ -427,6 +464,8 @@ function Home() {
       fetchDriverStats();
       fetchDriverMonthlyPayments(dashStartDate, dashEndDate);
       fetchVehicles();
+      fetchExpenseTotal();
+      fetchDriverPendingTotal();
     } else if (menuOption === "biltiy" || menuOption === "accounts") {
       fetchVehicles();
       handleSearch();
@@ -435,7 +474,7 @@ function Home() {
     } else if (menuOption !== "petrolPump" && menuOption !== "Reports") {
       handleSearch();
     }
-  }, [menuOption]); // No dependencies on functions because they are stable with useCallback
+  }, [menuOption]);
 
   // Fetch dashboard data when filter changes
   useEffect(() => {
@@ -467,14 +506,14 @@ function Home() {
     <div className="flex fixed h-screen w-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden uppercase font-bold text-xs">
       {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
 
-      <AddBiltyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(msg) => { getBilty(1); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
-      <AddExpenseModal isOpen={isExModalOpen} onClose={() => setIsExModalOpen(false)} onSuccess={(msg) => { getExpenses(1); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
+      <AddBiltyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(msg) => { getBilty(1, pageSize); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
+      <AddExpenseModal isOpen={isExModalOpen} onClose={() => setIsExModalOpen(false)} onSuccess={(msg) => { getExpenses(1, pageSize); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
       <Pricing isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
 
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-white dark:bg-gray-900 text-gray-700 transition-all duration-300 flex flex-col shadow-2xl w-64`}>
         <div className="p-5 flex items-center justify-between dark:border-slate-900">
-          <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900  ">
+          <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded">
             <X size={20} />
           </button>
           <span className="text-sm font-black">MENU</span>
@@ -491,18 +530,18 @@ function Home() {
             <button
               key={item.name}
               onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); setSidebarOpen(false); setSelectedPump(null); }}
-              className={`w-full flex items-center gap-4 p-4   transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"}`}
+              className={`w-full flex items-center gap-4 p-4 rounded transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"}`}
             >
               {item.icon}
               <span>{item.label}</span>
             </button>
           ))}
-          <button onClick={() => setShowProfile(true)} className="w-full flex items-center gap-4 p-4   text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 mt-10">
+          <button onClick={() => setShowProfile(true)} className="w-full flex items-center gap-4 p-4 rounded text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 mt-10">
             <Settings size={20} /> <span>Edit Profile</span>
           </button>
         </nav>
         <div className="p-4 dark:border-slate-900">
-          <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4   text-red-400 font-bold hover:bg-red-500/10">
+          <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 rounded text-red-400 font-bold hover:bg-red-500/10">
             <LogOut size={20} /> <span>Logout</span>
           </button>
         </div>
@@ -512,7 +551,7 @@ function Home() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-20 bg-white dark:bg-slate-900 border-b dark:border-slate-800 flex items-center justify-between px-3 md:px-8 shrink-0 shadow-sm uppercase italic">
           <div className="flex items-center gap-2">
-            <button className="md:hidden p-2 bg-slate-100 dark:bg-slate-800  " onClick={() => setSidebarOpen(true)}>
+            <button className="md:hidden p-2 bg-slate-100 dark:bg-slate-800 rounded" onClick={() => setSidebarOpen(true)}>
               <Menu size={20} className="dark:text-white" />
             </button>
             <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-slate-800 dark:text-white tracking-tighter truncate max-w-[120px] sm:max-w-[200px] md:max-w-full">
@@ -525,7 +564,7 @@ function Home() {
                 <p className="text-[10px] font-black text-slate-900 dark:text-white truncate max-w-[80px]">{user?.name}</p>
                 <p className="text-[8px] text-blue-500 dark:text-blue-400 truncate max-w-[80px]">{user?.companyName}</p>
               </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-900 dark:bg-black   flex items-center justify-center text-white font-black group-hover:bg-blue-600 dark:group-hover:bg-blue-700 transition-colors shadow-lg">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-900 dark:bg-black rounded flex items-center justify-center text-white font-black group-hover:bg-blue-600 dark:group-hover:bg-blue-700 transition-colors shadow-lg">
                 {user?.companyName?.[0] || <UserIcon size={14} />}
               </div>
             </div>
@@ -537,7 +576,7 @@ function Home() {
             <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black">
               {/* Premium Status Banner */}
               {user?.isPremium && (
-                <div className={`mb-6 p-4  shadow-lg border-l-4 ${timeRemaining?.expired
+                <div className={`mb-6 p-4 rounded shadow-lg border-l-4 ${timeRemaining?.expired
                   ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
                   : timeRemaining?.days <= 7
                     ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-500'
@@ -545,7 +584,7 @@ function Home() {
                   }`}>
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2   ${timeRemaining?.expired
+                      <div className={`p-2 rounded ${timeRemaining?.expired
                         ? 'bg-red-100 dark:bg-red-900/40'
                         : timeRemaining?.days <= 7
                           ? 'bg-orange-100 dark:bg-orange-900/40'
@@ -576,7 +615,7 @@ function Home() {
                     {(timeRemaining?.days <= 7 || timeRemaining?.expired) && (
                       <button
                         onClick={() => setIsPricingOpen(true)}
-                        className="px-4 py-2 bg-blue-600 text-white   text-xs font-black uppercase hover:bg-blue-700 transition-colors"
+                        className="px-4 py-2 bg-blue-600 text-white rounded text-xs font-black uppercase hover:bg-blue-700 transition-colors"
                       >
                         {timeRemaining?.expired ? 'Renew Now' : 'Extend'}
                       </button>
@@ -593,27 +632,41 @@ function Home() {
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => setDashFilterType("week")}
-                    className={`px-3 py-1.5 text-xs font-black uppercase transition-colors ${dashFilterType === "week" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
+                    className={`px-3 py-1.5 text-xs font-black uppercase rounded transition-colors ${dashFilterType === "week" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
                   >
                     Week
                   </button>
                   <button
                     onClick={() => setDashFilterType("month")}
-                    className={`px-3 py-1.5 text-xs font-black uppercase transition-colors ${dashFilterType === "month" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
+                    className={`px-3 py-1.5 text-xs font-black uppercase rounded transition-colors ${dashFilterType === "month" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
                   >
                     Month
                   </button>
                   <button
                     onClick={() => setDashFilterType("year")}
-                    className={`px-3 py-1.5 text-xs font-black uppercase transition-colors ${dashFilterType === "year" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
+                    className={`px-3 py-1.5 text-xs font-black uppercase rounded transition-colors ${dashFilterType === "year" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
                   >
                     Year
                   </button>
                   <button
                     onClick={() => setDashFilterType("custom")}
-                    className={`px-3 py-1.5 text-xs font-black uppercase transition-colors ${dashFilterType === "custom" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
+                    className={`px-3 py-1.5 text-xs font-black uppercase rounded transition-colors ${dashFilterType === "custom" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
                   >
                     Custom
+                  </button>
+                  {/* Refresh button */}
+                  <button
+                    onClick={() => {
+                      getDashboardData(dashFilterType, dashStartDate, dashEndDate);
+                      fetchPumpSummary(dashStartDate, dashEndDate);
+                      fetchDriverMonthlyPayments(dashStartDate, dashEndDate);
+                      fetchExpenseTotal();
+                      fetchDriverPendingTotal();
+                    }}
+                    className="p-2 bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+                    title="Refresh Dashboard"
+                  >
+                    <RefreshCw size={14} className="text-slate-700 dark:text-white" />
                   </button>
                 </div>
               </div>
@@ -625,65 +678,55 @@ function Home() {
                     type="date"
                     value={dashStartDate}
                     onChange={(e) => setDashStartDate(e.target.value)}
-                    className="border px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700"
+                    className="border px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700 rounded"
                   />
                   <span className="text-slate-500 dark:text-slate-400">to</span>
                   <input
                     type="date"
                     value={dashEndDate}
                     onChange={(e) => setDashEndDate(e.target.value)}
-                    className="border px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700"
+                    className="border px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700 rounded"
                   />
                 </div>
               )}
 
-              {/* Dashboard Cards */}
+              {/* Dashboard Cards - 5 Cards */}
               {loading.dashboard ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                  <DashboardCardSkeleton />
+                  <DashboardCardSkeleton />
+                  <DashboardCardSkeleton />
                   <DashboardCardSkeleton />
                   <DashboardCardSkeleton />
                 </div>
               ) : error.dashboard ? (
-                <ErrorState message={error.dashboard} onRetry={getDashboardData} />
+                <ErrorState message={error.dashboard} onRetry={() => getDashboardData(dashFilterType, dashStartDate, dashEndDate)} />
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 sm:gap-4">
-                  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6  shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 hover:shadow-xl transition-all group">
-                    <div className="p-2 sm:p-3 bg-blue-600   text-white shadow-lg group-hover:scale-110 duration-300">
-                      <TrendingUp size={18} />
-                    </div>
-                    <div>
-                      <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest leading-none">
-                        Total Revenue
-                      </p>
-                      <h3 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white mt-1 tracking-tighter">
-                        ₹{dashData.totalRevenue?.toLocaleString('en-IN')}
-                      </h3>
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                  {/* Total Revenue */}
+                  <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Revenue</p>
+                    <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">₹{dashData.totalRevenue?.toLocaleString('en-IN')}</p>
                   </div>
-                  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6  shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 hover:shadow-xl transition-all group">
-                    <div className="p-2 sm:p-3 bg-orange-500   text-white shadow-lg group-hover:scale-110 duration-300">
-                      <Wallet size={18} />
-                    </div>
-                    <div>
-                      <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest leading-none">
-                        Trip Balance
-                      </p>
-                      <h3 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white mt-1 tracking-tighter">
-                        ₹{dashData.totalTripBalance?.toLocaleString('en-IN')}
-                      </h3>
-                    </div>
+                  {/* Trip Balance */}
+                  <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trip Balance</p>
+                    <p className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">₹{dashData.totalTripBalance?.toLocaleString('en-IN')}</p>
                   </div>
-                  <div className="bg-white dark:bg-slate-800 p-5  shadow-sm border border-slate-200 dark:border-slate-700">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Vehicles</p>
-                    <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">{vehicleCount}</p>
+                  {/* Total Expense */}
+                  <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Expense</p>
+                    <p className="text-2xl font-black text-red-600 dark:text-red-400 mt-1">₹{expenseTotal.toLocaleString('en-IN')}</p>
                   </div>
-                  <div className="bg-white dark:bg-slate-800 p-5  shadow-sm border border-slate-200 dark:border-slate-700">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Drivers</p>
-                    <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">{driverCount}</p>
+                  {/* Total Driver Pending */}
+                  <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Driver Pending</p>
+                    <p className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">₹{driverPendingTotal.toLocaleString('en-IN')}</p>
                   </div>
-                  <div className="bg-white dark:bg-slate-800 p-5  shadow-sm border border-slate-200 dark:border-slate-700">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Payments to Drivers (Selected Period)</p>
-                    <p className="text-2xl font-black text-green-600 dark:text-green-400 mt-1">₹{totalDriverPayments.toLocaleString('en-IN')}</p>
+                  {/* Total Payable */}
+                  <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Payable</p>
+                    <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">₹{totalPumpBalance.toLocaleString('en-IN')}</p>
                   </div>
                 </div>
               )}
@@ -694,7 +737,7 @@ function Home() {
                   Petrol Pumps Payable (as of {dashEndDate})
                 </h3>
                 {loading.pumpSummary ? (
-                  <div className="bg-white dark:bg-slate-800  shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="bg-white dark:bg-slate-800 rounded shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
@@ -714,7 +757,7 @@ function Home() {
                 ) : pumpSummary.length === 0 ? (
                   <EmptyState message="No pumps found. Add a pump in Petrol Pump section." />
                 ) : (
-                  <div className="bg-white dark:bg-slate-800  shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="bg-white dark:bg-slate-800 rounded shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
@@ -750,7 +793,7 @@ function Home() {
               {/* Driver Payments List */}
               {loading.stats ? (
                 <div className="mt-6">
-                  <div className="bg-white dark:bg-slate-800  shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="bg-white dark:bg-slate-800 rounded shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="p-8 text-center">
                       <ButtonLoaders />
                     </div>
@@ -763,7 +806,7 @@ function Home() {
               ) : driverMonthlyPayments.length > 0 ? (
                 <div className="mt-6 pb-20">
                   <h4 className="text-sm font-black text-slate-900 dark:text-white mb-3 underline decoration-blue-500 decoration-4 underline-offset-8">Driver Payments (Selected Period)</h4>
-                  <div className="bg-white dark:bg-slate-800  shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="bg-white dark:bg-slate-800 rounded shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
@@ -791,7 +834,7 @@ function Home() {
           {(menuOption === "biltiy" || menuOption === "accounts") && (
             <div className="space-y-3 animate-in fade-in duration-500">
               {/* Filter bar with vehicle suggestions */}
-              <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3   shadow-sm border border-slate-200 dark:border-slate-700">
+              <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
                   <div className="relative flex-1 min-w-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} />
@@ -799,7 +842,7 @@ function Home() {
                       type="text"
                       list="vehicleSearchList"
                       placeholder="Search LR, Vehicle..."
-                      className="w-full pl-8 pr-3 py-2 border   text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
+                      className="w-full pl-8 pr-3 py-2 border rounded text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyDown={handleKeyDown}
@@ -815,23 +858,23 @@ function Home() {
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="border   px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                      className="border rounded px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="border   px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                      className="border rounded px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <button
                       onClick={handleSearch}
-                      className="px-3 py-2 bg-blue-600 text-white   flex items-center gap-1 text-[10px] font-black shadow-lg hover:bg-blue-700 transition-colors"
+                      className="px-3 py-2 bg-blue-600 text-white rounded flex items-center gap-1 text-[10px] font-black shadow-lg hover:bg-blue-700 transition-colors"
                     >
                       <Search size={12} /> Search
                     </button>
                     <button
                       onClick={resetToCurrentMonth}
-                      className="p-2 bg-gray-200 dark:bg-slate-600   hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+                      className="p-2 bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
                       title="Reset to current month"
                     >
                       <RotateCcw size={12} className="text-slate-700 dark:text-white" />
@@ -840,20 +883,20 @@ function Home() {
                 </div>
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="bg-blue-600 text-white px-4 py-2   flex items-center justify-center gap-1 text-[10px] font-black shadow-lg shadow-blue-100 dark:shadow-blue-900/50 w-full sm:w-auto"
+                  className="bg-blue-600 text-white px-4 py-2 rounded flex items-center justify-center gap-1 text-[10px] font-black shadow-lg shadow-blue-100 dark:shadow-blue-900/50 w-full sm:w-auto"
                 >
                   <Plus size={14} /> New Bilty
                 </button>
               </div>
 
               {/* Table container */}
-              <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden  ">
+              <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden rounded">
                 <div className="overflow-x-auto">
                   {menuOption === "biltiy" ? (
                     <BiltyTable
                       data={biltyData}
                       loading={loading.bilty}
-                      refreshData={() => getBilty(currentPage)}
+                      refreshData={() => getBilty(currentPage, pageSize)}
                       showNotification={showNotification}
                       vehicleTotalBalance={vehicleTotalBalance}
                       openingBalance={openingBalance}
@@ -863,12 +906,15 @@ function Home() {
                     <FrightTable
                       data={biltyData}
                       loading={loading.bilty}
-                      refreshData={() => getBilty(currentPage)}
+                      refreshData={() => getBilty(currentPage, pageSize)}
                       showNotification={showNotification}
                       vehicleTotalBalance={vehicleTotalBalance}
                       openingBalance={openingBalance}
                       closingBalance={closingBalance}
                       vehicleList={vehicleList}
+                      startDate={startDate}
+                      endDate={endDate}
+                      searchTerm={searchTerm} 
                     />
                   )}
                 </div>
@@ -883,6 +929,7 @@ function Home() {
                 <PumpMasterList
                   showNotification={showNotification}
                   onSelectPump={(pump) => setSelectedPump(pump)}
+                  user={user}
                 />
               ) : (
                 <PumpLedger
@@ -903,14 +950,14 @@ function Home() {
           {/* Expenses Section */}
           {menuOption === "expantion" && (
             <div className="space-y-3 animate-in fade-in duration-500">
-              <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3   shadow-sm border border-slate-200 dark:border-slate-700">
+              <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
                   <div className="relative flex-1 min-w-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} />
                     <input
                       type="text"
                       placeholder="Search by Title or Purpose..."
-                      className="w-full pl-8 pr-3 py-2 border   text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
+                      className="w-full pl-8 pr-3 py-2 border rounded text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyDown={handleKeyDown}
@@ -921,23 +968,23 @@ function Home() {
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="border   px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                      className="border rounded px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="border   px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                      className="border rounded px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <button
                       onClick={handleSearch}
-                      className="px-3 py-2 bg-blue-600 text-white   flex items-center gap-1 text-[10px] font-black shadow-lg hover:bg-blue-700 transition-colors"
+                      className="px-3 py-2 bg-blue-600 text-white rounded flex items-center gap-1 text-[10px] font-black shadow-lg hover:bg-blue-700 transition-colors"
                     >
                       <Search size={12} /> Search
                     </button>
                     <button
                       onClick={resetToCurrentMonth}
-                      className="p-2 bg-gray-200 dark:bg-slate-600   hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+                      className="p-2 bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
                       title="Reset to current month"
                     >
                       <RotateCcw size={12} className="text-slate-700 dark:text-white" />
@@ -946,7 +993,7 @@ function Home() {
                 </div>
                 <button
                   onClick={() => setIsExModalOpen(true)}
-                  className="bg-slate-900 dark:bg-black text-white px-4 py-2   flex items-center justify-center gap-1 text-[10px] font-black shadow-xl w-full sm:w-auto"
+                  className="bg-slate-900 dark:bg-black text-white px-4 py-2 rounded flex items-center justify-center gap-1 text-[10px] font-black shadow-xl w-full sm:w-auto"
                 >
                   <Plus size={14} /> New Expense
                 </button>
@@ -956,29 +1003,62 @@ function Home() {
                   data={expenseData}
                   loading={loading.expense}
                   filterTerm={searchTerm}
-                  refreshData={() => getExpenses(currentPage)}
+                  refreshData={() => getExpenses(currentPage, pageSize)}
                 />
               </div>
             </div>
           )}
 
+          {/* Pagination footer with page size selector */}
           {menuOption !== "home" && menuOption !== "petrolPump" && menuOption !== "Reports" && totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4   border dark:border-slate-700 shadow-sm">
-              <p className="text-[8px] uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">
-                Page {currentPage} of {totalPages}
-              </p>
+            <div className="flex items-center justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4 rounded border dark:border-slate-700 shadow-sm">
+              <div className="flex items-center gap-4">
+                <p className="text-[8px] uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">
+                  Page {currentPage} of {totalPages}
+                </p>
+                {/* Page size selector */}
+                <div className="flex items-center gap-2">
+                  <ListChecks size={12} className="text-slate-500 dark:text-slate-400" />
+                  <select
+                    value={pageSize}
+                    onChange={handlePageSizeChange}
+                    className="border rounded px-2 py-1 text-[10px] font-bold bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                  >
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                    <option value={100}>100 / page</option>
+                  </select>
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button
                   disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(p => p - 1)}
-                  className="p-1 border border-gray-300 dark:border-slate-600   disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                  onClick={() => {
+                    const newPage = currentPage - 1;
+                    setCurrentPage(newPage);
+                    if (menuOption === "biltiy" || menuOption === "accounts") {
+                      getBilty(newPage, pageSize);
+                    } else if (menuOption === "expantion") {
+                      getExpenses(newPage, pageSize);
+                    }
+                  }}
+                  className="p-1 border border-gray-300 dark:border-slate-600 rounded disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
                 >
                   <ChevronLeft size={14} className="dark:text-white" />
                 </button>
                 <button
                   disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(p => p + 1)}
-                  className="p-1 border border-gray-300 dark:border-slate-600   disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                  onClick={() => {
+                    const newPage = currentPage + 1;
+                    setCurrentPage(newPage);
+                    if (menuOption === "biltiy" || menuOption === "accounts") {
+                      getBilty(newPage, pageSize);
+                    } else if (menuOption === "expantion") {
+                      getExpenses(newPage, pageSize);
+                    }
+                  }}
+                  className="p-1 border border-gray-300 dark:border-slate-600 rounded disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
                 >
                   <ChevronRight size={14} className="dark:text-white" />
                 </button>
