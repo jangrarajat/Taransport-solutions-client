@@ -76,6 +76,10 @@ const FrightTable = ({
   endDate,
   searchTerm
 }) => {
+  // Get user from localStorage for company name
+  const user = JSON.parse(localStorage.getItem('transportUser') || '{}');
+  const companyName = user.companyName || 'Sawariya Logistic';
+
   const [addPayment, setAddPayment] = useState(false);
   const [printBityBtn, setPrintBityBtn] = useState(false);
   const [pData, setPData] = useState([]);
@@ -162,14 +166,18 @@ const FrightTable = ({
 
   const sortedData = mergedData;
 
+  // Running balance: bilty entries ADD, desil (pump purchase) entries SUBTRACT
   const runningBalances = useMemo(() => {
     if (!sortedData.length) return [];
     const startBalance = openingBalance !== null ? openingBalance : vehicleTotalBalance;
     if (startBalance === null || startBalance === undefined) return [];
     let running = startBalance;
     return sortedData.map((item) => {
-      const amount = item.isDesil ? item.desil : (item.tripBalanceAmmount || 0);
-      running = running - amount;
+      if (item.isDesil) {
+        running = running - (item.desil || 0); // Desil (unlinked pump purchase) reduces balance
+      } else {
+        running = running + (item.tripBalanceAmmount || 0); // Trip balance adds to balance
+      }
       return running;
     });
   }, [sortedData, openingBalance, vehicleTotalBalance]);
@@ -197,7 +205,7 @@ const FrightTable = ({
     return exportData.reduce((acc, item) => {
       if (item.isDesil) {
         acc.diesel += item.desil || 0;
-        acc.balance += item.tripBalanceAmmount || 0;
+        acc.balance -= item.desil || 0; // Unlinked desil reduces net balance
       } else {
         acc.qty += parseQty(item.Quantity);
         acc.freight += item.frightAmount || 0;
@@ -219,6 +227,18 @@ const FrightTable = ({
       balance: 0,
       final: 0
     });
+  };
+
+  // Helper to format date range
+  const getDateRangeText = () => {
+    if (startDate && endDate) {
+      return `Period: ${new Date(startDate).toLocaleDateString('en-IN')} to ${new Date(endDate).toLocaleDateString('en-IN')}`;
+    }
+    return '';
+  };
+
+  const getVehicleText = () => {
+    return searchTerm ? `Vehicle: ${searchTerm}` : '';
   };
 
   const downloadStyledExcel = () => {
@@ -259,18 +279,23 @@ const FrightTable = ({
     ];
 
     const summaryLine = hasValidBalance
-      ? `<p style="font-weight: bold; margin-bottom: 8px;">Opening Balance: ₹${runningBalances.length ? runningBalances[runningBalances.length - 1] : '-'} | Closing Balance: ₹${startBalance}</p>`
+      ? `<p style="font-weight: bold; margin-bottom: 8px;">Opening Balance: ₹${startBalance} | Closing Balance: ₹${runningBalances.length ? runningBalances[runningBalances.length - 1] : '-'}</p>`
       : '';
+
+    const dateRangeText = getDateRangeText();
+    const vehicleText = getVehicleText();
 
     const htmlContent = `
       <html>
         <head>
           <meta charset="UTF-8">
-          <title>Fright Report</title>
+          <title className=" uppercase">Fright Report - ${companyName}</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; }
-            h2 { color: #1e293b; }
-            table { border-collapse: collapse; width: 100%; font-size: 12px; }
+            h2 { color: #1e293b; margin-bottom: 5px; }
+            .company { font-size: 18px; font-weight: bold; color: #b45309; }
+            .info { font-size: 12px; color: #4b5563; margin: 5px 0; }
+            table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 10px; }
             th { background-color: #1e293b; color: white; font-weight: bold; padding: 8px; text-align: center; border: 1px solid #334155; }
             td { padding: 6px; text-align: center; border: 1px solid #cbd5e1; }
             tr:nth-child(even) { background-color: #f8fafc; }
@@ -278,9 +303,10 @@ const FrightTable = ({
           </style>
         </head>
         <body>
-          <h2>Sawariya Logistic Statement</h2>
-          <p>Contact No: 9992269616 & 7027400769</p>
-          <p>Generated: ${new Date().toLocaleDateString('en-IN')} | Records: ${exportData.length} (${selectedIds.length ? 'Selected' : 'All'})</p>
+          <div class="company">${companyName}</div>
+          <div class="info">Generated: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN')}</div>
+          <div class="info">${dateRangeText} ${vehicleText ? ' | ' + vehicleText : ''}</div>
+          <div class="info">Records: ${exportData.length} (${selectedIds.length ? 'Selected' : 'All'})</div>
           ${summaryLine}
           <table>
             <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
@@ -297,7 +323,7 @@ const FrightTable = ({
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Fright_Report_${new Date().toISOString().slice(0, 10)}.xls`;
+    link.download = `Fright_Report_${companyName}_${new Date().toISOString().slice(0, 10)}.xls`;
     link.click();
     window.URL.revokeObjectURL(url);
     showNotification(true, "Excel downloaded with styling! 📊");
@@ -341,21 +367,33 @@ const FrightTable = ({
 
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-      doc.setFontSize(14);
+      // Add company name and info
+      doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
-      doc.text("Fright Report", 14, 10);
-      doc.setFontSize(8);
+      doc.text(companyName, 14, 10);
+      
+      doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, 14, 15);
-
-      let startY = 20;
+      let infoY = 16;
+      if (startDate && endDate) {
+        doc.text(`Period: ${new Date(startDate).toLocaleDateString('en-IN')} to ${new Date(endDate).toLocaleDateString('en-IN')}`, 14, infoY);
+        infoY += 5;
+      }
+      if (searchTerm) {
+        doc.text(`Vehicle: ${searchTerm}`, 14, infoY);
+        infoY += 5;
+      }
+      doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN')}`, 14, infoY);
+      
+      let startY = infoY + 5;
 
       if (hasValidBalance) {
-        const summaryY = 20;
+        const summaryY = startY;
         const margin = 14;
         const pageWidth = doc.internal.pageSize.getWidth();
         const summaryWidth = pageWidth - 2 * margin;
-        const summaryText = `Opening Balance: ₹${runningBalances.length ? runningBalances[runningBalances.length - 1].toLocaleString('en-IN') : '-'}   |   Closing Balance: ₹${startBalance.toLocaleString('en-IN')}`;
+        const closing = runningBalances.length ? runningBalances[runningBalances.length - 1] : startBalance;
+        const summaryText = `Opening Balance: ₹${startBalance.toLocaleString('en-IN')}   |   Closing Balance: ₹${closing.toLocaleString('en-IN')}`;
 
         doc.setFillColor(219, 234, 254);
         doc.rect(margin, summaryY - 3, summaryWidth, 6, 'F');
@@ -380,7 +418,7 @@ const FrightTable = ({
         footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
       });
 
-      doc.save(`Fright_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+      doc.save(`Fright_Report_${companyName}_${new Date().toISOString().slice(0, 10)}.pdf`);
       showNotification(true, "PDF downloaded successfully! 📄");
     } catch (error) {
       console.error("PDF generation failed", error);
@@ -425,19 +463,25 @@ const FrightTable = ({
       totals.final, "", totals.balance
     ];
 
+    const closing = runningBalances.length ? runningBalances[runningBalances.length - 1] : startBalance;
     const summaryLine = hasValidBalance
-      ? `<p style="font-weight: bold; margin-bottom: 8px;">Opening Balance: ₹${runningBalances.length ? runningBalances[runningBalances.length - 1] : '-'} | Closing Balance: ₹${startBalance}</p>`
+      ? `<p style="font-weight: bold; margin-bottom: 8px;">Opening Balance: ₹${startBalance} | Closing Balance: ₹${closing}</p>`
       : '';
+
+    const dateRangeText = getDateRangeText();
+    const vehicleText = getVehicleText();
 
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <html>
         <head>
-          <title>Print Fright Report</title>
+          <title className="uppercase"> Print Fright Report - ${companyName}</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; }
-            h2 { color: #1e293b; }
-            table { border-collapse: collapse; width: 100%; font-size: 10px; }
+            h2 { color: #1e293b; margin-bottom: 5px; }
+            .company { font-size: 18px; font-weight: bold; color: #b45309; }
+            .info { font-size: 12px; color: #4b5563; margin: 5px 0; }
+            table { border-collapse: collapse; width: 100%; font-size: 10px; margin-top: 10px; }
             th { background-color: #1e293b; color: white; font-weight: bold; padding: 6px; text-align: center; border: 1px solid #334155; }
             td { padding: 4px; text-align: center; border: 1px solid #cbd5e1; }
             tr:nth-child(even) { background-color: #f8fafc; }
@@ -446,8 +490,10 @@ const FrightTable = ({
           </style>
         </head>
         <body>
-          <h2>Fright Report</h2>
-          <p>Generated: ${new Date().toLocaleDateString('en-IN')} | Records: ${exportData.length} (${selectedIds.length ? 'Selected' : 'All'})</p>
+          <div class="company">${companyName}</div>
+          <div class="info">Generated: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN')}</div>
+          <div class="info">${dateRangeText} ${vehicleText ? ' | ' + vehicleText : ''}</div>
+          <div class="info">Records: ${exportData.length} (${selectedIds.length ? 'Selected' : 'All'})</div>
           ${summaryLine}
           <table>
             <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
@@ -579,10 +625,7 @@ const FrightTable = ({
                   <input type="radio" value="debit" checked={paymentType === "debit"} onChange={() => setPaymentType("debit")} className="hidden" />
                   <span className="text-xs font-black">💸 Debit (-)</span>
                 </label>
-                <label className={`flex items-center gap-2 px-4 py-2 rounded cursor-pointer transition-colors ${paymentType === "desil" ? "bg-orange-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}>
-                  <input type="radio" value="desil" checked={paymentType === "desil"} onChange={() => setPaymentType("desil")} className="hidden" />
-                  <span className="text-xs font-black">⛽ Desil</span>
-                </label>
+               
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -662,6 +705,9 @@ const FrightTable = ({
           <button onClick={printData} className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded text-[10px] font-black uppercase hover:bg-purple-700 transition-colors">
             <Printer size={15} /> Print
           </button>
+          <button onClick={downloadPDF} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded text-[10px] font-black uppercase hover:bg-red-700 transition-colors">
+            <FileText size={15} /> PDF
+          </button>
           {selectedIds.length > 0 && (
             <button 
               onClick={handleBulkDelete}
@@ -678,10 +724,23 @@ const FrightTable = ({
         </div>
       </div>
 
+      {/* ✅ FIX: Balance summary - openingBalance is startBalance, closingBalance is last running balance */}
       {sortedData.length > 0 && hasValidBalance && (
         <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-center font-bold text-sm">
           <span className="mr-6 text-slate-700 dark:text-slate-300">
             Opening Balance:{' '}
+            <span className={
+                startBalance < 0
+                  ? 'text-red-600 dark:text-red-400'
+                  : startBalance > 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : ''
+              }>
+              ₹{startBalance}
+            </span>
+          </span>
+          <span className="text-slate-700 dark:text-slate-300">
+            Closing Balance:{' '}
             <span className={
                 runningBalances.length
                   ? runningBalances[runningBalances.length - 1] < 0
@@ -691,19 +750,7 @@ const FrightTable = ({
                     : ''
                   : ''
               }>
-              ₹{runningBalances.length ? runningBalances[runningBalances.length - 1] : '-'}
-            </span>
-          </span>
-          <span className="text-slate-700 dark:text-slate-300">
-            Closing Balance:{' '}
-            <span className={
-                startBalance < 0
-                  ? 'text-red-600 dark:text-red-400'
-                  : startBalance > 0
-                  ? 'text-green-600 dark:text-green-400'
-                  : ''
-              }>
-              ₹{startBalance}
+              ₹{runningBalances.length ? runningBalances[runningBalances.length - 1] : startBalance}
             </span>
           </span>
         </div>
@@ -744,6 +791,7 @@ const FrightTable = ({
                       {!item.isDesil && (
                         <button onClick={() => { setSelectedBill(item); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded"><Edit3 size={14} /></button>
                       )}
+                      <button onClick={() => handleSingleDelete(item._id)} className="text-red-500 p-1.5 bg-red-50 dark:bg-red-900/30 rounded"><Trash2 size={14} /></button>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{item.DateOfIssueOfInvoice}</td>
