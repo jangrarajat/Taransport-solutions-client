@@ -1,5 +1,5 @@
 // Home.jsx
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound, ClipboardPlus,
   ChevronLeft, ChevronRight, Plus, LogOut, Crown,
@@ -485,6 +485,13 @@ function Home() {
     }
   }, [dashFilterType, dashStartDate, dashEndDate, menuOption, getDashboardData, fetchPumpSummary, fetchDriverMonthlyPayments]);
 
+  // Determine if current search term is an exact vehicle number
+  const isVehicleFilter = useMemo(() => {
+    if (!searchTerm) return false;
+    const trimmed = searchTerm.trim().toUpperCase();
+    return vehicleList.some(v => v.vehicleNo.toUpperCase() === trimmed);
+  }, [searchTerm, vehicleList]);
+
   // Logout handler
   const handleLogout = () => {
     logout();
@@ -914,7 +921,8 @@ function Home() {
                       vehicleList={vehicleList}
                       startDate={startDate}
                       endDate={endDate}
-                      searchTerm={searchTerm} 
+                      searchTerm={searchTerm}
+                      isVehicleFilter={isVehicleFilter}   // new prop
                     />
                   )}
                 </div>

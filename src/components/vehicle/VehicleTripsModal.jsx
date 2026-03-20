@@ -63,6 +63,7 @@ const VehicleTripsModal = ({ isOpen, onClose, vehicle, user, showNotification })
   }, [isOpen, vehicle, startDate, endDate]);
 
   const exportExcel = () => {
+    // Prepare data rows
     const exportData = trips.map(t => ({
       Date: t.DateOfIssueOfInvoice,
       'LR No.': t.LRNO,
@@ -82,6 +83,29 @@ const VehicleTripsModal = ({ isOpen, onClose, vehicle, user, showNotification })
       Remark: t.remark,
       Balance: t.tripBalanceAmmount
     }));
+
+    // Add totals row
+    const totalsRow = {
+      Date: 'TOTAL',
+      'LR No.': '',
+      'Challan No': '',
+      Vehicle: '',
+      'DI No.': '',
+      Recipient: '',
+      Destination: '',
+      Qty: totals.qty,
+      'Rate PMT': '',
+      Freight: totals.freight,
+      Commission: totals.commission,
+      Advance: totals.advance,
+      Diesel: totals.desil,
+      Pump: '',
+      'Final Amount': totals.final,
+      Remark: '',
+      Balance: totals.balance
+    };
+    exportData.push(totalsRow);
+
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Trips");
@@ -120,14 +144,99 @@ const VehicleTripsModal = ({ isOpen, onClose, vehicle, user, showNotification })
       t.remark,
       t.tripBalanceAmmount
     ]);
+
+    // Add totals row
+    const totalsRow = [
+      "TOTAL", "", "", "", "", "", "", totals.qty, "",
+      totals.freight, totals.commission, totals.advance, totals.desil, "",
+      totals.final, "", totals.balance
+    ];
+
     autoTable(doc, {
       head: headers,
       body: rows,
+      foot: [totalsRow],
       startY: 32,
       theme: 'striped',
-      styles: { fontSize: 7 }
+      styles: { fontSize: 7 },
+      footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' }
     });
     doc.save(`Vehicle_${vehicle.vehicleNo}_Trips.pdf`);
+  };
+
+  const handlePrint = () => {
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Vehicle Trips: ${vehicle.vehicleNo}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h2 { color: #1e293b; }
+            .summary { margin: 10px 0; padding: 10px; background: #e6f0fa; border-radius: 5px; }
+            table { border-collapse: collapse; width: 100%; font-size: 10px; }
+            th { background-color: #1e293b; color: white; font-weight: bold; padding: 6px; text-align: center; border: 1px solid #334155; }
+            td { padding: 4px; text-align: center; border: 1px solid #cbd5e1; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            .totals-row { background-color: #fef9c3; font-weight: bold; }
+            @media print { body { margin: 0.5in; } }
+          </style>
+        </head>
+        <body>
+          <h2>Vehicle Trips: ${vehicle.vehicleNo}</h2>
+          <p>Company: ${user?.companyName} | Period: ${startDate || 'All'} to ${endDate || 'All'}</p>
+          <div class="summary">
+            <strong>Opening Balance: ₹${openingBalance}</strong> | <strong>Closing Balance: ₹${closingBalance}</strong>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th><th>LR No.</th><th>Challan</th><th>Vehicle</th><th>DI No.</th>
+                <th>Recipient</th><th>Dest.</th><th>Qty</th><th>Rate</th><th>Freight</th>
+                <th>Comm.</th><th>Advance</th><th>Diesel</th><th>Pump</th><th>Final</th>
+                <th>Remark</th><th>Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${trips.map(t => `
+                <tr>
+                  <td>${t.DateOfIssueOfInvoice}</td>
+                  <td>${t.LRNO}</td>
+                  <td>${t.challanNO}</td>
+                  <td>${t.VehicleNo}</td>
+                  <td>${t.DINo}</td>
+                  <td>${t.NameOfRecipient}</td>
+                  <td>${t.Destination}</td>
+                  <td>${t.Quantity}</td>
+                  <td>${t.pmt}</td>
+                  <td>${t.frightAmount}</td>
+                  <td>${t.commeion}</td>
+                  <td>${t.advanceCash}</td>
+                  <td>${t.desil}</td>
+                  <td>${t.petrolPump}</td>
+                  <td>${t.faynalAmmount}</td>
+                  <td>${t.remark}</td>
+                  <td>${t.tripBalanceAmmount}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr class="totals-row">
+                <td colspan="7">TOTAL</td>
+                <td>${totals.qty}</td><td></td>
+                <td>${totals.freight}</td><td>${totals.commission}</td>
+                <td>${totals.advance}</td><td>${totals.desil}</td><td></td>
+                <td>${totals.final}</td><td></td><td>${totals.balance}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   };
 
   if (!isOpen) return null;
@@ -148,6 +257,7 @@ const VehicleTripsModal = ({ isOpen, onClose, vehicle, user, showNotification })
             <button onClick={fetchTrips} className="bg-blue-600 text-white px-3 py-1 rounded text-xs">Filter</button>
             <button onClick={exportExcel} className="bg-green-600 text-white px-3 py-1 rounded text-xs flex items-center gap-1"><FileSpreadsheet size={14} /> Excel</button>
             <button onClick={printPDF} className="bg-purple-600 text-white px-3 py-1 rounded text-xs flex items-center gap-1"><Printer size={14} /> PDF</button>
+            <button onClick={handlePrint} className="bg-orange-600 text-white px-3 py-1 rounded text-xs flex items-center gap-1"><Printer size={14} /> Print</button>
           </div>
 
           {loading ? (

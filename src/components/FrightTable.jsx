@@ -1,4 +1,4 @@
-// FrightTable.jsx (fully corrected, Desil option removed)
+// FrightTable.jsx (updated)
 import { Printer, X, Trash2, Edit3, ArrowDownToLine } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import axios from "axios";
@@ -73,7 +73,8 @@ const FrightTable = ({
   vehicleList,
   startDate,
   endDate,
-  searchTerm
+  searchTerm,
+  isVehicleFilter   // new prop
 }) => {
   const [addPayment, setAddPayment] = useState(false);
   const [printBityBtn, setPrintBityBtn] = useState(false);
@@ -161,33 +162,33 @@ const FrightTable = ({
 
   const sortedData = mergedData;
 
-  // ✅ CORRECT running balances: add bilty, subtract desil
+  // ✅ FIX: Ensure we always have a numeric starting balance
+  const startBalance = useMemo(() => {
+    // 1. If searching for a vehicle and openingBalance is provided, use it
+    if (searchTerm && openingBalance !== null && openingBalance !== undefined) return openingBalance;
+    // 2. If overall openingBalance is provided, use it
+    if (openingBalance !== null && openingBalance !== undefined) return openingBalance;
+    // 3. Fallback to vehicleTotalBalance if available (backward compatibility)
+    if (vehicleTotalBalance !== null && vehicleTotalBalance !== undefined) return vehicleTotalBalance;
+    // 4. Default to 0 so the balance box still shows (will be 0)
+    return 0;
+  }, [searchTerm, openingBalance, vehicleTotalBalance]);
+
+  // ✅ running balances: add bilty, subtract desil
   const runningBalances = useMemo(() => {
     if (!sortedData.length) return [];
-    // When searching for a vehicle, use openingBalance (now vehicle-specific) as start
-    const start = (searchTerm && openingBalance !== null) ? openingBalance : (openingBalance !== null ? openingBalance : vehicleTotalBalance);
-    if (start === null || start === undefined) return [];
-    let running = start;
+    let running = startBalance;
     return sortedData.map((item) => {
       if (item.isDesil) {
-        // Desil entry: subtract diesel amount
         running = running - (item.desil || 0);
       } else {
-        // Normal bilty: add tripBalanceAmmount (positive = liability to vehicle)
         running = running + (item.tripBalanceAmmount || 0);
       }
       return running;
     });
-  }, [sortedData, openingBalance, vehicleTotalBalance, searchTerm]);
+  }, [sortedData, startBalance]);
 
-  // Start balance (opening) – now uses openingBalance when searching
-  const startBalance = useMemo(() => {
-    if (searchTerm && openingBalance !== null) return openingBalance;
-    if (openingBalance !== null) return openingBalance;
-    return vehicleTotalBalance;
-  }, [searchTerm, openingBalance, vehicleTotalBalance]);
-
-  const hasValidBalance = startBalance !== null && startBalance !== undefined;
+  const hasValidBalance = startBalance !== null && startBalance !== undefined; // always true now
 
   useEffect(() => {
     if (headerCheckboxRef.current) {
@@ -233,6 +234,8 @@ const FrightTable = ({
     });
   };
 
+  const closingBalanceValue = runningBalances.length ? runningBalances[runningBalances.length - 1] : startBalance;
+
   const downloadStyledExcel = () => {
     const exportData = getExportData();
     const totals = calculateTotals(exportData);
@@ -270,8 +273,7 @@ const FrightTable = ({
       totals.final, "", totals.balance
     ];
 
-    const closingBalanceValue = runningBalances.length ? runningBalances[runningBalances.length - 1] : startBalance;
-    const summaryLine = hasValidBalance
+    const summaryLine = isVehicleFilter
       ? `<p style="font-weight: bold; margin-bottom: 8px;">Opening Balance: ₹${startBalance} | Closing Balance: ₹${closingBalanceValue}</p>`
       : '';
 
@@ -363,12 +365,12 @@ const FrightTable = ({
 
       let startY = 20;
 
-      if (hasValidBalance) {
+      // Only show balance summary when filtering by vehicle
+      if (isVehicleFilter) {
         const summaryY = 20;
         const margin = 14;
         const pageWidth = doc.internal.pageSize.getWidth();
         const summaryWidth = pageWidth - 2 * margin;
-        const closingBalanceValue = runningBalances.length ? runningBalances[runningBalances.length - 1] : startBalance;
         const summaryText = `Opening Balance: ₹${startBalance.toLocaleString('en-IN')}   |   Closing Balance: ₹${closingBalanceValue.toLocaleString('en-IN')}`;
 
         doc.setFillColor(219, 234, 254);
@@ -439,8 +441,7 @@ const FrightTable = ({
       totals.final, "", totals.balance
     ];
 
-    const closingBalanceValue = runningBalances.length ? runningBalances[runningBalances.length - 1] : startBalance;
-    const summaryLine = hasValidBalance
+    const summaryLine = isVehicleFilter
       ? `<p style="font-weight: bold; margin-bottom: 8px;">Opening Balance: ₹${startBalance} | Closing Balance: ₹${closingBalanceValue}</p>`
       : '';
 
@@ -659,7 +660,8 @@ const FrightTable = ({
         </div>
       </div>
 
-      {sortedData.length > 0 && hasValidBalance && (
+      {/* Balance box – only shown when filtering by exact vehicle number */}
+      {isVehicleFilter && sortedData.length > 0 && (
         <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-center font-bold text-sm">
           <span className="mr-6 text-slate-700 dark:text-slate-300">
             Opening Balance:{' '}
