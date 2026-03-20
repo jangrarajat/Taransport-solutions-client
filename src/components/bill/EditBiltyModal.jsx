@@ -4,7 +4,29 @@ import axios from "axios";
 import { refreshToken } from "../../api/api";
 import { backendUrl } from "../../utils/backendUrl";
 import AddPumpModal from "../pump/AddPumpModal";
-import SuccessToster from "../toster/SuccessToster"; // Add this import
+import SuccessToster from "../toster/SuccessToster";
+
+// Helper to convert any date string to YYYY-MM-DD for input[type=date]
+const convertToInputDate = (dateStr) => {
+  if (!dateStr) return "";
+  // Try parsing as ISO string
+  let date = new Date(dateStr);
+  if (!isNaN(date.getTime())) {
+    return date.toISOString().split('T')[0];
+  }
+  // Try parsing as DD-MM-YYYY
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    // Check if it's a valid date
+    const parsed = new Date(`${year}-${month}-${day}`);
+    if (!isNaN(parsed.getTime())) {
+      return `${year}-${month}-${day}`;
+    }
+  }
+  // Fallback – return original string (won't work for date input but avoids blank)
+  return dateStr;
+};
 
 const EditBiltyModal = ({ isOpen, onClose, bill, onSuccess, showNotification }) => {
   const initialState = {
@@ -43,19 +65,8 @@ const EditBiltyModal = ({ isOpen, onClose, bill, onSuccess, showNotification }) 
 
   useEffect(() => {
     if (bill && isOpen) {
-      console.log("Bill data received:", bill);
-      
-      // Format date for input field (YYYY-MM-DD)
-      let formattedDate = "";
-      if (bill.DateOfIssueOfInvoice) {
-        const date = new Date(bill.DateOfIssueOfInvoice);
-        if (!isNaN(date.getTime())) {
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          formattedDate = `${year}-${month}-${day}`;
-        }
-      }
+      // Format date for input field
+      const formattedDate = convertToInputDate(bill.DateOfIssueOfInvoice);
 
       setFormData({
         InvoiceNo: bill.InvoiceNo || "",
@@ -99,7 +110,6 @@ const EditBiltyModal = ({ isOpen, onClose, bill, onSuccess, showNotification }) 
       const res = await axios.get(`${backendUrl}/api/pump-master`, { withCredentials: true });
       if (res.data.success) {
         setPumpList(res.data.pumps);
-        console.log("Pump list fetched:", res.data.pumps);
       }
     } catch (error) {
       if (error.response?.status === 401) {
@@ -149,31 +159,22 @@ const EditBiltyModal = ({ isOpen, onClose, bill, onSuccess, showNotification }) 
       // Check if pump or desil amount changed
       const pumpChanged = formData.petrolPump !== originalPumpData.pumpName;
       const amountChanged = Number(formData.desilOnRent) !== Number(originalPumpData.desilAmount);
-      
-      console.log("Pump changed:", pumpChanged, "Amount changed:", amountChanged);
-      console.log("Original pump:", originalPumpData.pumpName, "New pump:", formData.petrolPump);
-      console.log("Original amount:", originalPumpData.desilAmount, "New amount:", formData.desilOnRent);
 
       // If pump data changed, update pump transactions
       if (pumpChanged || amountChanged) {
-        
         // Delete old pump transaction if it existed
         if (originalPumpData.pumpName && originalPumpData.desilAmount) {
-          console.log("Deleting old pump transaction for reference:", bill._id);
           try {
             await axios.delete(`${backendUrl}/api/pump-transactions/by-reference/${bill._id}`, { 
               withCredentials: true 
             });
           } catch (deleteError) {
-            console.log("No existing transaction to delete or delete failed:", deleteError);
+            // Ignore – probably no transaction existed
           }
         }
         
         // Create new pump transaction if pump and amount exist and amount > 0
         if (formData.petrolPump && formData.desilOnRent && Number(formData.desilOnRent) > 0) {
-          console.log("Creating new pump transaction for pump:", formData.petrolPump);
-          
-          // Find pump ID from pumpList
           const selectedPump = pumpList.find(p => p.name === formData.petrolPump);
           
           const pumpTransactionData = {
@@ -185,8 +186,6 @@ const EditBiltyModal = ({ isOpen, onClose, bill, onSuccess, showNotification }) 
             reference: bill._id,
             vehicleNo: formData.VehicleNo
           };
-          
-          console.log("Sending pump transaction data:", pumpTransactionData);
           
           await axios.post(`${backendUrl}/api/pump-transactions/purchase`, pumpTransactionData, { 
             withCredentials: true 
@@ -207,7 +206,6 @@ const EditBiltyModal = ({ isOpen, onClose, bill, onSuccess, showNotification }) 
         }, 1000);
       }
     } catch (error) {
-      console.error("Update error:", error);
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
         if (isRefreshed) return handleSubmit();
@@ -264,7 +262,7 @@ const EditBiltyModal = ({ isOpen, onClose, bill, onSuccess, showNotification }) 
                 </datalist>
               </div>
 
-              {/* All fields */}
+              {/* All other fields */}
               {Object.keys(formData).map((key) => {
                 if (key === "VehicleNo") return null;
                 if (key === "petrolPump") {
