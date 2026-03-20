@@ -333,6 +333,7 @@ function Registration({ setAuthForm }) {
     try {
       const response = await axios.post(`${backendUrl}/api/user/registration`, { name, number, email, password, companyName });
       setToast({ id: Date.now(), show: true, success: true, message: "Registration Successful 🚛" });
+       console.log(response.data)
       if (response.data.success) {
         setTimeout(() => setAuthForm("login"), 3000);
       }
