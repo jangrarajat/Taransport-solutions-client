@@ -7,6 +7,17 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// Helper to format date as DD-MM-YYYY
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
 const VehicleTripsModal = ({ isOpen, onClose, vehicle, user, showNotification }) => {
   const [trips, setTrips] = useState([]);
   const [totals, setTotals] = useState({
@@ -23,6 +34,25 @@ const VehicleTripsModal = ({ isOpen, onClose, vehicle, user, showNotification })
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // Set default date range to current month when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const format = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      };
+      setStartDate(format(firstDay));
+      setEndDate(format(lastDay));
+    }
+  }, [isOpen]);
 
   const fetchTrips = async () => {
     setLoading(true);
@@ -63,9 +93,9 @@ const VehicleTripsModal = ({ isOpen, onClose, vehicle, user, showNotification })
   }, [isOpen, vehicle, startDate, endDate]);
 
   const exportExcel = () => {
-    // Prepare data rows
+    // Prepare data rows with formatted date
     const exportData = trips.map(t => ({
-      Date: t.DateOfIssueOfInvoice,
+      Date: formatDate(t.DateOfIssueOfInvoice),
       'LR No.': t.LRNO,
       'Challan No': t.challanNO,
       Vehicle: t.VehicleNo,
@@ -126,7 +156,7 @@ const VehicleTripsModal = ({ isOpen, onClose, vehicle, user, showNotification })
     const headers = [["Date", "LR No.", "Challan", "Vehicle", "DI No.", "Recipient", "Dest.", "Qty", "Rate",
       "Freight", "Comm.", "Advance", "Diesel", "Pump", "Final", "Remark", "Balance"]];
     const rows = trips.map(t => [
-      t.DateOfIssueOfInvoice,
+      formatDate(t.DateOfIssueOfInvoice),
       t.LRNO,
       t.challanNO,
       t.VehicleNo,
@@ -201,7 +231,7 @@ const VehicleTripsModal = ({ isOpen, onClose, vehicle, user, showNotification })
             <tbody>
               ${trips.map(t => `
                 <tr>
-                  <td>${t.DateOfIssueOfInvoice}</td>
+                  <td>${formatDate(t.DateOfIssueOfInvoice)}</td>
                   <td>${t.LRNO}</td>
                   <td>${t.challanNO}</td>
                   <td>${t.VehicleNo}</td>
@@ -300,7 +330,7 @@ const VehicleTripsModal = ({ isOpen, onClose, vehicle, user, showNotification })
                   <tbody>
                     {trips.map(t => (
                       <tr key={t._id} className="border-b dark:border-slate-700">
-                        <td className="px-2 py-2">{t.DateOfIssueOfInvoice}</td>
+                        <td className="px-2 py-2">{formatDate(t.DateOfIssueOfInvoice)}</td>
                         <td className="px-2 py-2">{t.LRNO}</td>
                         <td className="px-2 py-2">{t.challanNO}</td>
                         <td className="px-2 py-2">{t.VehicleNo}</td>
