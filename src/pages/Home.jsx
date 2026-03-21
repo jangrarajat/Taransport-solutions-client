@@ -510,7 +510,7 @@ function Home() {
   }
 
   return (
-    <div className="flex fixed h-screen w-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden uppercase font-bold text-xs">
+    <div className="flex fixed h-screen  w-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden uppercase font-bold text-xs">
       {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
 
       <AddBiltyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(msg) => { getBilty(1, pageSize); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
@@ -580,7 +580,7 @@ function Home() {
 
         <main className="p-3 sm:p-4 md:p-6 lg:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
           {menuOption === "home" && (
-            <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black">
+            <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black pb-20">
               {/* Premium Status Banner */}
               {user?.isPremium && (
                 <div className={`mb-6 p-4 rounded shadow-lg border-l-4 ${timeRemaining?.expired
@@ -839,7 +839,7 @@ function Home() {
           )}
 
           {(menuOption === "biltiy" || menuOption === "accounts") && (
-            <div className="space-y-3 animate-in fade-in duration-500">
+            <div className="space-y-3 animate-in fade-in duration-500 pb-20">
               {/* Filter bar with vehicle suggestions */}
               <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
@@ -932,7 +932,7 @@ function Home() {
 
           {/* Petrol Pump Section */}
           {menuOption === "petrolPump" && (
-            <div className="space-y-4">
+            <div className="space-y-4 pb-20">
               {!selectedPump ? (
                 <PumpMasterList
                   showNotification={showNotification}
@@ -957,7 +957,7 @@ function Home() {
 
           {/* Expenses Section */}
           {menuOption === "expantion" && (
-            <div className="space-y-3 animate-in fade-in duration-500">
+            <div className="space-y-3 animate-in fade-in duration-500 pb-20">
               <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
                   <div className="relative flex-1 min-w-0">
@@ -1019,7 +1019,7 @@ function Home() {
 
           {/* Pagination footer with page size selector */}
           {menuOption !== "home" && menuOption !== "petrolPump" && menuOption !== "Reports" && totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4 rounded border dark:border-slate-700 shadow-sm">
+            <div className="flex items-center pb-20 justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4 rounded border dark:border-slate-700 shadow-sm">
               <div className="flex items-center gap-4">
                 <p className="text-[8px] uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">
                   Page {currentPage} of {totalPages}

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Plus, Edit2, Trash2, Eye, Phone, User, MapPin, FileText, FileSpreadsheet, Printer } from "lucide-react";
 import * as XLSX from 'xlsx';
-import { backendUrl } from "../../../utils/backendUrl";
+// import { backendUrl } from "../../../utils/backendUrl";
 import ButtonLoaders from "../../loaders/ButtonLoaders";
 import AddOtherPersonModal from "./AddOtherPersonModal";
+import { backendUrl } from "../../../utils/backendUrl";
 import { refreshToken } from "../../../api/api";
 
 const OtherPersonList = ({ showNotification, onSelectPerson }) => {
