@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { RotateCcw, Plus, ChevronLeft, ChevronRight, Trash2, FileSpreadsheet, Printer, CheckSquare } from "lucide-react";
+import { RotateCcw, Plus, ChevronLeft, ChevronRight, Trash2, FileSpreadsheet, Printer } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { backendUrl } from "../../utils/backendUrl";
 import ButtonLoaders from "../loaders/ButtonLoaders";
@@ -13,20 +13,10 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [driverDetails, setDriverDetails] = useState(null);
-  const [totalPayments, setTotalPayments] = useState(0);
-  const [totalSalary, setTotalSalary] = useState(0);
+  const [totalAmount, setTotalAmount] = useState(0);
   const [openingBefore, setOpeningBefore] = useState(0);
-  const [currentMonthSalary, setCurrentMonthSalary] = useState(0);
-  const [pendingSalary, setPendingSalary] = useState(0);
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleteModal, setDeleteModal] = useState({ open: false, ids: [] });
-  const [salarySummary, setSalarySummary] = useState({
-    monthlySalary: 0,
-    salaryPaid: 0,
-    pendingSalary: 0,
-    extraPayments: 0
-  });
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   
   const headerCheckboxRef = useRef(null);
@@ -67,20 +57,10 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
       });
       if (res.data.success) {
         setTransactions(res.data.transactions || []);
-        setDriverDetails(res.data.driver);
         setTotalPages(res.data.totalPages || 1);
-        setTotalPayments(res.data.totalPayments || 0);
-        setTotalSalary(res.data.totalSalary || 0);
+        setTotalAmount(res.data.totalAmount || 0);
         setOpeningBefore(res.data.openingBeforeRange || 0);
-        setCurrentMonthSalary(res.data.currentMonthSalary || 0);
-        setPendingSalary(res.data.pendingSalary || 0);
-        setSalarySummary({
-          monthlySalary: res.data.driver?.monthlySalary || 0,
-          salaryPaid: res.data.salaryPaid || 0,
-          pendingSalary: res.data.pendingSalary || 0,
-          extraPayments: res.data.extraPayments || 0
-        });
-        setSelectedIds([]); // Clear selections on new data load
+        setSelectedIds([]);
       }
     } catch (error) {
       if (error.response?.status === 401) {
@@ -139,9 +119,7 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
       const deletePromises = deleteModal.ids.map(id => 
         axios.delete(`${backendUrl}/api/driver-transactions/${id}`, { withCredentials: true })
       );
-      
       await Promise.all(deletePromises);
-      
       showNotification(true, `${deleteModal.ids.length} Transaction${deleteModal.ids.length > 1 ? 's' : ''} deleted successfully`);
       setSelectedIds([]);
       fetchLedger();
@@ -159,9 +137,7 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
   const exportToExcel = () => {
     const exportData = transactions.map(t => ({
       Date: new Date(t.date).toLocaleDateString('en-GB'),
-      Type: t.type === 'salary' ? 'Salary' : 'Payment',
       Description: t.description || '-',
-      Month: t.month ? `${t.month}/${t.year}` : '-',
       'Amount (₹)': t.amount,
       'Running Balance (₹)': t.runningBalance
     }));
@@ -172,13 +148,10 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
     
     const summaryData = [
       { Item: 'Driver Name', Value: driverName },
-      { Item: 'Monthly Salary', Value: salarySummary.monthlySalary },
-      { Item: 'Salary Paid (This Period)', Value: salarySummary.salaryPaid },
-      { Item: 'Pending Salary', Value: salarySummary.pendingSalary },
-      { Item: 'Extra Payments', Value: salarySummary.extraPayments },
       { Item: 'Period', Value: `${startDate || 'Start'} to ${endDate || 'End'}` },
       { Item: 'Opening Balance', Value: openingBefore },
-      { Item: 'Total Transactions', Value: totalPayments + totalSalary },
+      { Item: 'Total Transactions', Value: totalAmount },
+      { Item: 'Closing Balance', Value: openingBefore + totalAmount }
     ];
     
     const wsSummary = XLSX.utils.json_to_sheet(summaryData);
@@ -187,7 +160,7 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
   };
 
   const handlePrint = () => {
-    const closingBalance = openingBefore + totalPayments + totalSalary;
+    const closingBalance = openingBefore + totalAmount;
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <html><head><title>${driverName} - Ledger</title>
@@ -197,74 +170,33 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
         th, td { border:1px solid #ddd; padding:8px; text-align:left; }
         th { background-color:#f2f2f2; }
         .summary { margin:10px 0; background:#f9f9f9; padding:15px; border-radius:5px; }
-        .summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-        .summary-item { padding:10px; background:white; border-radius:5px; }
-        .summary-label { font-size:12px; color:#666; }
-        .summary-value { font-size:18px; font-weight:bold; }
-        .salary { color:#2563eb; }
-        .payment { color:#16a34a; }
       </style>
       </head><body>
       <h1>${driverName} - Ledger</h1>
       <p>Period: ${startDate || 'Start'} to ${endDate || 'End'}</p>
       
       <div class="summary">
-        <h3>Salary Summary</h3>
-        <div class="summary-grid">
-          <div class="summary-item">
-            <div class="summary-label">Monthly Salary</div>
-            <div class="summary-value salary">₹${salarySummary.monthlySalary.toLocaleString('en-IN')}</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">Salary Paid (This Period)</div>
-            <div class="summary-value">₹${salarySummary.salaryPaid.toLocaleString('en-IN')}</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">Pending Salary</div>
-            <div class="summary-value" style="color:${salarySummary.pendingSalary > 0 ? '#dc2626' : '#16a34a'}">
-              ₹${salarySummary.pendingSalary.toLocaleString('en-IN')}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="summary">
-        <h3>Balance Summary</h3>
-        <div class="summary-grid">
-          <div class="summary-item">
-            <div class="summary-label">Opening Balance</div>
-            <div class="summary-value">₹${openingBefore.toLocaleString('en-IN')}</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">Total Transactions</div>
-            <div class="summary-value">₹${(totalPayments + totalSalary).toLocaleString('en-IN')}</div>
-          </div>
-        </div>
+        <p><strong>Opening Balance:</strong> ₹${openingBefore.toLocaleString('en-IN')}</p>
+        <p><strong>Total Transactions:</strong> ₹${totalAmount.toLocaleString('en-IN')}</p>
+        <p><strong>Closing Balance:</strong> ₹${closingBalance.toLocaleString('en-IN')}</p>
       </div>
 
       <h2>Transactions</h2>
-      <table>
-        <thead><tr>
-          <th>Date</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Month</th>
-          <th>Amount (₹)</th>
-          <th>Balance (₹)</th>
-        </tr></thead>
+       table
+        <thead>
+          <tr><th>Date</th><th>Description</th><th>Amount (₹)</th><th>Balance (₹)</th></tr>
+        </thead>
         <tbody>
           ${transactions.map(t => `
             <tr>
               <td>${new Date(t.date).toLocaleDateString('en-GB')}</td>
-              <td class="${t.type}">${t.type === 'salary' ? 'Salary' : 'Payment'}</td>
               <td>${t.description || '-'}</td>
-              <td>${t.month ? `${t.month}/${t.year}` : '-'}</td>
-              <td>₹${t.amount.toLocaleString('en-IN')}</td>
-              <td>₹${t.runningBalance.toLocaleString('en-IN')}</td>
+              <td>${t.amount.toLocaleString('en-IN')}</td>
+              <td>${t.runningBalance.toLocaleString('en-IN')}</td>
             </tr>
           `).join('')}
         </tbody>
-      </table>
+       </table>
       </body></html>
     `);
     printWindow.document.close();
@@ -272,51 +204,6 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
   };
 
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('en-GB');
-  const closingBalance = openingBefore + totalPayments + totalSalary;
-
-  const SummarySkeleton = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-      {[...Array(4)].map((_, i) => (
-        <div key={i} className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm animate-pulse">
-          <div className="h-3 bg-slate-200 dark:bg-slate-700   w-24 mb-2"></div>
-          <div className="h-6 bg-slate-300 dark:bg-slate-600   w-16"></div>
-        </div>
-      ))}
-    </div>
-  );
-
-  const TableSkeleton = () => (
-    <div className="bg-white dark:bg-slate-900   shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-50 dark:bg-slate-800 border-b dark:border-slate-700">
-            <tr>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Description</th>
-              <th className="px-4 py-3">Month</th>
-              <th className="px-4 py-3 text-right">Amount</th>
-              <th className="px-4 py-3 text-right">Balance</th>
-              <th className="px-4 py-3 text-center">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {[...Array(5)].map((_, i) => (
-              <tr key={i} className="animate-pulse">
-                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-16"></div></td>
-                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-12"></div></td>
-                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-32"></div></td>
-                <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-12"></div></td>
-                <td className="px-4 py-2 text-right"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-12 ml-auto"></div></td>
-                <td className="px-4 py-2 text-right"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-12 ml-auto"></div></td>
-                <td className="px-4 py-2 text-center"><div className="h-3 bg-slate-200 dark:bg-slate-700   w-6 mx-auto"></div></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
 
   if (!driverId) return null;
 
@@ -329,172 +216,116 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
         <h2 className="text-xl font-black uppercase text-gray-800 dark:text-white">{driverName} - Ledger</h2>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 p-3   shadow-sm border border-slate-200 dark:border-slate-700">
+      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 p-3 shadow-sm border border-slate-200 dark:border-slate-700">
         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-          className="border   px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 flex-1 min-w-[120px]" />
+          className="border px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 flex-1 min-w-[120px]" />
         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-          className="border   px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 flex-1 min-w-[120px]" />
+          className="border px-2 py-2 text-xs bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 flex-1 min-w-[120px]" />
         <button onClick={fetchLedger}
-          className="px-3 py-2 bg-blue-600 text-white   text-xs font-bold hover:bg-blue-700">
+          className="px-3 py-2 bg-blue-600 text-white text-xs font-bold hover:bg-blue-700">
           Apply
         </button>
         <button onClick={() => { const range = getCurrentMonthRange(); setStartDate(range.start); setEndDate(range.end); }}
-          className="p-2 bg-gray-200 dark:bg-slate-600   hover:bg-gray-300 dark:hover:bg-slate-500" title="Reset">
+          className="p-2 bg-gray-200 dark:bg-slate-600 hover:bg-gray-300 dark:hover:bg-slate-500" title="Reset">
           <RotateCcw size={12} className="text-slate-700 dark:text-white" />
         </button>
         <button onClick={exportToExcel}
-          className="p-2 bg-green-600 text-white   hover:bg-green-700" title="Excel">
+          className="p-2 bg-green-600 text-white hover:bg-green-700" title="Excel">
           <FileSpreadsheet size={14} />
         </button>
         <button onClick={handlePrint}
-          className="p-2 bg-purple-600 text-white   hover:bg-purple-700" title="Print">
+          className="p-2 bg-purple-600 text-white hover:bg-purple-700" title="Print">
           <Printer size={14} />
         </button>
         
-        {/* Selection Controls */}
         {selectedIds.length > 0 && (
           <>
-            <span className="bg-blue-600 text-white px-2 py-1   text-xs font-black">
+            <span className="bg-blue-600 text-white px-2 py-1 text-xs font-black">
               {selectedIds.length} Selected
             </span>
-            <button
-              onClick={handleBulkDelete}
-              className="flex items-center gap-1 bg-red-600 text-white px-3 py-2   text-xs font-bold hover:bg-red-700"
-            >
+            <button onClick={handleBulkDelete}
+              className="flex items-center gap-1 bg-red-600 text-white px-3 py-2 text-xs font-bold hover:bg-red-700">
               <Trash2 size={12} /> Delete Selected
             </button>
           </>
         )}
 
         <button onClick={() => setPaymentModalOpen(true)}
-          className="ml-auto flex items-center gap-1 bg-green-600 text-white px-3 py-2   text-xs font-bold hover:bg-green-700">
+          className="ml-auto flex items-center gap-1 bg-green-600 text-white px-3 py-2 text-xs font-bold hover:bg-green-700">
           <Plus size={12} /> Add Transaction
         </button>
       </div>
 
-      {/* Salary Summary Cards */}
-      {loading ? <SummarySkeleton /> : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
-            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Monthly Salary</p>
-            <p className="text-xl font-black text-blue-600 dark:text-blue-400">₹{salarySummary.monthlySalary.toLocaleString('en-IN')}</p>
-          </div>
-          <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
-            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Salary Paid (This Month)</p>
-            <p className="text-xl font-black text-green-600 dark:text-green-400">₹{currentMonthSalary.toLocaleString('en-IN')}</p>
-          </div>
-          <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
-            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending Salary</p>
-            <p className={`text-xl font-black ${pendingSalary > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-              ₹{pendingSalary.toLocaleString('en-IN')}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
-            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Extra Payments</p>
-            <p className="text-xl font-black text-orange-600 dark:text-orange-400">₹{salarySummary.extraPayments.toLocaleString('en-IN')}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Balance Summary Cards */}
+      {/* Summary Cards */}
       {!loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="bg-white dark:bg-slate-800 p-4 border border-slate-200 dark:border-slate-700 shadow-sm">
             <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Opening Balance (before {startDate || 'start'})</p>
             <p className="text-xl font-black text-gray-900 dark:text-white">₹{openingBefore.toLocaleString('en-IN')}</p>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-4   border border-slate-200 dark:border-slate-700 shadow-sm">
-            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Transactions</p>
-            <p className="text-xl font-black text-purple-600 dark:text-purple-400">₹{(totalPayments + totalSalary).toLocaleString('en-IN')}</p>
+          <div className="bg-white dark:bg-slate-800 p-4 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Transactions (this period)</p>
+            <p className="text-xl font-black text-purple-600 dark:text-purple-400">₹{totalAmount.toLocaleString('en-IN')}</p>
           </div>
         </div>
       )}
 
-      {loading ? <TableSkeleton /> : (
-        <div className="bg-white dark:bg-slate-900   shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      {loading ? (
+        <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-800 border-b dark:border-slate-700">
+                <tr><th>Date</th><th>Description</th><th className="text-right">Amount</th><th className="text-right">Balance</th><th>Action</th></tr>
+              </thead>
+              <tbody>{[...Array(5)].map((_,i) => <tr key={i} className="animate-pulse"><td colSpan="5">Loading...</td></tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800 border-b dark:border-slate-700">
                 <tr>
                   <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">
-                    <input
-                      type="checkbox"
-                      ref={headerCheckboxRef}
-                      onChange={handleSelectAll}
-                      checked={transactions.length > 0 && selectedIds.length === transactions.length}
-                      className="  dark:bg-slate-700 dark:border-slate-600"
-                    />
+                    <input type="checkbox" ref={headerCheckboxRef} onChange={handleSelectAll}
+                      checked={transactions.length > 0 && selectedIds.length === transactions.length} />
                   </th>
                   <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Date</th>
-                  <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Type</th>
                   <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Description</th>
-                  <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Month</th>
                   <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Amount (₹)</th>
                   <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Balance (₹)</th>
-                  {/* <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-center">Action</th> */}
+                  <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {transactions.length > 0 ? transactions.map(t => (
                   <tr key={t._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 ${selectedIds.includes(t._id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
                     <td className="px-4 py-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(t._id)}
-                        onChange={() => setSelectedIds(prev => 
-                          prev.includes(t._id) 
-                            ? prev.filter(i => i !== t._id) 
-                            : [...prev, t._id]
-                        )}
-                        className="  dark:bg-slate-700 dark:border-slate-600"
-                      />
+                      <input type="checkbox" checked={selectedIds.includes(t._id)}
+                        onChange={() => setSelectedIds(prev => prev.includes(t._id) ? prev.filter(i => i !== t._id) : [...prev, t._id])} />
                     </td>
                     <td className="px-4 py-2 text-slate-700 dark:text-slate-300">{formatDate(t.date)}</td>
-                    <td className="px-4 py-2">
-                      <span className={`px-2 py-1  -full text-[9px] font-black uppercase ${
-                        t.type === 'salary' 
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' 
-                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                      }`}>
-                        {t.type === 'salary' ? 'Salary' : 'Payment'}
-                      </span>
-                    </td>
                     <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{t.description || '-'}</td>
-                    <td className="px-4 py-2 text-slate-600 dark:text-slate-400">
-                      {t.month ? `${t.month}/${t.year}` : '-'}
-                    </td>
-                    <td className={`px-4 py-2 font-black text-right ${
-                      t.type === 'salary' ? 'text-blue-600 dark:text-blue-400' : 'text-green-600 dark:text-green-400'
-                    }`}>
-                      + ₹{t.amount.toLocaleString('en-IN')}
-                    </td>
-                    <td className="px-4 py-2 font-black text-right text-slate-900 dark:text-white">
-                      ₹{t.runningBalance.toLocaleString('en-IN')}
-                    </td>
-                    {/* <td className="px-4 py-2 text-center">
-                      <button onClick={() => handleSingleDelete(t._id)}
-                        className="p-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30  " title="Delete">
+                    <td className="px-4 py-2 font-black text-right text-green-600 dark:text-green-400">+ ₹{t.amount.toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2 font-black text-right text-slate-900 dark:text-white">₹{t.runningBalance.toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2 text-center">
+                      <button onClick={() => handleSingleDelete(t._id)} className="p-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30">
                         <Trash2 size={14} />
                       </button>
-                    </td> */}
+                    </td>
                   </tr>
                 )) : (
-                  <tr><td colSpan="8" className="p-8 text-center text-slate-400 dark:text-slate-500 italic">No transactions in this period</td></tr>
+                  <tr><td colSpan="6" className="p-8 text-center text-slate-400 dark:text-slate-500 italic">No transactions in this period</td></tr>
                 )}
               </tbody>
               {transactions.length > 0 && (
                 <tfoot className="bg-slate-50 dark:bg-slate-800 border-t dark:border-slate-700 font-black">
                   <tr>
                     <td colSpan="3" className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 uppercase">Period Totals</td>
-                    <td colSpan="2"></td>
-                    <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400">
-                      Salary: ₹{totalSalary.toLocaleString('en-IN')}<br />
-                      Payments: ₹{totalPayments.toLocaleString('en-IN')}
-                    </td>
-                    <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400">
-                      {closingBalance.toLocaleString('en-IN')}
-                    </td>
-                    {/* <td></td> */}
+                    <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400">₹{totalAmount.toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400">₹{(openingBefore + totalAmount).toLocaleString('en-IN')}</td>
+                    <td></td>
                   </tr>
                 </tfoot>
               )}
@@ -504,31 +335,29 @@ const DriverLedger = ({ driverId, driverName, onBack, showNotification }) => {
       )}
 
       {!loading && totalPages > 1 && (
-        <div className="flex justify-between items-center bg-white dark:bg-slate-800 px-4 py-3   border dark:border-slate-700 shadow-sm">
+        <div className="flex justify-between items-center bg-white dark:bg-slate-800 px-4 py-3 border dark:border-slate-700 shadow-sm">
           <p className="text-xs text-slate-500 dark:text-slate-400">Page {page} of {totalPages}</p>
           <div className="flex gap-2">
             <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-              className="p-1 border border-slate-300 dark:border-slate-600   disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700">
-              <ChevronLeft size={14} className="text-slate-700 dark:text-white" />
+              className="p-1 border border-slate-300 dark:border-slate-600 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700">
+              <ChevronLeft size={14} />
             </button>
             <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)}
-              className="p-1 border border-slate-300 dark:border-slate-600   disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700">
-              <ChevronRight size={14} className="text-slate-700 dark:text-white" />
+              className="p-1 border border-slate-300 dark:border-slate-600 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700">
+              <ChevronRight size={14} />
             </button>
           </div>
         </div>
       )}
 
-      <AddDriverPaymentModal 
-        isOpen={paymentModalOpen} 
+      <AddDriverPaymentModal
+        isOpen={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
-        onSubmit={handleAddPayment} 
+        onSubmit={handleAddPayment}
         showNotification={showNotification}
-        driverMonthlySalary={driverDetails?.monthlySalary || 0}
-        currentMonthSalary={currentMonthSalary}
       />
 
-      <DeleteConfirmModal 
+      <DeleteConfirmModal
         isOpen={deleteModal.open}
         onClose={() => setDeleteModal({ open: false, ids: [] })}
         onConfirm={handleDeleteConfirm}
