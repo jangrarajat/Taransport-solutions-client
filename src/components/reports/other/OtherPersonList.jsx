@@ -90,7 +90,7 @@ const OtherPersonList = ({ showNotification, onSelectPerson }) => {
   };
 
   return (
-    <div className="space-y-4  dark:text-white">
+    <div className="space-y-4  dark:text-white pb-20">
       <div className="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded shadow-sm border border-slate-200 dark:border-slate-700">
         <h2 className="text-lg font-black uppercase text-slate-800 dark:text-white tracking-tighter">Other People</h2>
         <div className="flex gap-2">

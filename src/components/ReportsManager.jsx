@@ -36,7 +36,7 @@ const ReportsManager = ({ showNotification }) => {
   }
 
   return (
-    <div className="space-y-4 dark:text-white pb-20">
+    <div className="space-y-4 dark:text-white pb-48">
       <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
         <button
           onClick={() => setActiveTab("vehicles")}

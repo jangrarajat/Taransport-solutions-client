@@ -215,7 +215,7 @@ const OtherPersonLedger = ({ personId, personName, onBack, showNotification }) =
   if (!personId) return null;
 
   return (
-    <div className="space-y-4 dark:text-white">
+    <div className="space-y-4 dark:text-white pb-20">
       <div className="flex items-center gap-3">
         <button onClick={onBack} className="text-sm underline text-blue-600 dark:text-blue-400 hover:text-blue-800">
           ← Back to list
