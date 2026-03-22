@@ -1,4 +1,4 @@
-// Home.jsx
+// Home.jsx – with dashboard refresh after any operation
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound, ClipboardPlus,
@@ -210,10 +210,20 @@ function Home() {
     return () => window.removeEventListener('userUpdated', handleUserUpdate);
   }, [setUser]);
 
-  const showNotification = (success, msg) => {
+  // Notification & refresh dashboard when on home
+  const showNotification = useCallback((success, msg) => {
     setToast({ show: true, success, msg, id: Date.now() });
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
-  };
+
+    // If currently on home page, refresh dashboard data
+    if (menuOption === "home") {
+      getDashboardData(dashFilterType, dashStartDate, dashEndDate);
+      fetchPumpSummary(dashStartDate, dashEndDate);
+      fetchDriverMonthlyPayments(dashStartDate, dashEndDate);
+      fetchExpenseTotal();
+      fetchDriverPendingTotal();
+    }
+  }, [menuOption, dashFilterType, dashStartDate, dashEndDate]);
 
   const resetToCurrentMonth = () => {
     const range = getCurrentMonthRange();
@@ -271,7 +281,7 @@ function Home() {
     } finally {
       setLoading(prev => ({ ...prev, dashboard: false }));
     }
-  }, []);
+  }, [dashFilterType, dashStartDate, dashEndDate]);
 
   // Pump summary with date filter
   const fetchPumpSummary = useCallback(async (start, end) => {
@@ -922,7 +932,7 @@ function Home() {
                       startDate={startDate}
                       endDate={endDate}
                       searchTerm={searchTerm}
-                      isVehicleFilter={isVehicleFilter}   // new prop
+                      isVehicleFilter={isVehicleFilter}
                     />
                   )}
                 </div>

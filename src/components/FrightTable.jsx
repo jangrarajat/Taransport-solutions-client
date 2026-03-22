@@ -1,4 +1,4 @@
-// FrightTable.jsx (updated)
+// FrightTable.jsx – sorted by createdAt
 import { Printer, X, Trash2, Edit3, ArrowDownToLine } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import axios from "axios";
@@ -12,7 +12,14 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { backendUrl } from "../utils/backendUrl";
 
-// Maintenance Modal (unchanged)
+// Helper to get sorting timestamp (uses createdAt first, falls back to invoice date)
+const getSortTime = (item) => {
+  if (item.createdAt) return new Date(item.createdAt);
+  if (item.DateOfIssueOfInvoice) return new Date(item.DateOfIssueOfInvoice);
+  return new Date(0);
+};
+
+// Maintenance Modal
 const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification }) => {
   const [amount, setAmount] = useState("");
   const [remark, setRemark] = useState("");
@@ -74,7 +81,7 @@ const FrightTable = ({
   startDate,
   endDate,
   searchTerm,
-  isVehicleFilter   // new prop
+  isVehicleFilter
 }) => {
   const [addPayment, setAddPayment] = useState(false);
   const [printBityBtn, setPrintBityBtn] = useState(false);
@@ -151,30 +158,23 @@ const FrightTable = ({
     }
   };
 
-  const mergedData = useMemo(() => {
+  // Merge and sort by createdAt (ascending)
+  const sortedData = useMemo(() => {
     const all = [...data, ...desilEntries];
     return all.sort((a, b) => {
-      const dateA = new Date(a.DateOfIssueOfInvoice);
-      const dateB = new Date(b.DateOfIssueOfInvoice);
-      return dateA - dateB;
+      const timeA = getSortTime(a);
+      const timeB = getSortTime(b);
+      return timeA - timeB;
     });
   }, [data, desilEntries]);
 
-  const sortedData = mergedData;
-
-  // ✅ FIX: Ensure we always have a numeric starting balance
   const startBalance = useMemo(() => {
-    // 1. If searching for a vehicle and openingBalance is provided, use it
     if (searchTerm && openingBalance !== null && openingBalance !== undefined) return openingBalance;
-    // 2. If overall openingBalance is provided, use it
     if (openingBalance !== null && openingBalance !== undefined) return openingBalance;
-    // 3. Fallback to vehicleTotalBalance if available (backward compatibility)
     if (vehicleTotalBalance !== null && vehicleTotalBalance !== undefined) return vehicleTotalBalance;
-    // 4. Default to 0 so the balance box still shows (will be 0)
     return 0;
   }, [searchTerm, openingBalance, vehicleTotalBalance]);
 
-  // ✅ running balances: add bilty, subtract desil
   const runningBalances = useMemo(() => {
     if (!sortedData.length) return [];
     let running = startBalance;
@@ -188,7 +188,7 @@ const FrightTable = ({
     });
   }, [sortedData, startBalance]);
 
-  const hasValidBalance = startBalance !== null && startBalance !== undefined; // always true now
+  const closingBalanceValue = runningBalances.length ? runningBalances[runningBalances.length - 1] : startBalance;
 
   useEffect(() => {
     if (headerCheckboxRef.current) {
@@ -233,8 +233,6 @@ const FrightTable = ({
       final: 0
     });
   };
-
-  const closingBalanceValue = runningBalances.length ? runningBalances[runningBalances.length - 1] : startBalance;
 
   const downloadStyledExcel = () => {
     const exportData = getExportData();
@@ -297,13 +295,13 @@ const FrightTable = ({
           <p>Contact No: 9992269616 & 7027400769</p>
           <p>Generated: ${new Date().toLocaleDateString('en-IN')} | Records: ${exportData.length} (${selectedIds.length ? 'Selected' : 'All'})</p>
           ${summaryLine}
-          <table>
-            <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+           <table>
+            <thead>${headers.map(h => `<th>${h}</th>`).join('')}</thead>
             <tbody>
               ${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
               <tr class="totals-row">${totalsRow.map(cell => `<td>${cell}</td>`).join('')}</tr>
             </tbody>
-          </table>
+           </table>
         </body>
       </html>
     `;
@@ -365,7 +363,6 @@ const FrightTable = ({
 
       let startY = 20;
 
-      // Only show balance summary when filtering by vehicle
       if (isVehicleFilter) {
         const summaryY = 20;
         const margin = 14;
@@ -465,13 +462,13 @@ const FrightTable = ({
           <h2>Fright Report</h2>
           <p>Generated: ${new Date().toLocaleDateString('en-IN')} | Records: ${exportData.length} (${selectedIds.length ? 'Selected' : 'All'})</p>
           ${summaryLine}
-          <table>
-            <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+           <table>
+            <thead>${headers.map(h => `<th>${h}</th>`).join('')}</thead>
             <tbody>
               ${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
               <tr class="totals-row">${totalsRow.map(cell => `<td>${cell}</td>`).join('')}</tr>
             </tbody>
-          </table>
+           </table>
         </body>
       </html>
     `);
@@ -588,7 +585,6 @@ const FrightTable = ({
                   <input type="radio" value="debit" checked={paymentType === "debit"} onChange={() => setPaymentType("debit")} className="hidden" />
                   <span className="text-xs font-black">💸 Debit (-)</span>
                 </label>
-                {/* Desil option removed */}
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -660,8 +656,7 @@ const FrightTable = ({
         </div>
       </div>
 
-      {/* Balance box – only shown when filtering by exact vehicle number */}
-      {isVehicleFilter && sortedData.length > 0 && (
+      {/* {isVehicleFilter && sortedData.length > 0 && (
         <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-center font-bold text-sm">
           <span className="mr-6 text-slate-700 dark:text-slate-300">
             Opening Balance:{' '}
@@ -690,7 +685,7 @@ const FrightTable = ({
             </span>
           </span>
         </div>
-      )}
+      )} */}
 
       <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden rounded">
         <div className="overflow-x-auto">
@@ -803,4 +798,4 @@ const FrightTable = ({
   );
 };
 
-export default FrightTable;
+export default FrightTable; 

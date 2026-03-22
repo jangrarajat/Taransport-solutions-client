@@ -1,5 +1,5 @@
 import { Printer, TruckElectric, X, Trash2, Edit3, FileSpreadsheet, AlertTriangle } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import axios from "axios";
 import PrintBilty from "../PrintBilty";
 import SuccessToster from "../toster/SuccessToster";
@@ -9,6 +9,13 @@ import DeleteConfirmModal from "../DeleteConfirmModal";
 import * as XLSX from 'xlsx';
 import { refreshToken } from "../../api/api";
 import { backendUrl } from "../../utils/backendUrl";
+
+// Helper to get sorting timestamp (uses createdAt first, falls back to invoice date)
+const getSortTime = (item) => {
+  if (item.createdAt) return new Date(item.createdAt);
+  if (item.DateOfIssueOfInvoice) return new Date(item.DateOfIssueOfInvoice);
+  return new Date(0);
+};
 
 // Maintenance Modal
 const MaintenanceModal = ({ isOpen, onClose, bill, onUpdate, showNotification }) => {
@@ -67,13 +74,23 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
 
     const headerCheckboxRef = useRef(null);
 
+    // Sort data by createdAt (ascending)
+    const sortedData = useMemo(() => {
+        if (!data) return [];
+        return [...data].sort((a, b) => {
+            const timeA = getSortTime(a);
+            const timeB = getSortTime(b);
+            return timeA - timeB;
+        });
+    }, [data]);
+
     useEffect(() => {
         if (headerCheckboxRef.current) {
-            const allIds = data.map(item => item._id);
+            const allIds = sortedData.map(item => item._id);
             const someSelected = selectedIds.length > 0 && selectedIds.length < allIds.length;
             headerCheckboxRef.current.indeterminate = someSelected;
         }
-    }, [selectedIds, data]);
+    }, [selectedIds, sortedData]);
 
     const handleNotification = (success, msg) => {
         setToast({ show: true, success, msg, id: Date.now() });
@@ -81,7 +98,7 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
     };
 
     const downloadExcel = () => {
-        const exportData = selectedIds.length > 0 ? data.filter(b => selectedIds.includes(b._id)) : data;
+        const exportData = selectedIds.length > 0 ? sortedData.filter(b => selectedIds.includes(b._id)) : sortedData;
         const worksheet = XLSX.utils.json_to_sheet(exportData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Bilty_Report");
@@ -109,7 +126,7 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
 
     const handleSelectAll = (e) => {
         if (e.target.checked) {
-            setSelectedIds(data.map(item => item._id));
+            setSelectedIds(sortedData.map(item => item._id));
         } else {
             setSelectedIds([]);
         }
@@ -135,7 +152,6 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
 
             <div className="mb-4 flex justify-between items-center bg-white dark:bg-slate-800 p-4   shadow-sm border border-slate-100 dark:border-slate-700">
                 <div className="flex items-center gap-3">
-                    {/* <span className="bg-blue-600 text-white px-3 py-1   text-[10px] font-black uppercase">{selectedIds.length} Selected</span> */}
                     <button onClick={downloadExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2   text-[10px] font-black uppercase"><FileSpreadsheet size={14} /> Export</button>
                     {selectedIds.length > 0 && (
                         <button 
@@ -158,7 +174,7 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
                                         type="checkbox"
                                         ref={headerCheckboxRef}
                                         onChange={handleSelectAll}
-                                        checked={selectedIds.length === data.length && data.length > 0}
+                                        checked={selectedIds.length === sortedData.length && sortedData.length > 0}
                                         className="w-4 h-4   dark:bg-slate-700 dark:border-slate-600"
                                     />
                                 </th>
@@ -175,7 +191,7 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-bold uppercase text-[11px] text-slate-700 dark:text-slate-300">
-                            {data.map((bill) => bill.LRNO ?  (
+                            {sortedData.map((bill) => bill.LRNO ?  (
                                 <tr key={bill._id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                                     <td className="px-4 py-3 text-center border-r dark:border-slate-700">
                                         <input
@@ -193,7 +209,6 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
                                         <div className="flex items-center justify-center gap-2">
                                             <Printer className="mx-auto cursor-pointer hover:text-blue-600 dark:hover:text-blue-400" onClick={() => { setPData(bill); setPrintBityBtn(true); }} size={18} />
                                             <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30  "><Edit3 size={14} /></button>
-                                            {/* <button onClick={() => handleSingleDelete(bill._id)} className="text-red-400 p-1.5 bg-red-50 dark:bg-red-900/30  "><Trash2 size={14} /></button> */}
                                         </div>
                                     </td>
 
@@ -210,7 +225,7 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
                                     <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 text-[10px]">{bill.GSTINNo}</td>
                                     <td className="px-4 py-3 text-center text-green-700 dark:text-green-400 font-black">₹{bill.TotalInvoiceValue?.toLocaleString('en-IN')}</td>
                                 </tr>
-                            ) :null)}
+                            ) : null)}
                         </tbody>
                     </table>
                 </div>
