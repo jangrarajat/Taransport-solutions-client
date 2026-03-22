@@ -1,6 +1,6 @@
 // components/ProfilePage.jsx
 import React, { useState, useEffect } from "react";
-import { X, User, Building, Mail, Crown, Calendar, Edit2, Save, Clock, LogOut, CheckCircle, Truck, Shield, Zap, ArrowLeft } from "lucide-react";
+import { X, User, Building, Mail, Crown, Calendar, Edit2, Save, Clock, LogOut, CheckCircle, Truck, Shield, Zap, ArrowLeft, MapPin, Home, FileText, Hash } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { backendUrl } from "../utils/backendUrl";
@@ -307,6 +307,7 @@ const injectStyles = () => {
     .pp-field-icon.emerald { background: rgba(16,185,129,0.1); color: #10b981; }
     .pp-field-icon.purple { background: rgba(139,92,246,0.1); color: #8b5cf6; }
     .pp-field-icon.rose { background: rgba(244,63,94,0.1); color: #f43f5e; }
+    .pp-field-icon.slate { background: rgba(100,116,139,0.1); color: #64748b; }
 
     .pp-field-label {
       font-size: 10px; font-weight: 600;
@@ -477,7 +478,11 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
   const [formData, setFormData] = useState({
     name: user?.name || "",
     companyName: user?.companyName || "",
-    email: user?.email || ""
+    email: user?.email || "",
+    address: user?.address || "",
+    headOfficeAddress: user?.headOfficeAddress || "",
+    gstinNo: user?.gstinNo || "",
+    sapCode: user?.sapCode || ""
   });
 
   useEffect(() => { injectStyles(); }, []);
@@ -493,7 +498,15 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
   useEffect(() => {
     const handleUserUpdate = (event) => {
       setUser(event.detail);
-      setFormData({ name: event.detail?.name || "", companyName: event.detail?.companyName || "", email: event.detail?.email || "" });
+      setFormData({
+        name: event.detail?.name || "",
+        companyName: event.detail?.companyName || "",
+        email: event.detail?.email || "",
+        address: event.detail?.address || "",
+        headOfficeAddress: event.detail?.headOfficeAddress || "",
+        gstinNo: event.detail?.gstinNo || "",
+        sapCode: event.detail?.sapCode || ""
+      });
     };
     window.addEventListener('userUpdated', handleUserUpdate);
     return () => window.removeEventListener('userUpdated', handleUserUpdate);
@@ -524,7 +537,15 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
   };
 
   const handleCancel = () => {
-    setFormData({ name: user?.name || "", companyName: user?.companyName || "", email: user?.email || "" });
+    setFormData({
+      name: user?.name || "",
+      companyName: user?.companyName || "",
+      email: user?.email || "",
+      address: user?.address || "",
+      headOfficeAddress: user?.headOfficeAddress || "",
+      gstinNo: user?.gstinNo || "",
+      sapCode: user?.sapCode || ""
+    });
     setIsEditing(false);
   };
 
@@ -535,13 +556,11 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
     return new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  /* timer color */
   const timerColor = !timeRemaining ? 'neutral'
     : timeRemaining.expired ? 'crit'
     : timeRemaining.days <= 7 ? 'warn'
     : '';
 
-  /* usage pct */
   const usagePct = Math.min(((user?.biltyCount || 0) / 5) * 100, 100);
 
   return (
@@ -658,11 +677,41 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
                 )}
               </div>
             </div>
+
+            {/* Address */}
+            <div className="pp-field">
+              <div className="pp-field-icon slate"><MapPin size={15} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="pp-field-label">Address</div>
+                {isEditing ? (
+                  <input className="pp-field-input" type="text" value={formData.address}
+                    placeholder="Office Address"
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
+                ) : (
+                  <div className="pp-field-value">{user?.address || '—'}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Head Office Address */}
+            <div className="pp-field">
+              <div className="pp-field-icon slate"><Home size={15} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="pp-field-label">Head Office Address</div>
+                {isEditing ? (
+                  <input className="pp-field-input" type="text" value={formData.headOfficeAddress}
+                    placeholder="Head Office Address"
+                    onChange={(e) => setFormData({ ...formData, headOfficeAddress: e.target.value })} />
+                ) : (
+                  <div className="pp-field-value">{user?.headOfficeAddress || '—'}</div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Subscription */}
           <div className="pp-section-card">
-            <div className="pp-section-label">Subscription</div>
+            <div className="pp-section-label">Subscription & Tax Info</div>
 
             {/* Plan */}
             <div className="pp-field">
@@ -672,6 +721,36 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
                 <div className="pp-field-value" style={{ color: user?.isPremium ? '#f59e0b' : '#9ca3af' }}>
                   {user?.isPremium ? user?.premiumVersion || 'Premium' : 'Free Trial'}
                 </div>
+              </div>
+            </div>
+
+            {/* GSTIN */}
+            <div className="pp-field">
+              <div className="pp-field-icon slate"><FileText size={15} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="pp-field-label">GSTIN No.</div>
+                {isEditing ? (
+                  <input className="pp-field-input" type="text" value={formData.gstinNo}
+                    placeholder="GSTIN Number"
+                    onChange={(e) => setFormData({ ...formData, gstinNo: e.target.value })} />
+                ) : (
+                  <div className="pp-field-value">{user?.gstinNo || '—'}</div>
+                )}
+              </div>
+            </div>
+
+            {/* SAP Code */}
+            <div className="pp-field">
+              <div className="pp-field-icon slate"><Hash size={15} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="pp-field-label">SAP Code</div>
+                {isEditing ? (
+                  <input className="pp-field-input" type="text" value={formData.sapCode}
+                    placeholder="SAP Code"
+                    onChange={(e) => setFormData({ ...formData, sapCode: e.target.value })} />
+                ) : (
+                  <div className="pp-field-value">{user?.sapCode || '—'}</div>
+                )}
               </div>
             </div>
 

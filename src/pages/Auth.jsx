@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import Login from '../components/authForm/Login'
-import Registration from '../components/authForm/Registration'
+import React, { useState, useEffect } from 'react';
+import Login from '../components/authForm/Login';
+import Registration from '../components/authForm/Registration';
+import ForgetPassword from '../components/authForm/ForgetPassword';
 
-/* ─── Inject global styles once ─────────────────────────────── */
 const AUTH_STYLE_ID = "auth-premium-styles";
 const injectAuthStyles = () => {
   if (document.getElementById(AUTH_STYLE_ID)) return;
@@ -20,7 +20,6 @@ const injectAuthStyles = () => {
       color: #fff;
     }
 
-    /* ── Background layers ── */
     .auth-bg {
       position: absolute; inset: 0; z-index: 0;
     }
@@ -55,7 +54,6 @@ const injectAuthStyles = () => {
       pointer-events: none;
     }
 
-    /* ── Road stripe decoration ── */
     .auth-road-stripe {
       position: absolute;
       bottom: 0; left: 0; right: 0;
@@ -68,7 +66,6 @@ const injectAuthStyles = () => {
       opacity: 0.5;
     }
 
-    /* ── Landing page ── */
     .auth-landing {
       position: absolute; inset: 0; z-index: 20;
       display: flex; flex-direction: column;
@@ -118,18 +115,13 @@ const injectAuthStyles = () => {
       animation: fadeDown 0.6s 0.2s both;
     }
 
-    .auth-hero-title .line1 {
-      display: block;
-      color: #fff;
-    }
-
+    .auth-hero-title .line1 { display: block; color: #fff; }
     .auth-hero-title .line2 {
       display: block;
       -webkit-text-stroke: 2px rgba(245,158,11,0.8);
       color: transparent;
       position: relative;
     }
-
     .auth-hero-title .line2::after {
       content: attr(data-text);
       position: absolute; left: 0; top: 0;
@@ -154,7 +146,6 @@ const injectAuthStyles = () => {
       animation: fadeDown 0.6s 0.3s both;
     }
 
-    /* ── Feature pills ── */
     .auth-features {
       display: flex; flex-wrap: wrap; gap: 10px;
       justify-content: center;
@@ -173,13 +164,11 @@ const injectAuthStyles = () => {
       backdrop-filter: blur(8px);
       transition: all 0.3s;
     }
-
     .auth-feature-pill:hover {
       background: rgba(245,158,11,0.1);
       border-color: rgba(245,158,11,0.3);
       color: #f59e0b;
     }
-
     .auth-feature-pill .pill-icon {
       width: 20px; height: 20px; border-radius: 6px;
       background: rgba(245,158,11,0.15);
@@ -187,7 +176,6 @@ const injectAuthStyles = () => {
       font-size: 10px;
     }
 
-    /* ── CTA buttons ── */
     .auth-cta-group {
       display: flex; gap: 12px; flex-wrap: wrap;
       justify-content: center;
@@ -207,12 +195,7 @@ const injectAuthStyles = () => {
       box-shadow: 0 8px 24px rgba(245,158,11,0.35);
       transition: all 0.25s;
     }
-
-    .auth-btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 32px rgba(245,158,11,0.5);
-    }
-
+    .auth-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(245,158,11,0.5); }
     .auth-btn-primary:active { transform: translateY(0); }
 
     .auth-btn-outline {
@@ -226,14 +209,8 @@ const injectAuthStyles = () => {
       backdrop-filter: blur(8px);
       transition: all 0.25s;
     }
+    .auth-btn-outline:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.25); transform: translateY(-2px); }
 
-    .auth-btn-outline:hover {
-      background: rgba(255,255,255,0.1);
-      border-color: rgba(255,255,255,0.25);
-      transform: translateY(-2px);
-    }
-
-    /* ── Stats row ── */
     .auth-stats {
       display: flex; gap: 32px; flex-wrap: wrap;
       justify-content: center;
@@ -242,29 +219,16 @@ const injectAuthStyles = () => {
       border-top: 1px solid rgba(255,255,255,0.07);
       animation: fadeDown 0.6s 0.6s both;
     }
-
     .auth-stat-item { text-align: center; }
+    .auth-stat-num { font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 800; color: #f59e0b; line-height: 1; }
+    .auth-stat-label { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.8px; }
 
-    .auth-stat-num {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 32px; font-weight: 800;
-      color: #f59e0b; line-height: 1;
-    }
-
-    .auth-stat-label {
-      font-size: 11px; color: rgba(255,255,255,0.35);
-      margin-top: 4px; text-transform: uppercase;
-      letter-spacing: 0.8px;
-    }
-
-    /* ── Auth form wrapper ── */
     .auth-forms {
       position: absolute; inset: 0; z-index: 10;
       display: flex; align-items: center; justify-content: center;
       padding: 16px;
     }
 
-    /* ── Option card ── */
     .auth-option-card {
       background: rgba(10,12,20,0.92);
       backdrop-filter: blur(24px);
@@ -276,88 +240,21 @@ const injectAuthStyles = () => {
       box-shadow: 0 32px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(245,158,11,0.05);
       animation: scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
     }
-
     @keyframes scaleIn {
       from { opacity: 0; transform: scale(0.9) translateY(20px); }
       to { opacity: 1; transform: scale(1) translateY(0); }
     }
-
-    .auth-option-logo {
-      width: 56px; height: 56px; border-radius: 16px;
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 20px;
-      box-shadow: 0 8px 24px rgba(245,158,11,0.35);
-      font-size: 24px;
-    }
-
-    .auth-option-title {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 26px; font-weight: 800;
-      text-transform: uppercase; letter-spacing: 0.5px;
-      color: #fff; margin-bottom: 6px;
-    }
-
-    .auth-option-sub {
-      font-size: 13px; color: rgba(255,255,255,0.4);
-      font-weight: 300; margin-bottom: 28px; line-height: 1.5;
-    }
-
-    .auth-option-btns {
-      display: flex; flex-direction: column; gap: 10px;
-    }
-
-    .auth-ob-register {
-      height: 48px;
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      color: #07090f;
-      border: none; border-radius: 12px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px; font-weight: 700;
-      cursor: pointer; letter-spacing: 0.3px;
-      box-shadow: 0 6px 20px rgba(245,158,11,0.3);
-      transition: all 0.25s;
-    }
-
-    .auth-ob-register:hover {
-      box-shadow: 0 8px 28px rgba(245,158,11,0.45);
-      transform: translateY(-1px);
-    }
-
-    .auth-ob-login {
-      height: 48px;
-      background: rgba(255,255,255,0.05);
-      color: rgba(255,255,255,0.85);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px; font-weight: 600;
-      cursor: pointer;
-      backdrop-filter: blur(8px);
-      transition: all 0.25s;
-    }
-
-    .auth-ob-login:hover {
-      background: rgba(255,255,255,0.1);
-      border-color: rgba(255,255,255,0.2);
-      transform: translateY(-1px);
-    }
-
-    .auth-option-trust {
-      margin-top: 20px;
-      font-size: 11px; color: rgba(255,255,255,0.25);
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-    }
-
+    .auth-option-logo { width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; box-shadow: 0 8px 24px rgba(245,158,11,0.35); font-size: 24px; }
+    .auth-option-title { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; margin-bottom: 6px; }
+    .auth-option-sub { font-size: 13px; color: rgba(255,255,255,0.4); font-weight: 300; margin-bottom: 28px; line-height: 1.5; }
+    .auth-option-btns { display: flex; flex-direction: column; gap: 10px; }
+    .auth-ob-register { height: 48px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #07090f; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.3px; box-shadow: 0 6px 20px rgba(245,158,11,0.3); transition: all 0.25s; }
+    .auth-ob-register:hover { box-shadow: 0 8px 28px rgba(245,158,11,0.45); transform: translateY(-1px); }
+    .auth-ob-login { height: 48px; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; backdrop-filter: blur(8px); transition: all 0.25s; }
+    .auth-ob-login:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); transform: translateY(-1px); }
+    .auth-option-trust { margin-top: 20px; font-size: 11px; color: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; gap: 6px; }
     .auth-option-trust .shield { color: rgba(245,158,11,0.6); }
 
-    /* ── Animations ── */
-    @keyframes fadeDown {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* ── Scrollable form overlay ── */
     .auth-scroll-form {
       width: 100%; max-height: 100vh;
       overflow-y: auto; display: flex;
@@ -367,29 +264,30 @@ const injectAuthStyles = () => {
     }
     .auth-scroll-form::-webkit-scrollbar { display: none; }
 
-    /* ── Truck animation ── */
     .auth-truck-row {
       position: absolute; bottom: 40px; left: 0; right: 0;
       display: flex; align-items: center; gap: 0;
       pointer-events: none; overflow: hidden; height: 32px;
     }
-
     .auth-truck-line {
       position: absolute; bottom: 14px; left: 0; right: 0;
       height: 1px;
       background: linear-gradient(90deg, transparent, rgba(245,158,11,0.3) 20%, rgba(245,158,11,0.3) 80%, transparent);
     }
-
     .auth-truck-icon {
       position: absolute; bottom: 10px;
       font-size: 22px;
       animation: truckRide 12s linear infinite;
       filter: drop-shadow(0 0 8px rgba(245,158,11,0.5));
     }
-
     @keyframes truckRide {
       0% { left: -60px; }
       100% { left: calc(100% + 60px); }
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   `;
   document.head.appendChild(s);
@@ -407,8 +305,16 @@ const FEATURES = [
 function Auth() {
   const [info, setInfo] = useState(true);
   const [authForm, setAuthForm] = useState("option");
+  const [stylesLoaded, setStylesLoaded] = useState(false);
 
-  useEffect(() => { injectAuthStyles(); }, []);
+  useEffect(() => {
+    injectAuthStyles();
+    setStylesLoaded(true);
+  }, []);
+
+  if (!stylesLoaded) {
+    return <div className="fixed inset-0 bg-black flex items-center justify-center"><div className="text-white">Loading...</div></div>;
+  }
 
   return (
     <div className="auth-root">
@@ -427,7 +333,7 @@ function Auth() {
         <span className="auth-truck-icon">🚛</span>
       </div>
 
-      {/* ── LANDING HERO ── */}
+      {/* Hero landing */}
       <div className={`auth-landing ${!info ? 'hidden' : ''}`}>
         <div className="auth-landing-badge">
           <span className="dot" />
@@ -477,7 +383,7 @@ function Auth() {
         </div>
       </div>
 
-      {/* ── AUTH FORMS ── */}
+      {/* Auth forms */}
       <div className="auth-forms">
         <div className="auth-scroll-form">
           {authForm === "option" && !info && (
@@ -502,9 +408,9 @@ function Auth() {
               </div>
             </div>
           )}
-
           {authForm === "login" && <Login setAuthForm={setAuthForm} setInfo={setInfo} />}
           {authForm === "registration" && <Registration setAuthForm={setAuthForm} />}
+          {authForm === "forget" && <ForgetPassword setAuthForm={setAuthForm} />}
         </div>
       </div>
     </div>
