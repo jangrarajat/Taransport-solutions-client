@@ -10,11 +10,11 @@ import * as XLSX from 'xlsx';
 import { refreshToken } from "../../api/api";
 import { backendUrl } from "../../utils/backendUrl";
 
-// Helper to get sorting timestamp (uses createdAt first, falls back to invoice date)
-const getSortTime = (item) => {
-  if (item.createdAt) return new Date(item.createdAt);
-  if (item.DateOfIssueOfInvoice) return new Date(item.DateOfIssueOfInvoice);
-  return new Date(0);
+// Helper to get sorting timestamp and LRNO for composite sorting
+const getSortKey = (item) => {
+  const date = item.DateOfIssueOfInvoice ? new Date(item.DateOfIssueOfInvoice) : new Date(0);
+  const lrno = item.LRNO && item.LRNO !== "N/A" ? item.LRNO : "";
+  return { date, lrno };
 };
 
 // Maintenance Modal
@@ -74,13 +74,27 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
 
     const headerCheckboxRef = useRef(null);
 
-    // Sort data by createdAt (ascending)
+    // Sort data by date then LRNO
     const sortedData = useMemo(() => {
         if (!data) return [];
         return [...data].sort((a, b) => {
-            const timeA = getSortTime(a);
-            const timeB = getSortTime(b);
-            return timeA - timeB;
+            const keyA = getSortKey(a);
+            const keyB = getSortKey(b);
+            // Compare dates
+            if (keyA.date.getTime() !== keyB.date.getTime()) {
+                return keyA.date - keyB.date;
+            }
+            // Same date, compare LRNO (as numbers if possible, else strings)
+            const lrnoA = keyA.lrno;
+            const lrnoB = keyB.lrno;
+            if (!lrnoA && !lrnoB) return 0;
+            if (!lrnoA) return 1; // entries without LRNO go after
+            if (!lrnoB) return -1;
+            // Try numeric comparison
+            const numA = parseFloat(lrnoA);
+            const numB = parseFloat(lrnoB);
+            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+            return lrnoA.localeCompare(lrnoB);
         });
     }, [data]);
 
@@ -188,7 +202,7 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
                                         {h}
                                     </th>
                                 ))}
-                            </tr>
+                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-bold uppercase text-[11px] text-slate-700 dark:text-slate-300">
                             {sortedData.map((bill) => bill.LRNO ?  (

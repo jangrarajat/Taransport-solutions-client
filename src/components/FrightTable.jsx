@@ -1,4 +1,4 @@
-// FrightTable.jsx – sorted by createdAt
+// FrightTable.jsx – sorted by createdAt and LRNO
 import { Printer, X, Trash2, Edit3, ArrowDownToLine } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import axios from "axios";
@@ -12,11 +12,18 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { backendUrl } from "../utils/backendUrl";
 
-// Helper to get sorting timestamp (uses createdAt first, falls back to invoice date)
-const getSortTime = (item) => {
-  if (item.createdAt) return new Date(item.createdAt);
-  if (item.DateOfIssueOfInvoice) return new Date(item.DateOfIssueOfInvoice);
-  return new Date(0);
+// Helper to get sorting timestamp and LRNO for composite sorting
+const getSortKey = (item) => {
+  let date = null;
+  if (item.createdAt) date = new Date(item.createdAt);
+  else if (item.DateOfIssueOfInvoice) date = new Date(item.DateOfIssueOfInvoice);
+  else date = new Date(0);
+  
+  let lrno = "";
+  if (!item.isDesil && item.LRNO && item.LRNO !== "N/A") {
+    lrno = item.LRNO;
+  }
+  return { date, lrno };
 };
 
 // Maintenance Modal
@@ -158,13 +165,27 @@ const FrightTable = ({
     }
   };
 
-  // Merge and sort by createdAt (ascending)
+  // Merge and sort by date then LRNO
   const sortedData = useMemo(() => {
     const all = [...data, ...desilEntries];
     return all.sort((a, b) => {
-      const timeA = getSortTime(a);
-      const timeB = getSortTime(b);
-      return timeA - timeB;
+      const keyA = getSortKey(a);
+      const keyB = getSortKey(b);
+      // Compare dates
+      if (keyA.date.getTime() !== keyB.date.getTime()) {
+        return keyA.date - keyB.date;
+      }
+      // Same date, compare LRNO (if both have it)
+      const lrnoA = keyA.lrno;
+      const lrnoB = keyB.lrno;
+      if (!lrnoA && !lrnoB) return 0;
+      if (!lrnoA) return 1;
+      if (!lrnoB) return -1;
+      // Numeric comparison if possible
+      const numA = parseFloat(lrnoA);
+      const numB = parseFloat(lrnoB);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      return lrnoA.localeCompare(lrnoB);
     });
   }, [data, desilEntries]);
 
@@ -295,13 +316,13 @@ const FrightTable = ({
           <p>Contact No: 9992269616 & 7027400769</p>
           <p>Generated: ${new Date().toLocaleDateString('en-IN')} | Records: ${exportData.length} (${selectedIds.length ? 'Selected' : 'All'})</p>
           ${summaryLine}
-           <table>
+          <table>
             <thead>${headers.map(h => `<th>${h}</th>`).join('')}</thead>
             <tbody>
               ${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
               <tr class="totals-row">${totalsRow.map(cell => `<td>${cell}</td>`).join('')}</tr>
             </tbody>
-           </table>
+          </table>
         </body>
       </html>
     `;
@@ -462,13 +483,13 @@ const FrightTable = ({
           <h2>Fright Report</h2>
           <p>Generated: ${new Date().toLocaleDateString('en-IN')} | Records: ${exportData.length} (${selectedIds.length ? 'Selected' : 'All'})</p>
           ${summaryLine}
-           <table>
+          <table>
             <thead>${headers.map(h => `<th>${h}</th>`).join('')}</thead>
             <tbody>
               ${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
               <tr class="totals-row">${totalsRow.map(cell => `<td>${cell}</td>`).join('')}</tr>
             </tbody>
-           </table>
+          </table>
         </body>
       </html>
     `);
@@ -656,37 +677,6 @@ const FrightTable = ({
         </div>
       </div>
 
-      {/* {isVehicleFilter && sortedData.length > 0 && (
-        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-center font-bold text-sm">
-          <span className="mr-6 text-slate-700 dark:text-slate-300">
-            Opening Balance:{' '}
-            <span className={
-                startBalance < 0
-                  ? 'text-red-600 dark:text-red-400'
-                  : startBalance > 0
-                  ? 'text-green-600 dark:text-green-400'
-                  : ''
-              }>
-              ₹{startBalance}
-            </span>
-          </span>
-          <span className="text-slate-700 dark:text-slate-300">
-            Closing Balance:{' '}
-            <span className={
-                runningBalances.length
-                  ? runningBalances[runningBalances.length - 1] < 0
-                    ? 'text-red-600 dark:text-red-400'
-                    : runningBalances[runningBalances.length - 1] > 0
-                    ? 'text-green-600 dark:text-green-400'
-                    : ''
-                  : ''
-              }>
-              ₹{runningBalances.length ? runningBalances[runningBalances.length - 1] : startBalance}
-            </span>
-          </span>
-        </div>
-      )} */}
-
       <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden rounded">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -798,4 +788,4 @@ const FrightTable = ({
   );
 };
 
-export default FrightTable; 
+export default FrightTable;

@@ -86,11 +86,15 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         if (error.response?.status === 401) {
           const isRefreshed = await refreshToken();
           if (isRefreshed) {
-            // Recursive call will be blocked by isSubmitting check
             handleSubmit();
+            return;
           }
+        } else if (error.response?.status === 413) {
+          showNotification(false, "File too large. Please split into smaller files or contact support.");
+        } else if (error.response?.status === 500) {
+          showNotification(false, "Server error. Please try again later.");
         } else {
-          showNotification(false, "Bulk entry failed");
+          showNotification(false, "Bulk entry failed: " + (error.response?.data?.message || error.message));
         }
       } finally {
         setIsSubmitting(false);
@@ -160,6 +164,23 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 </div>
               </details>
             )}
+            {importResult.skipped && importResult.skipped.length > 0 && (
+              <details className="mt-2">
+                <summary className="text-xs font-bold text-yellow-600 dark:text-yellow-400 cursor-pointer">
+                  View Skipped (Duplicates) ({importResult.skipped.length})
+                </summary>
+                <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
+                  {importResult.skipped.slice(0, 20).map((skip, idx) => (
+                    <div key={idx} className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-yellow-700 dark:text-yellow-300">
+                      <span className="font-mono">Row {idx + 1}:</span> {skip.reason}
+                    </div>
+                  ))}
+                  {importResult.skipped.length > 20 && (
+                    <p className="text-slate-500 dark:text-slate-400 italic">... and {importResult.skipped.length - 20} more skipped</p>
+                  )}
+                </div>
+              </details>
+            )}
           </div>
         )}
 
@@ -174,7 +195,13 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 <FileSpreadsheet size={32} className="mx-auto mb-2 text-blue-600 dark:text-blue-400" />
                 <span className="font-black uppercase text-blue-700 dark:text-blue-300">Bilty Records</span>
               </button>
-              
+              <button
+                onClick={() => { setImportType('transaction'); setStep(2); }}
+                className="flex-1 min-w-[180px] p-4 border rounded-lg bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors group"
+              >
+                <FileSpreadsheet size={32} className="mx-auto mb-2 text-green-600 dark:text-green-400" />
+                <span className="font-black uppercase text-green-700 dark:text-green-300">Transaction Entries</span>
+              </button>
             </div>
           </div>
         )}
