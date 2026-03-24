@@ -4,7 +4,7 @@ import {
   Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound, ClipboardPlus,
   ChevronLeft, ChevronRight, Plus, LogOut, Crown,
   TrendingUp, Wallet, Receipt, Search, User as UserIcon, Settings,
-  RotateCcw, AlertCircle, RefreshCw, ListChecks
+  RotateCcw, AlertCircle, RefreshCw, ListChecks, Upload
 } from "lucide-react";
 import axios from "axios";
 import { refreshToken, fetchLatestUserData } from "../api/api";
@@ -26,6 +26,7 @@ import PumpLedger from "../components/pump/PumpLedger";
 import ReportsManager from "../components/ReportsManager";
 import ButtonLoaders from "../components/loaders/ButtonLoaders";
 import ProfilePage from "../components/ProfilePage";
+import BulkImportModal from "../components/bill/BulkImportModal";
 
 // Skeleton Loaders
 const DashboardCardSkeleton = () => (
@@ -96,6 +97,8 @@ function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [isExModalOpen, setIsExModalOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
+  const [showNewBiltyMenu, setShowNewBiltyMenu] = useState(false);
   const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
 
   const [biltyData, setBiltyData] = useState([]);
@@ -209,6 +212,17 @@ function Home() {
     window.addEventListener('userUpdated', handleUserUpdate);
     return () => window.removeEventListener('userUpdated', handleUserUpdate);
   }, [setUser]);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNewBiltyMenu && !event.target.closest('.new-bilty-dropdown')) {
+        setShowNewBiltyMenu(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showNewBiltyMenu]);
 
   // Notification & refresh dashboard when on home
   const showNotification = useCallback((success, msg) => {
@@ -526,6 +540,16 @@ function Home() {
       <AddBiltyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(msg) => { getBilty(1, pageSize); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
       <AddExpenseModal isOpen={isExModalOpen} onClose={() => setIsExModalOpen(false)} onSuccess={(msg) => { getExpenses(1, pageSize); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
       <Pricing isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
+      <BulkImportModal 
+        isOpen={bulkImportOpen} 
+        onClose={() => setBulkImportOpen(false)} 
+        showNotification={showNotification} 
+        onSuccess={() => { 
+          if (menuOption === "biltiy" || menuOption === "accounts") {
+            getBilty(currentPage, pageSize);
+          }
+        }} 
+      />
 
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-white dark:bg-gray-900 text-gray-700 transition-all duration-300 flex flex-col shadow-2xl w-64`}>
@@ -849,7 +873,7 @@ function Home() {
           )}
 
           {(menuOption === "biltiy" || menuOption === "accounts") && (
-            <div className="space-y-3 animate-in fade-in duration-500 pb-48">
+            <div className="space-y-3 animate-in fade-in duration-500 ">
               {/* Filter bar with vehicle suggestions */}
               <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
@@ -898,12 +922,30 @@ function Home() {
                     </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded flex items-center justify-center gap-1 text-[10px] font-black shadow-lg shadow-blue-100 dark:shadow-blue-900/50 w-full sm:w-auto"
-                >
-                  <Plus size={14} /> New Bilty
-                </button>
+                <div className="flex gap-2 relative new-bilty-dropdown">
+                  <button
+                    onClick={() => setShowNewBiltyMenu(!showNewBiltyMenu)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-1 text-[10px] font-black shadow-lg w-full sm:w-auto"
+                  >
+                    <Plus size={14} /> New Bilty
+                  </button>
+                  {showNewBiltyMenu && (
+                    <div className="absolute top-full right-0 mt-1 bg-white dark:bg-slate-800 shadow-lg rounded border dark:border-slate-700 z-10 w-48">
+                      <button
+                        onClick={() => { setIsModalOpen(true); setShowNewBiltyMenu(false); }}
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-white"
+                      >
+                        Single Entry
+                      </button>
+                      <button
+                        onClick={() => { setBulkImportOpen(true); setShowNewBiltyMenu(false); }}
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-white"
+                      >
+                        Multiple Entries (Bulk Import)
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Table container */}
@@ -942,7 +984,7 @@ function Home() {
 
           {/* Petrol Pump Section */}
           {menuOption === "petrolPump" && (
-            <div className="space-y-4 pb-48">
+            <div className="space-y-4 ">
               {!selectedPump ? (
                 <PumpMasterList
                   showNotification={showNotification}
@@ -967,7 +1009,7 @@ function Home() {
 
           {/* Expenses Section */}
           {menuOption === "expantion" && (
-            <div className="space-y-3 animate-in fade-in duration-500 pb-48">
+            <div className="space-y-3 animate-in fade-in duration-500 ">
               <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
                   <div className="relative flex-1 min-w-0">
@@ -1029,7 +1071,7 @@ function Home() {
 
           {/* Pagination footer with page size selector */}
           {menuOption !== "home" && menuOption !== "petrolPump" && menuOption !== "Reports" && totalPages > 1 && (
-            <div className="flex items-center pb-48 justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4 rounded border dark:border-slate-700 shadow-sm">
+            <div className="flex items-center mb-48 justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4 rounded border dark:border-slate-700 shadow-sm">
               <div className="flex items-center gap-4">
                 <p className="text-[8px] uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">
                   Page {currentPage} of {totalPages}
@@ -1042,10 +1084,12 @@ function Home() {
                     onChange={handlePageSizeChange}
                     className="border rounded px-2 py-1 text-[10px] font-bold bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                   >
-                    <option value={10}>10 / page</option>
-                    <option value={20}>20 / page</option>
-                    <option value={50}>50 / page</option>
-                    <option value={100}>100 / page</option>
+                    <option value={10}>10   </option>
+                    <option value={20}>20   </option>
+                    <option value={50}>50   </option>
+                    <option value={100}>100 </option>
+                    <option value={500}>500 </option>
+                    
                   </select>
                 </div>
               </div>

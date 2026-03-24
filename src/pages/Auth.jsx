@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Login from '../components/authForm/Login';
 import Registration from '../components/authForm/Registration';
 import ForgetPassword from '../components/authForm/ForgetPassword';
+import { Truck } from 'lucide-react';
 
 const AUTH_STYLE_ID = "auth-premium-styles";
 const injectAuthStyles = () => {
@@ -330,7 +331,9 @@ function Auth() {
       {/* Truck animation */}
       <div className="auth-truck-row">
         <div className="auth-truck-line" />
-        <span className="auth-truck-icon">🚛</span>
+        <span className="auth-truck-icon">
+          <Truck/>
+        </span>
       </div>
 
       {/* Hero landing */}

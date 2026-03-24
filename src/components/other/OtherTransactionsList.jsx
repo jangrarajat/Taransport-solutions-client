@@ -452,7 +452,7 @@ const OtherTransactionsList = ({ showNotification }) => {
           <button onClick={resetToCurrentMonth} className="p-2 bg-gray-200 dark:bg-slate-600 hover:bg-gray-300 dark:hover:bg-slate-500"><RotateCcw size={12} /></button>
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-            <input type="text" placeholder="Search description..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-7 pr-2 py-1 border rounded text-xs" />
+            <input type="text" placeholder="Search description..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-7 pr-2 py-1 text-black border rounded text-xs" />
           </div>
         </div>
         <div className="flex gap-2">
