@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, ChevronDown, ChevronUp, Loader } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 import { backendUrl } from '../../utils/backendUrl';
 import ButtonLoaders from '../loaders/ButtonLoaders';
 import { refreshToken } from '../../api/api';
+import { io } from 'socket.io-client';
 
 const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   const [importType, setImportType] = useState('bilty');
@@ -16,6 +17,23 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   const [fileName, setFileName] = useState('');
   const [importResult, setImportResult] = useState(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  
+  // Progress state
+  const [progress, setProgress] = useState(null);
+  const [socket, setSocket] = useState(null);
+  const [importId, setImportId] = useState(null);
+  const [showFailed, setShowFailed] = useState(false);
+  const [showSkipped, setShowSkipped] = useState(false);
+
+  // Connect to socket once
+  useEffect(() => {
+    const newSocket = io(backendUrl, {
+      withCredentials: true,
+      transports: ['websocket']
+    });
+    setSocket(newSocket);
+    return () => newSocket.close();
+  }, []);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -53,59 +71,70 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     if (!file || isSubmitting) return;
     setIsSubmitting(true);
     setImportResult(null);
+    setProgress(null);
+    
+    // Generate unique import ID
+    const newImportId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    setImportId(newImportId);
+    
+    // Join room
+    if (socket) {
+      socket.emit('join', newImportId);
+      // Listen for progress events
+      socket.on('progress', (data) => {
+        setProgress(data);
+        if (data.type === 'complete') {
+          setImportResult({
+            success: true,
+            message: `Completed: ${data.succeeded} succeeded, ${data.failed} failed, ${data.skipped} skipped.`,
+            errors: data.errors,
+            skipped: data.skipped
+          });
+          // Close modal after 3 secs
+          setTimeout(() => {
+            resetModal();
+            onClose();
+          }, 3000);
+          onSuccess && onSuccess();
+        }
+      });
+    }
 
     const reader = new FileReader();
-
     reader.onload = async (evt) => {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const json = XLSX.utils.sheet_to_json(worksheet);
+
+      const endpoint = importType === 'bilty'
+        ? `${backendUrl}/api/bill/bulk-bilty`
+        : `${backendUrl}/api/bill/bulk-transaction`;
+
       try {
-        const data = new Uint8Array(evt.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet);
-
-        const endpoint = importType === 'bilty'
-          ? `${backendUrl}/api/bill/bulk-bilty`
-          : `${backendUrl}/api/bill/bulk-transaction`;
-
-        const response = await axios.post(endpoint, { entries: json }, { withCredentials: true });
+        const response = await axios.post(endpoint, { entries: json, importId: newImportId }, { withCredentials: true });
         console.log(response.data);
+        // After POST, we'll rely on socket for final summary; but also set result if socket fails
         setImportResult(response.data);
         if (response.data.success) {
           showNotification(true, response.data.message);
-          onSuccess && onSuccess();
-          resetModal();
-          setTimeout(() => {
-            onClose();
-          }, 3000);
         } else {
           showNotification(false, response.data.message);
         }
       } catch (error) {
-        console.log(error.response, "Import failed");
+        console.error(error);
         if (error.response?.status === 401) {
           const isRefreshed = await refreshToken();
-          if (isRefreshed) {
-            handleSubmit();
-            return;
-          }
+          if (isRefreshed) handleSubmit();
         } else if (error.response?.status === 413) {
-          showNotification(false, "File too large. Please split into smaller files or contact support.");
-        } else if (error.response?.status === 500) {
-          showNotification(false, "Server error. Please try again later.");
+          showNotification(false, "File too large. Please split into smaller files.");
         } else {
           showNotification(false, "Bulk entry failed: " + (error.response?.data?.message || error.message));
         }
-      } finally {
         setIsSubmitting(false);
       }
     };
-
-    reader.onerror = () => {
-      showNotification(false, "Error reading file");
-      setIsSubmitting(false);
-    };
-
     reader.readAsArrayBuffer(file);
   };
 
@@ -117,6 +146,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     setImportResult(null);
     setImportType('bilty');
     setShowAllRows(false);
+    setProgress(null);
+    setImportId(null);
   };
 
   const handleClose = () => {
@@ -125,6 +156,10 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   };
 
   const previewData = showAllRows ? fullData : fullData.slice(0, 10);
+
+  // Progress bar calculation
+  const percent = progress && progress.type === 'progress' ? (progress.processed / progress.total) * 100 : 0;
+  const remaining = progress && progress.type === 'progress' ? progress.total - progress.processed : 0;
 
   if (!isOpen) return null;
 
@@ -136,14 +171,29 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           <X onClick={handleClose} className="cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" size={20} />
         </div>
 
+        {/* Progress UI */}
+        {progress && progress.type !== 'complete' && (
+          <div className="mb-6 p-4 rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+            <div className="flex justify-between text-sm font-bold mb-2">
+              <span>Import Progress</span>
+              <span>{progress.processed} / {progress.total}</span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2.5 mb-3">
+              <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${percent}%` }}></div>
+            </div>
+            <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+              <p>Current: LRNO {progress.currentLRNO} (Vehicle: {progress.currentVehicle})</p>
+              <p>Remaining: {remaining} entries</p>
+              {progress.success === false && <p className="text-red-500">Error: {progress.error}</p>}
+            </div>
+          </div>
+        )}
+
+        {/* Import Summary (after completion) */}
         {importResult && (
           <div className="mb-6 p-4 rounded-lg border bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700">
             <div className="flex items-center gap-2 mb-2">
-              {importResult.success ? (
-                <CheckCircle className="text-green-600 dark:text-green-400" size={20} />
-              ) : (
-                <AlertCircle className="text-red-600 dark:text-red-400" size={20} />
-              )}
+              <CheckCircle className="text-green-600 dark:text-green-400" size={20} />
               <h3 className="font-black text-slate-800 dark:text-white">Import Summary</h3>
             </div>
             <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">{importResult.message}</p>
