@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, ChevronDown, ChevronUp, Loader } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 import { backendUrl } from '../../utils/backendUrl';
@@ -17,22 +17,57 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   const [fileName, setFileName] = useState('');
   const [importResult, setImportResult] = useState(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
-  
+
   // Progress state
   const [progress, setProgress] = useState(null);
   const [socket, setSocket] = useState(null);
   const [importId, setImportId] = useState(null);
-  const [showFailed, setShowFailed] = useState(false);
-  const [showSkipped, setShowSkipped] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
 
-  // Connect to socket once
+  // Connect to socket once - using backendUrl for WebSocket connection
   useEffect(() => {
-    const newSocket = io(backendUrl, {
+    // For production, use the same backend URL as your API
+    // Remove 'https://' and use 'wss://' for secure WebSocket
+    let socketUrl = backendUrl;
+
+    // Convert http/https to ws/wss for WebSocket
+    if (socketUrl.startsWith('https://')) {
+      socketUrl = socketUrl.replace('https://', 'wss://');
+    } else if (socketUrl.startsWith('http://')) {
+      socketUrl = socketUrl.replace('http://', 'ws://');
+    }
+
+    // Remove trailing slash if exists
+    socketUrl = socketUrl.replace(/\/$/, '');
+
+    console.log('Connecting to Socket.IO at:', socketUrl);
+
+    const newSocket = io(socketUrl, {
       withCredentials: true,
-      transports: ['websocket']
+      transports: ['websocket', 'polling'], // Fallback to polling if websocket fails
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 10000
     });
+
+    newSocket.on('connect', () => {
+      console.log('Socket.IO connected successfully');
+      setConnectionError(false);
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error);
+      setConnectionError(true);
+    });
+
     setSocket(newSocket);
-    return () => newSocket.close();
+
+    return () => {
+      if (newSocket) {
+        newSocket.disconnect();
+      }
+    };
   }, []);
 
   const handleFileChange = (e) => {
@@ -72,16 +107,16 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     setIsSubmitting(true);
     setImportResult(null);
     setProgress(null);
-    
+
     // Generate unique import ID
     const newImportId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     setImportId(newImportId);
-    
-    // Join room
-    if (socket) {
+
+    // Join room and listen for progress events
+    if (socket && socket.connected) {
       socket.emit('join', newImportId);
-      // Listen for progress events
       socket.on('progress', (data) => {
+        console.log('Progress update:', data);
         setProgress(data);
         if (data.type === 'complete') {
           setImportResult({
@@ -90,7 +125,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             errors: data.errors,
             skipped: data.skipped
           });
-          // Close modal after 3 secs
+          // Reset and close after 3 seconds on success
           setTimeout(() => {
             resetModal();
             onClose();
@@ -98,6 +133,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           onSuccess && onSuccess();
         }
       });
+    } else {
+      console.warn('Socket not connected, progress won\'t be shown');
     }
 
     const reader = new FileReader();
@@ -115,12 +152,16 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
       try {
         const response = await axios.post(endpoint, { entries: json, importId: newImportId }, { withCredentials: true });
         console.log(response.data);
-        // After POST, we'll rely on socket for final summary; but also set result if socket fails
-        setImportResult(response.data);
+
+        // If socket doesn't send complete event, set result here as fallback
         if (response.data.success) {
           showNotification(true, response.data.message);
+          if (!progress || progress.type !== 'complete') {
+            setImportResult(response.data);
+          }
         } else {
           showNotification(false, response.data.message);
+          setImportResult(response.data);
         }
       } catch (error) {
         console.error(error);
@@ -148,6 +189,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     setShowAllRows(false);
     setProgress(null);
     setImportId(null);
+    setIsSubmitting(false);
   };
 
   const handleClose = () => {
@@ -171,7 +213,16 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           <X onClick={handleClose} className="cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" size={20} />
         </div>
 
-        {/* Progress UI */}
+        {/* Connection Error Warning */}
+        {connectionError && (
+          <div className="mb-6 p-4 rounded-lg border bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+            <p className="text-sm text-yellow-800 dark:text-yellow-300">
+              ⚠️ Real-time progress is unavailable. Import will still complete, but you won't see live updates.
+            </p>
+          </div>
+        )}
+
+        {/* Live Progress UI */}
         {progress && progress.type !== 'complete' && (
           <div className="mb-6 p-4 rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
             <div className="flex justify-between text-sm font-bold mb-2">
@@ -182,14 +233,16 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${percent}%` }}></div>
             </div>
             <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
-              <p>Current: LRNO {progress.currentLRNO} (Vehicle: {progress.currentVehicle})</p>
+              <p className="font-mono">Processing: LRNO {progress.currentLRNO} (Vehicle: {progress.currentVehicle})</p>
               <p>Remaining: {remaining} entries</p>
-              {progress.success === false && <p className="text-red-500">Error: {progress.error}</p>}
+              {progress.success === false && progress.error && (
+                <p className="text-red-500">Error: {progress.error}</p>
+              )}
             </div>
           </div>
         )}
 
-        {/* Import Summary (after completion) */}
+        {/* Final Summary */}
         {importResult && (
           <div className="mb-6 p-4 rounded-lg border bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700">
             <div className="flex items-center gap-2 mb-2">
