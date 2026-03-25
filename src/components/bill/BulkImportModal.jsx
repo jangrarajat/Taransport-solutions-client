@@ -18,33 +18,29 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   const [importResult, setImportResult] = useState(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
 
-  // Progress state
   const [progress, setProgress] = useState(null);
   const [socket, setSocket] = useState(null);
   const [importId, setImportId] = useState(null);
   const [connectionError, setConnectionError] = useState(false);
 
-  // Connect to socket once - using backendUrl for WebSocket connection
+  // Connect to Socket.IO - DIRECT TO RENDER BACKEND
   useEffect(() => {
-    // For production, use the same backend URL as your API
-    // Remove 'https://' and use 'wss://' for secure WebSocket
-    let socketUrl = backendUrl;
-
+    // Get Render backend URL from env or use production URL
+    const renderBackendUrl = import.meta.env.VITE_BACKEND_URL || 'https://taransport-solutions-system.onrender.com';
+    
     // Convert http/https to ws/wss for WebSocket
+    let socketUrl = renderBackendUrl;
     if (socketUrl.startsWith('https://')) {
       socketUrl = socketUrl.replace('https://', 'wss://');
     } else if (socketUrl.startsWith('http://')) {
       socketUrl = socketUrl.replace('http://', 'ws://');
     }
 
-    // Remove trailing slash if exists
-    socketUrl = socketUrl.replace(/\/$/, '');
-
     console.log('Connecting to Socket.IO at:', socketUrl);
 
     const newSocket = io(socketUrl, {
       withCredentials: true,
-      transports: ['websocket', 'polling'], // Fallback to polling if websocket fails
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -108,11 +104,9 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     setImportResult(null);
     setProgress(null);
 
-    // Generate unique import ID
     const newImportId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     setImportId(newImportId);
 
-    // Join room and listen for progress events
     if (socket && socket.connected) {
       socket.emit('join', newImportId);
       socket.on('progress', (data) => {
@@ -125,7 +119,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             errors: data.errors,
             skipped: data.skipped
           });
-          // Reset and close after 3 seconds on success
           setTimeout(() => {
             resetModal();
             onClose();
@@ -153,7 +146,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         const response = await axios.post(endpoint, { entries: json, importId: newImportId }, { withCredentials: true });
         console.log(response.data);
 
-        // If socket doesn't send complete event, set result here as fallback
         if (response.data.success) {
           showNotification(true, response.data.message);
           if (!progress || progress.type !== 'complete') {
@@ -198,8 +190,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   };
 
   const previewData = showAllRows ? fullData : fullData.slice(0, 10);
-
-  // Progress bar calculation
   const percent = progress && progress.type === 'progress' ? (progress.processed / progress.total) * 100 : 0;
   const remaining = progress && progress.type === 'progress' ? progress.total - progress.processed : 0;
 
@@ -213,7 +203,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           <X onClick={handleClose} className="cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" size={20} />
         </div>
 
-        {/* Connection Error Warning */}
         {connectionError && (
           <div className="mb-6 p-4 rounded-lg border bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
             <p className="text-sm text-yellow-800 dark:text-yellow-300">
@@ -222,7 +211,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           </div>
         )}
 
-        {/* Live Progress UI */}
         {progress && progress.type !== 'complete' && (
           <div className="mb-6 p-4 rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
             <div className="flex justify-between text-sm font-bold mb-2">
@@ -242,7 +230,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           </div>
         )}
 
-        {/* Final Summary */}
         {importResult && (
           <div className="mb-6 p-4 rounded-lg border bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700">
             <div className="flex items-center gap-2 mb-2">
