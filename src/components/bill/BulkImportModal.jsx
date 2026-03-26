@@ -220,8 +220,12 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             success: true,
             message: `Completed: ${data.succeeded} succeeded, ${data.failed} failed, ${data.skipped} skipped.`,
             errors: data.errors,
-            skipped: data.skipped,
-            summary: data
+            summary: {
+              succeeded: data.succeeded || 0,
+              failed: data.failed || 0,
+              skipped: data.skipped || 0,
+              total: data.total || 0
+            }
           });
           finalResultProcessedRef.current = true;
           
@@ -289,8 +293,12 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               success: true,
               message: response.data.message,
               errors: response.data.errors,
-              skipped: response.data.skipped,
-              summary: response.data.summary
+              summary: {
+                succeeded: response.data.summary?.succeeded || 0,
+                failed: response.data.summary?.failed || 0,
+                skipped: response.data.summary?.skipped || 0,
+                total: response.data.summary?.total || 0
+              }
             });
             setFailedEntries(failed);
             setVehicleNotRegisteredEntries(vehicleErrors);
