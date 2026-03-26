@@ -930,18 +930,19 @@ function Home() {
                     <Plus size={14} /> New Bilty
                   </button>
                   {showNewBiltyMenu && (
-                    <div className="absolute top-full right-0 mt-1 bg-white dark:bg-slate-800 shadow-lg rounded border dark:border-slate-700 z-10 w-48">
+                    <div className="absolute top-full right-0 mt-1 bg-blue-500 p-2 text-white dark:bg-slate-800 shadow-lg rounded border dark:border-slate-700 z-10 w-48">
                       <button
                         onClick={() => { setIsModalOpen(true); setShowNewBiltyMenu(false); }}
-                        className="w-full text-left px-4 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-white"
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-slate-100 hover:text-black dark:hover:bg-slate-700 dark:text-white"
                       >
                         Single Entry
                       </button>
+                      <hr />
                       <button
                         onClick={() => { setBulkImportOpen(true); setShowNewBiltyMenu(false); }}
-                        className="w-full text-left px-4 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-white"
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-slate-100 hover:text-black dark:hover:bg-slate-700 dark:text-white"
                       >
-                        Multiple Entries (Bulk Import)
+                        Multiple Entries
                       </button>
                     </div>
                   )}

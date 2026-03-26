@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, ChevronDown, ChevronUp, List } from 'lucide-react';
+import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, ChevronDown, ChevronUp, List, Truck } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 import { backendUrl } from '../../utils/backendUrl';
@@ -22,6 +22,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   // Failed entries popup state
   const [showFailedPopup, setShowFailedPopup] = useState(false);
   const [failedEntries, setFailedEntries] = useState([]);
+  const [vehicleNotRegisteredEntries, setVehicleNotRegisteredEntries] = useState([]);
+  const [duplicateEntries, setDuplicateEntries] = useState([]);
 
   // Progress state
   const [progress, setProgress] = useState(null);
@@ -99,6 +101,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           axiosRequestSentRef.current = false;
           finalResultProcessedRef.current = false;
           setFailedEntries([]);
+          setVehicleNotRegisteredEntries([]);
+          setDuplicateEntries([]);
           setShowFailedPopup(false);
         } catch (err) {
           showNotification(false, "Error reading file: " + err.message);
@@ -126,6 +130,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     axiosRequestSentRef.current = false;
     finalResultProcessedRef.current = false;
     setFailedEntries([]);
+    setVehicleNotRegisteredEntries([]);
+    setDuplicateEntries([]);
     setShowFailedPopup(false);
 
     const newImportId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -145,28 +151,52 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           setIsComplete(true);
           setIsSubmitting(false);
           
-          // Store failed entries for popup
+          // Separate errors by type
+          const vehicleErrors = [];
+          const otherErrors = [];
+          
           if (data.errors && data.errors.length > 0) {
-            const failed = data.errors.map(err => ({
-              lrno: err.data?.LRNO || err.entry?.LRNO || 'N/A',
-              vehicleNo: err.data?.VehicleNo || err.entry?.VehicleNo || 'N/A',
-              error: err.error,
-              row: err.row
-            }));
-            setFailedEntries(failed);
-            
-            if (failed.length > 0) {
-              setShowFailedPopup(true);
-            }
+            data.errors.forEach(err => {
+              if (err.error && err.error.includes('not registered')) {
+                vehicleErrors.push(err);
+              } else {
+                otherErrors.push(err);
+              }
+            });
+          }
+          
+          // Store failed entries
+          const failed = data.errors ? data.errors.map(err => ({
+            lrno: err.lrno || err.data?.LRNO || err.entry?.LRNO || 'N/A',
+            vehicleNo: err.vehicleNo || err.data?.VehicleNo || err.entry?.VehicleNo || 'N/A',
+            error: err.error,
+            row: err.row,
+            isVehicleError: err.error && err.error.includes('not registered')
+          })) : [];
+          
+          setFailedEntries(failed);
+          setVehicleNotRegisteredEntries(vehicleErrors);
+          setDuplicateEntries(data.skipped || []);
+          
+          if (failed.length > 0) {
+            setShowFailedPopup(true);
           }
           
           // Show final notification
           if (data.failed === 0 && data.succeeded > 0) {
             showNotification(true, `${data.succeeded} records imported successfully!`);
           } else if (data.succeeded > 0 && data.failed > 0) {
-            showNotification(false, `${data.failed} records failed. Click 'View Failed' to see details.`);
+            if (vehicleErrors.length > 0) {
+              showNotification(false, `${vehicleErrors.length} records failed due to unregistered vehicles. Add vehicles in Reports > Vehicles.`);
+            } else {
+              showNotification(false, `${data.failed} records failed. Click 'View Failed' to see details.`);
+            }
           } else if (data.failed > 0 && data.succeeded === 0) {
-            showNotification(false, `All ${data.failed} records failed. Click 'View Failed' to see details.`);
+            if (vehicleErrors.length === data.failed) {
+              showNotification(false, `All ${data.failed} records failed. Please register vehicles first.`);
+            } else {
+              showNotification(false, `All ${data.failed} records failed. Click 'View Failed' to see details.`);
+            }
           }
           
           setImportResult({
@@ -229,18 +259,24 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             });
             
             if (response.data.errors && response.data.errors.length > 0) {
+              const vehicleErrors = response.data.errors.filter(err => err.error && err.error.includes('not registered'));
               const failed = response.data.errors.map(err => ({
-                lrno: err.entry?.LRNO || 'N/A',
-                vehicleNo: err.entry?.VehicleNo || 'N/A',
+                lrno: err.lrno || err.entry?.LRNO || 'N/A',
+                vehicleNo: err.vehicleNo || err.entry?.VehicleNo || 'N/A',
                 error: err.error,
-                row: err.row
+                row: err.row,
+                isVehicleError: err.error && err.error.includes('not registered')
               }));
               setFailedEntries(failed);
+              setVehicleNotRegisteredEntries(vehicleErrors);
+              setDuplicateEntries(response.data.skipped || []);
               if (failed.length > 0) setShowFailedPopup(true);
             }
             
             if (response.data.summary?.failed === 0) {
               showNotification(true, `${response.data.summary?.succeeded || 0} records imported!`);
+            } else if (vehicleNotRegisteredEntries.length > 0) {
+              showNotification(false, `${vehicleNotRegisteredEntries.length} records failed due to unregistered vehicles.`);
             } else {
               showNotification(false, `${response.data.summary?.failed || 0} records failed.`);
             }
@@ -249,15 +285,11 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         
       } catch (error) {
         console.error('Axios error (ignored):', error.message);
-        // COMPLETELY IGNORE AXIOS ERRORS - Socket.IO handles the progress
-        // Do NOT show any error notification for axios errors
         if (!socketCompletedRef.current && !finalResultProcessedRef.current && progress && progress.processed > 0) {
           console.log('Import is in progress via socket, ignoring axios error');
         }
       } finally {
-        // Only set submitting false if socket hasn't already done it
         if (!socketCompletedRef.current) {
-          // Don't set submitting false immediately, let socket handle it
           setTimeout(() => {
             if (!socketCompletedRef.current) {
               setIsSubmitting(false);
@@ -291,6 +323,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     axiosRequestSentRef.current = false;
     finalResultProcessedRef.current = false;
     setFailedEntries([]);
+    setVehicleNotRegisteredEntries([]);
+    setDuplicateEntries([]);
     setShowFailedPopup(false);
   };
 
@@ -301,7 +335,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
 
   const closeFailedPopup = () => {
     setShowFailedPopup(false);
-    // Close main modal if no errors and import is complete
     if (importResult && importResult.summary && importResult.summary.failed === 0) {
       resetModal();
       onClose();
@@ -317,9 +350,9 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   return (
     <>
       {/* Failed Entries Popup */}
-      {showFailedPopup && failedEntries.length > 0 && (
+      {showFailedPopup && (failedEntries.length > 0 || vehicleNotRegisteredEntries.length > 0 || duplicateEntries.length > 0) && (
         <div className="fixed inset-0 z-[200] bg-black/70 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-xl shadow-2xl max-h-[80vh] overflow-hidden animate-in zoom-in duration-300">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-xl shadow-2xl max-h-[85vh] overflow-hidden animate-in zoom-in duration-300">
             <div className="flex justify-between items-center border-b dark:border-slate-700 p-5 sticky top-0 bg-white dark:bg-slate-900">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
@@ -327,10 +360,10 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight">
-                    Failed Records
+                    Failed & Skipped Records
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {failedEntries.length} record(s) could not be imported
+                    {failedEntries.length} failed, {duplicateEntries.length} skipped
                   </p>
                 </div>
               </div>
@@ -342,34 +375,106 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               </button>
             </div>
             
-            <div className="p-5 overflow-y-auto max-h-[60vh]">
-              <div className="space-y-2">
-                {failedEntries.map((entry, idx) => (
-                  <div 
-                    key={idx} 
-                    className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
-                            Row #{entry.row || idx + 1}
-                          </span>
-                          <span className="font-mono text-sm font-bold text-blue-700 dark:text-blue-400">
-                            LRNO: {entry.lrno}
-                          </span>
-                          <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-400">
-                            Vehicle: {entry.vehicleNo}
-                          </span>
-                        </div>
-                        <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                          ❌ {entry.error}
-                        </p>
-                      </div>
-                    </div>
+            <div className="p-5 overflow-y-auto max-h-[60vh] space-y-4">
+              {/* Vehicle Not Registered Errors */}
+              {vehicleNotRegisteredEntries.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Truck className="text-red-500" size={18} />
+                    <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase">Unregistered Vehicles ({vehicleNotRegisteredEntries.length})</h4>
                   </div>
-                ))}
-              </div>
+                  <div className="space-y-2">
+                    {vehicleNotRegisteredEntries.map((err, idx) => (
+                      <div key={`vehicle-${idx}`} className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
+                              Row #{err.row || idx + 1}
+                            </span>
+                            <span className="font-mono text-sm font-bold text-red-700 dark:text-red-400">
+                              Vehicle: {err.vehicleNo || err.data?.VehicleNo || err.entry?.VehicleNo || 'N/A'}
+                            </span>
+                            {err.lrno && err.lrno !== 'N/A' && (
+                              <span className="font-mono text-sm font-bold text-blue-700 dark:text-blue-400">
+                                LRNO: {err.lrno}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-red-600 dark:text-red-400">
+                            ❌ {err.error}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Other Errors */}
+              {failedEntries.filter(e => !e.isVehicleError).length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertCircle className="text-yellow-500" size={18} />
+                    <h4 className="text-sm font-black text-yellow-600 dark:text-yellow-400 uppercase">Other Errors ({failedEntries.filter(e => !e.isVehicleError).length})</h4>
+                  </div>
+                  <div className="space-y-2">
+                    {failedEntries.filter(e => !e.isVehicleError).map((entry, idx) => (
+                      <div key={`other-${idx}`} className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
+                              Row #{entry.row || idx + 1}
+                            </span>
+                            <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-400">
+                              Vehicle: {entry.vehicleNo || 'N/A'}
+                            </span>
+                            {entry.lrno && entry.lrno !== 'N/A' && (
+                              <span className="font-mono text-sm font-bold text-blue-700 dark:text-blue-400">
+                                LRNO: {entry.lrno}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-red-600 dark:text-red-400">
+                            ❌ {entry.error}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Duplicate/Skipped Entries */}
+              {duplicateEntries.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertCircle className="text-orange-500" size={18} />
+                    <h4 className="text-sm font-black text-orange-600 dark:text-orange-400 uppercase">Skipped (Duplicates) ({duplicateEntries.length})</h4>
+                  </div>
+                  <div className="space-y-2">
+                    {duplicateEntries.map((skip, idx) => (
+                      <div key={`skip-${idx}`} className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
+                              Row #{skip.row || idx + 1}
+                            </span>
+                            <span className="font-mono text-sm font-bold text-orange-700 dark:text-orange-400">
+                              LRNO: {skip.lrno || skip.reason?.match(/LRNO '([^']+)'/)?.[1] || 'N/A'}
+                            </span>
+                            <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-400">
+                              Vehicle: {skip.vehicleNo || 'N/A'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-orange-600 dark:text-orange-400">
+                            ⏭️ {skip.reason}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="border-t dark:border-slate-700 p-5 flex gap-3">
@@ -379,21 +484,35 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               >
                 Close
               </button>
-              <button
-                onClick={() => {
-                  setShowFailedPopup(false);
-                  resetModal();
-                  setStep(2);
-                }}
-                className="flex-1 py-3 bg-gray-600 text-white rounded-lg font-black text-xs uppercase hover:bg-gray-700 transition-colors"
-              >
-                Try Again
-              </button>
+              {vehicleNotRegisteredEntries.length > 0 && (
+                <button
+                  onClick={() => {
+                    setShowFailedPopup(false);
+                    window.location.href = '/reports';
+                  }}
+                  className="flex-1 py-3 bg-green-600 text-white rounded-lg font-black text-xs uppercase hover:bg-green-700 transition-colors"
+                >
+                  Add Vehicles
+                </button>
+              )}
+              {(failedEntries.length > 0 || duplicateEntries.length > 0) && (
+                <button
+                  onClick={() => {
+                    setShowFailedPopup(false);
+                    resetModal();
+                    setStep(2);
+                  }}
+                  className="flex-1 py-3 bg-gray-600 text-white rounded-lg font-black text-xs uppercase hover:bg-gray-700 transition-colors"
+                >
+                  Try Again
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
 
+      {/* Main Modal - same as before */}
       <div className="fixed inset-0 z-[100] bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
         <div className="bg-white dark:bg-slate-900 w-full max-w-5xl rounded-xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-4 border-b dark:border-slate-700 pb-4 sticky top-0 bg-white dark:bg-slate-900 z-10">
@@ -479,13 +598,13 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               )}
               
               {/* Button to view failed entries */}
-              {failedEntries.length > 0 && (
+              {(failedEntries.length > 0 || duplicateEntries.length > 0) && (
                 <button
                   onClick={() => setShowFailedPopup(true)}
                   className="mt-3 w-full py-2 bg-red-600 text-white rounded font-black text-xs uppercase hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <List size={14} />
-                  View Failed Records ({failedEntries.length})
+                  View Failed & Skipped Records ({failedEntries.length + duplicateEntries.length})
                 </button>
               )}
               
