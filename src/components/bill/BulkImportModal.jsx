@@ -38,11 +38,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   const axiosRequestSentRef = useRef(false);
   const finalResultProcessedRef = useRef(false);
 
-  // Unique ID generator
-  const generateUniqueId = () => {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  };
-
   // Connect to Socket.IO
   useEffect(() => {
     const renderBackendUrl = import.meta.env.VITE_BACKEND_URL || 'https://taransport-solutions-system.onrender.com';
@@ -433,7 +428,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               </button>
             </div>
             
-            <div className="p-5 overflow-y-auto max-h-[60vh]">
+            <div className="p-5 overflow-y-auto max-h-[60vh] space-y-4">
               {/* Duplicate/Skipped Entries - LRNOs only */}
               {duplicateEntries.length > 0 && (
                 <div>
@@ -443,7 +438,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   </div>
                   <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                     <p className="text-sm text-yellow-800 dark:text-yellow-200 font-mono break-words">
-                      {duplicateEntries.map(skip => skip.lrno).filter(lr => lr !== 'N/A').join(', ')}
+                      {duplicateEntries.map(skip => skip.lrno).filter(lr => lr !== 'N/A').join(', ') || 'None'}
                     </p>
                     {duplicateEntries.filter(s => s.lrno === 'N/A').length > 0 && (
                       <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
@@ -696,15 +691,15 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                             {key}
                           </th>
                         ))}
-                        </tr>
-                       </thead>
+                      </tr>
+                    </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                       {previewData.map((row, rowIdx) => (
                         <tr key={`row-${rowIdx}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                           {Object.values(row).map((val, colIdx) => (
                             <td key={`cell-${rowIdx}-${colIdx}`} className="px-2 py-1.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">
                               {String(val).slice(0, 50)}
-                              </td>
+                            </td>
                           ))}
                         </tr>
                       ))}
@@ -744,4 +739,4 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   );
 };
 
-export default BulkImportModal;
+export default BulkImportModal
