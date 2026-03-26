@@ -946,6 +946,22 @@ function Home() {
                     </div>
                   )}
                 </div>
+                 {/* Page size selector */}
+                <div className="flex items-center gap-2">
+                  <ListChecks size={12} className="text-slate-500 dark:text-slate-400" />
+                  <select
+                    value={pageSize}
+                    onChange={handlePageSizeChange}
+                    className="border rounded px-2 py-1 text-[10px] font-bold bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                  >
+                    <option value={10}>10   </option>
+                    <option value={20}>20   </option>
+                    <option value={50}>50   </option>
+                    <option value={100}>100 </option>
+                    <option value={500}>500 </option>
+                    
+                  </select>
+                </div>
               </div>
 
               {/* Table container */}
@@ -1057,6 +1073,7 @@ function Home() {
                 >
                   <Plus size={14} /> New Expense
                 </button>
+                
               </div>
               <div className="overflow-x-auto">
                 <ExpenseTable
@@ -1066,6 +1083,7 @@ function Home() {
                   refreshData={() => getExpenses(currentPage, pageSize)}
                 />
               </div>
+              
             </div>
           )}
 
@@ -1076,22 +1094,7 @@ function Home() {
                 <p className="text-[8px] uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">
                   Page {currentPage} of {totalPages}
                 </p>
-                {/* Page size selector */}
-                <div className="flex items-center gap-2">
-                  <ListChecks size={12} className="text-slate-500 dark:text-slate-400" />
-                  <select
-                    value={pageSize}
-                    onChange={handlePageSizeChange}
-                    className="border rounded px-2 py-1 text-[10px] font-bold bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                  >
-                    <option value={10}>10   </option>
-                    <option value={20}>20   </option>
-                    <option value={50}>50   </option>
-                    <option value={100}>100 </option>
-                    <option value={500}>500 </option>
-                    
-                  </select>
-                </div>
+               
               </div>
               <div className="flex gap-2">
                 <button

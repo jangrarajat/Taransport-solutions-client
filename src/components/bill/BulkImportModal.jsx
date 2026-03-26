@@ -31,7 +31,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   
   // Refs to track completion
   const socketCompletedRef = useRef(false);
-  const axiosErrorRef = useRef(false);
+  const axiosRequestSentRef = useRef(false);
+  const finalResultProcessedRef = useRef(false);
 
   // Connect to Socket.IO
   useEffect(() => {
@@ -95,7 +96,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           setProgress(null);
           setIsComplete(false);
           socketCompletedRef.current = false;
-          axiosErrorRef.current = false;
+          axiosRequestSentRef.current = false;
+          finalResultProcessedRef.current = false;
           setFailedEntries([]);
           setShowFailedPopup(false);
         } catch (err) {
@@ -121,14 +123,15 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     setProgress(null);
     setIsComplete(false);
     socketCompletedRef.current = false;
-    axiosErrorRef.current = false;
+    axiosRequestSentRef.current = false;
+    finalResultProcessedRef.current = false;
     setFailedEntries([]);
     setShowFailedPopup(false);
 
     const newImportId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     setImportId(newImportId);
 
-    // Setup socket listeners
+    // Setup socket listeners FIRST
     if (socket && socket.connected) {
       socket.emit('join', newImportId);
       socket.off('progress');
@@ -140,6 +143,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         if (data.type === 'complete') {
           socketCompletedRef.current = true;
           setIsComplete(true);
+          setIsSubmitting(false);
           
           // Store failed entries for popup
           if (data.errors && data.errors.length > 0) {
@@ -151,13 +155,12 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             }));
             setFailedEntries(failed);
             
-            // Show popup if there are failed entries
             if (failed.length > 0) {
               setShowFailedPopup(true);
             }
           }
           
-          // Show final notification based on results
+          // Show final notification
           if (data.failed === 0 && data.succeeded > 0) {
             showNotification(true, `${data.succeeded} records imported successfully!`);
           } else if (data.succeeded > 0 && data.failed > 0) {
@@ -173,19 +176,23 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             skipped: data.skipped,
             summary: data
           });
+          finalResultProcessedRef.current = true;
           
-          // Don't auto close if there are failures
+          // Auto close only if no failures
           if (data.failed === 0) {
             setTimeout(() => {
               resetModal();
               onClose();
-            }, 3000);
+            }, 2000);
           }
           if (onSuccess) onSuccess();
         }
       });
     } else {
-      console.warn('Socket not connected, progress won\'t be shown');
+      console.warn('Socket not connected');
+      showNotification(false, "Connection error. Please refresh and try again.");
+      setIsSubmitting(false);
+      return;
     }
 
     const reader = new FileReader();
@@ -200,6 +207,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         ? `${backendUrl}/api/bill/bulk-bilty`
         : `${backendUrl}/api/bill/bulk-transaction`;
 
+      axiosRequestSentRef.current = true;
+      
       try {
         const response = await axios.post(endpoint, { entries: json, importId: newImportId }, { 
           withCredentials: true,
@@ -208,79 +217,53 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         
         console.log('API Response:', response.data);
         
-        // Only show error if API call itself failed AND socket hasn't completed
-        if (!response.data.success && !socketCompletedRef.current) {
-          showNotification(false, response.data.message || "Import failed");
-          setImportResult({
-            success: false,
-            message: response.data.message || "Import failed",
-            errors: response.data.errors || []
-          });
-          setIsSubmitting(false);
-        }
-        
-        // If socket already sent complete, don't show duplicate summary
-        if (!socketCompletedRef.current && response.data.success) {
-          setImportResult({
-            success: true,
-            message: response.data.message,
-            errors: response.data.errors,
-            skipped: response.data.skipped,
-            summary: response.data
-          });
-          
-          // Store failed entries
-          if (response.data.errors && response.data.errors.length > 0) {
-            const failed = response.data.errors.map(err => ({
-              lrno: err.entry?.LRNO || 'N/A',
-              vehicleNo: err.entry?.VehicleNo || 'N/A',
-              error: err.error,
-              row: err.row
-            }));
-            setFailedEntries(failed);
-            if (failed.length > 0) {
-              setShowFailedPopup(true);
+        // Only process if socket hasn't already completed
+        if (!socketCompletedRef.current && !finalResultProcessedRef.current) {
+          if (response.data.success) {
+            setImportResult({
+              success: true,
+              message: response.data.message,
+              errors: response.data.errors,
+              skipped: response.data.skipped,
+              summary: response.data
+            });
+            
+            if (response.data.errors && response.data.errors.length > 0) {
+              const failed = response.data.errors.map(err => ({
+                lrno: err.entry?.LRNO || 'N/A',
+                vehicleNo: err.entry?.VehicleNo || 'N/A',
+                error: err.error,
+                row: err.row
+              }));
+              setFailedEntries(failed);
+              if (failed.length > 0) setShowFailedPopup(true);
+            }
+            
+            if (response.data.summary?.failed === 0) {
+              showNotification(true, `${response.data.summary?.succeeded || 0} records imported!`);
+            } else {
+              showNotification(false, `${response.data.summary?.failed || 0} records failed.`);
             }
           }
         }
         
       } catch (error) {
-        console.error('Axios error:', error);
-        axiosErrorRef.current = true;
-        
-        // IMPORTANT: Only show error if socket hasn't completed the import
+        console.error('Axios error (ignored):', error.message);
+        // COMPLETELY IGNORE AXIOS ERRORS - Socket.IO handles the progress
+        // Do NOT show any error notification for axios errors
+        if (!socketCompletedRef.current && !finalResultProcessedRef.current && progress && progress.processed > 0) {
+          console.log('Import is in progress via socket, ignoring axios error');
+        }
+      } finally {
+        // Only set submitting false if socket hasn't already done it
         if (!socketCompletedRef.current) {
-          if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-            console.warn('Request timeout - but data may still be processing on server');
-            if (!(progress && progress.processed > 0)) {
-              showNotification(false, "Request timeout. The file may be too large. Please try with a smaller file.");
-            }
-          } else if (error.response?.status === 401) {
-            const isRefreshed = await refreshToken();
-            if (isRefreshed) {
+          // Don't set submitting false immediately, let socket handle it
+          setTimeout(() => {
+            if (!socketCompletedRef.current) {
               setIsSubmitting(false);
-              return handleSubmit();
             }
-            showNotification(false, "Session expired. Please login again.");
-          } else if (error.response?.status === 413) {
-            showNotification(false, "File too large. Please split into smaller files (max 10MB).");
-          } else if (error.response?.status === 502) {
-            if (!(progress && progress.processed > 0)) {
-              showNotification(false, "Server connection issue. Please try again.");
-            }
-          } else if (!socketCompletedRef.current) {
-            showNotification(false, "Bulk entry failed: " + (error.response?.data?.message || error.message));
-          }
+          }, 1000);
         }
-        
-        if (!socketCompletedRef.current) {
-          setImportResult({
-            success: false,
-            message: error.response?.data?.message || error.message,
-            errors: [{ error: error.message }]
-          });
-        }
-        setIsSubmitting(false);
       }
     };
     
@@ -305,7 +288,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     setIsSubmitting(false);
     setIsComplete(false);
     socketCompletedRef.current = false;
-    axiosErrorRef.current = false;
+    axiosRequestSentRef.current = false;
+    finalResultProcessedRef.current = false;
     setFailedEntries([]);
     setShowFailedPopup(false);
   };
@@ -503,42 +487,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   <List size={14} />
                   View Failed Records ({failedEntries.length})
                 </button>
-              )}
-              
-              {importResult.errors && importResult.errors.length > 0 && failedEntries.length === 0 && (
-                <details className="mt-2">
-                  <summary className="text-xs font-bold text-red-600 dark:text-red-400 cursor-pointer">
-                    View Errors ({importResult.errors.length})
-                  </summary>
-                  <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
-                    {importResult.errors.slice(0, 20).map((err, idx) => (
-                      <div key={idx} className="p-2 bg-red-50 dark:bg-red-900/20 rounded text-red-700 dark:text-red-300">
-                        <span className="font-mono">Row {err.row || idx + 1}:</span> {err.error}
-                      </div>
-                    ))}
-                    {importResult.errors.length > 20 && (
-                      <p className="text-slate-500 dark:text-slate-400 italic">... and {importResult.errors.length - 20} more errors</p>
-                    )}
-                  </div>
-                </details>
-              )}
-              
-              {importResult.skipped && importResult.skipped.length > 0 && (
-                <details className="mt-2">
-                  <summary className="text-xs font-bold text-yellow-600 dark:text-yellow-400 cursor-pointer">
-                    View Skipped ({importResult.skipped.length})
-                  </summary>
-                  <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
-                    {importResult.skipped.slice(0, 20).map((skip, idx) => (
-                      <div key={idx} className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-yellow-700 dark:text-yellow-300">
-                        <span className="font-mono">Row {skip.row || idx + 1}:</span> {skip.reason}
-                      </div>
-                    ))}
-                    {importResult.skipped.length > 20 && (
-                      <p className="text-slate-500 dark:text-slate-400 italic">... and {importResult.skipped.length - 20} more skipped</p>
-                    )}
-                  </div>
-                </details>
               )}
               
               <div className="mt-4">
