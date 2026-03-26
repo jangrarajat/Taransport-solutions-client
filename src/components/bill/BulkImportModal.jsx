@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, ChevronDown, ChevronUp, List } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 import { backendUrl } from '../../utils/backendUrl';
@@ -18,12 +18,20 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   const [importResult, setImportResult] = useState(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  
+  // Failed entries popup state
+  const [showFailedPopup, setShowFailedPopup] = useState(false);
+  const [failedEntries, setFailedEntries] = useState([]);
 
   // Progress state
   const [progress, setProgress] = useState(null);
   const [socket, setSocket] = useState(null);
   const [importId, setImportId] = useState(null);
   const [connectionError, setConnectionError] = useState(false);
+  
+  // Refs to track completion
+  const socketCompletedRef = useRef(false);
+  const axiosErrorRef = useRef(false);
 
   // Connect to Socket.IO
   useEffect(() => {
@@ -86,6 +94,10 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           setImportResult(null);
           setProgress(null);
           setIsComplete(false);
+          socketCompletedRef.current = false;
+          axiosErrorRef.current = false;
+          setFailedEntries([]);
+          setShowFailedPopup(false);
         } catch (err) {
           showNotification(false, "Error reading file: " + err.message);
           setStep(2);
@@ -108,11 +120,13 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     setImportResult(null);
     setProgress(null);
     setIsComplete(false);
+    socketCompletedRef.current = false;
+    axiosErrorRef.current = false;
+    setFailedEntries([]);
+    setShowFailedPopup(false);
 
     const newImportId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     setImportId(newImportId);
-
-    let socketCompleteReceived = false;
 
     // Setup socket listeners
     if (socket && socket.connected) {
@@ -124,17 +138,32 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         setProgress(data);
         
         if (data.type === 'complete') {
-          socketCompleteReceived = true;
+          socketCompletedRef.current = true;
           setIsComplete(true);
-          setIsSubmitting(false);
+          
+          // Store failed entries for popup
+          if (data.errors && data.errors.length > 0) {
+            const failed = data.errors.map(err => ({
+              lrno: err.data?.LRNO || err.entry?.LRNO || 'N/A',
+              vehicleNo: err.data?.VehicleNo || err.entry?.VehicleNo || 'N/A',
+              error: err.error,
+              row: err.row
+            }));
+            setFailedEntries(failed);
+            
+            // Show popup if there are failed entries
+            if (failed.length > 0) {
+              setShowFailedPopup(true);
+            }
+          }
           
           // Show final notification based on results
           if (data.failed === 0 && data.succeeded > 0) {
             showNotification(true, `${data.succeeded} records imported successfully!`);
           } else if (data.succeeded > 0 && data.failed > 0) {
-            showNotification(false, `${data.failed} records failed. Check details below.`);
+            showNotification(false, `${data.failed} records failed. Click 'View Failed' to see details.`);
           } else if (data.failed > 0 && data.succeeded === 0) {
-            showNotification(false, `All ${data.failed} records failed.`);
+            showNotification(false, `All ${data.failed} records failed. Click 'View Failed' to see details.`);
           }
           
           setImportResult({
@@ -145,10 +174,13 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             summary: data
           });
           
-          setTimeout(() => {
-            resetModal();
-            onClose();
-          }, 3000);
+          // Don't auto close if there are failures
+          if (data.failed === 0) {
+            setTimeout(() => {
+              resetModal();
+              onClose();
+            }, 3000);
+          }
           if (onSuccess) onSuccess();
         }
       });
@@ -169,16 +201,15 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         : `${backendUrl}/api/bill/bulk-transaction`;
 
       try {
-        // IMPORTANT: Increase timeout to 10 minutes for large files
         const response = await axios.post(endpoint, { entries: json, importId: newImportId }, { 
           withCredentials: true,
-          timeout: 600000 // 10 minutes (600,000 ms)
+          timeout: 600000 // 10 minutes
         });
         
         console.log('API Response:', response.data);
-
-        // Only show error if API call itself failed
-        if (!response.data.success) {
+        
+        // Only show error if API call itself failed AND socket hasn't completed
+        if (!response.data.success && !socketCompletedRef.current) {
           showNotification(false, response.data.message || "Import failed");
           setImportResult({
             success: false,
@@ -189,7 +220,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         }
         
         // If socket already sent complete, don't show duplicate summary
-        if (!socketCompleteReceived && response.data.success) {
+        if (!socketCompletedRef.current && response.data.success) {
           setImportResult({
             success: true,
             message: response.data.message,
@@ -197,41 +228,58 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             skipped: response.data.skipped,
             summary: response.data
           });
+          
+          // Store failed entries
+          if (response.data.errors && response.data.errors.length > 0) {
+            const failed = response.data.errors.map(err => ({
+              lrno: err.entry?.LRNO || 'N/A',
+              vehicleNo: err.entry?.VehicleNo || 'N/A',
+              error: err.error,
+              row: err.row
+            }));
+            setFailedEntries(failed);
+            if (failed.length > 0) {
+              setShowFailedPopup(true);
+            }
+          }
         }
         
       } catch (error) {
         console.error('Axios error:', error);
+        axiosErrorRef.current = true;
         
-        // Check if this is a timeout error
-        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-          console.warn('Request timeout - but data may still be processing on server');
-          // Don't show error notification for timeout if socket is showing progress
-          if (!socketCompleteReceived && progress && progress.processed > 0) {
-            showNotification(false, "Request timed out, but data is still being processed. Check progress bar for updates.");
-          } else if (!socketCompleteReceived) {
-            showNotification(false, "Request timeout. The file may be too large. Please try with a smaller file.");
-          }
-        } else if (error.response?.status === 401) {
-          const isRefreshed = await refreshToken();
-          if (isRefreshed) {
-            setIsSubmitting(false);
-            return handleSubmit();
-          }
-          showNotification(false, "Session expired. Please login again.");
-        } else if (error.response?.status === 413) {
-          showNotification(false, "File too large. Please split into smaller files (max 10MB).");
-        } else {
-          // Only show error if socket hasn't already shown completion
-          if (!socketCompleteReceived) {
+        // IMPORTANT: Only show error if socket hasn't completed the import
+        if (!socketCompletedRef.current) {
+          if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+            console.warn('Request timeout - but data may still be processing on server');
+            if (!(progress && progress.processed > 0)) {
+              showNotification(false, "Request timeout. The file may be too large. Please try with a smaller file.");
+            }
+          } else if (error.response?.status === 401) {
+            const isRefreshed = await refreshToken();
+            if (isRefreshed) {
+              setIsSubmitting(false);
+              return handleSubmit();
+            }
+            showNotification(false, "Session expired. Please login again.");
+          } else if (error.response?.status === 413) {
+            showNotification(false, "File too large. Please split into smaller files (max 10MB).");
+          } else if (error.response?.status === 502) {
+            if (!(progress && progress.processed > 0)) {
+              showNotification(false, "Server connection issue. Please try again.");
+            }
+          } else if (!socketCompletedRef.current) {
             showNotification(false, "Bulk entry failed: " + (error.response?.data?.message || error.message));
           }
         }
         
-        setImportResult({
-          success: false,
-          message: error.response?.data?.message || error.message,
-          errors: [{ error: error.message }]
-        });
+        if (!socketCompletedRef.current) {
+          setImportResult({
+            success: false,
+            message: error.response?.data?.message || error.message,
+            errors: [{ error: error.message }]
+          });
+        }
         setIsSubmitting(false);
       }
     };
@@ -256,11 +304,24 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     setImportId(null);
     setIsSubmitting(false);
     setIsComplete(false);
+    socketCompletedRef.current = false;
+    axiosErrorRef.current = false;
+    setFailedEntries([]);
+    setShowFailedPopup(false);
   };
 
   const handleClose = () => {
     resetModal();
     onClose();
+  };
+
+  const closeFailedPopup = () => {
+    setShowFailedPopup(false);
+    // Close main modal if no errors and import is complete
+    if (importResult && importResult.summary && importResult.summary.failed === 0) {
+      resetModal();
+      onClose();
+    }
   };
 
   const previewData = showAllRows ? fullData : fullData.slice(0, 10);
@@ -270,243 +331,334 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-5xl rounded-xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4 border-b dark:border-slate-700 pb-4 sticky top-0 bg-white dark:bg-slate-900 z-10">
-          <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase">Bulk Import</h2>
-          {!isSubmitting && !progress && !isComplete && (
-            <X onClick={handleClose} className="cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" size={20} />
-          )}
-        </div>
-
-        {/* Connection Error Warning */}
-        {connectionError && !progress && (
-          <div className="mb-6 p-4 rounded-lg border bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
-            <p className="text-sm text-yellow-800 dark:text-yellow-300">
-              ⚠️ Real-time progress is unavailable. Import will still complete, but you won't see live updates.
-            </p>
-          </div>
-        )}
-
-        {/* Live Progress UI */}
-        {progress && progress.type !== 'complete' && (
-          <div className="mb-6 p-6 rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
-                <span className="text-sm font-black text-blue-700 dark:text-blue-300">Importing Data...</span>
-              </div>
-              <span className="text-sm font-black text-blue-700 dark:text-blue-300">{progress.processed} / {progress.total}</span>
-            </div>
-            
-            <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-3 mb-4">
-              <div className="bg-blue-600 h-3 rounded-full transition-all duration-300" style={{ width: `${percent}%` }}></div>
-            </div>
-            
-            <div className="text-xs text-slate-600 dark:text-slate-300 space-y-2">
-              <p className="font-mono bg-white/50 dark:bg-slate-800/50 p-2 rounded">
-                {progress.success === false ? '❌' : '✅'} Processing: 
-                <span className="font-bold ml-1">LRNO {progress.currentLRNO || 'N/A'}</span> 
-                <span className="mx-1">|</span>
-                <span className="font-bold">Vehicle: {progress.currentVehicle || 'N/A'}</span>
-              </p>
-              <p>📊 Remaining: <span className="font-bold">{remaining}</span> entries</p>
-              {progress.success === false && progress.error && (
-                <p className="text-red-500 bg-red-50 dark:bg-red-900/30 p-2 rounded">⚠️ Error: {progress.error}</p>
-              )}
-            </div>
-            
-            <div className="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700">
-              <p className="text-[10px] text-blue-600 dark:text-blue-400 text-center">
-                ⏳ Please wait while your data is being imported. Do not close this window.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Final Summary */}
-        {importResult && (
-          <div className={`mb-6 p-4 rounded-lg border ${importResult.success ? 'bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
-            <div className="flex items-center gap-2 mb-2">
-              {importResult.success ? (
-                <CheckCircle className="text-green-600 dark:text-green-400" size={20} />
-              ) : (
-                <AlertCircle className="text-red-600 dark:text-red-400" size={20} />
-              )}
-              <h3 className="font-black text-slate-800 dark:text-white">Import Summary</h3>
-            </div>
-            <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">{importResult.message}</p>
-            
-            {importResult.summary && (
-              <div className="grid grid-cols-3 gap-2 mb-3 text-center text-xs">
-                <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded">
-                  <span className="font-black text-green-600">✅ {importResult.summary.succeeded || 0}</span>
-                  <span className="text-slate-500 ml-1">Succeeded</span>
+    <>
+      {/* Failed Entries Popup */}
+      {showFailedPopup && failedEntries.length > 0 && (
+        <div className="fixed inset-0 z-[200] bg-black/70 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-xl shadow-2xl max-h-[80vh] overflow-hidden animate-in zoom-in duration-300">
+            <div className="flex justify-between items-center border-b dark:border-slate-700 p-5 sticky top-0 bg-white dark:bg-slate-900">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                  <AlertCircle className="text-red-600 dark:text-red-400" size={24} />
                 </div>
-                <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded">
-                  <span className="font-black text-red-600">❌ {importResult.summary.failed || 0}</span>
-                  <span className="text-slate-500 ml-1">Failed</span>
-                </div>
-                <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded">
-                  <span className="font-black text-yellow-600">⏭️ {importResult.summary.skipped || 0}</span>
-                  <span className="text-slate-500 ml-1">Skipped</span>
+                <div>
+                  <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight">
+                    Failed Records
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {failedEntries.length} record(s) could not be imported
+                  </p>
                 </div>
               </div>
-            )}
+              <button 
+                onClick={closeFailedPopup}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+              >
+                <X size={20} className="text-slate-500 dark:text-slate-400" />
+              </button>
+            </div>
             
-            {importResult.errors && importResult.errors.length > 0 && (
-              <details className="mt-2">
-                <summary className="text-xs font-bold text-red-600 dark:text-red-400 cursor-pointer">
-                  View Errors ({importResult.errors.length})
-                </summary>
-                <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
-                  {importResult.errors.slice(0, 20).map((err, idx) => (
-                    <div key={idx} className="p-2 bg-red-50 dark:bg-red-900/20 rounded text-red-700 dark:text-red-300">
-                      <span className="font-mono">Row {err.row || idx + 1}:</span> {err.error}
+            <div className="p-5 overflow-y-auto max-h-[60vh]">
+              <div className="space-y-2">
+                {failedEntries.map((entry, idx) => (
+                  <div 
+                    key={idx} 
+                    className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
+                            Row #{entry.row || idx + 1}
+                          </span>
+                          <span className="font-mono text-sm font-bold text-blue-700 dark:text-blue-400">
+                            LRNO: {entry.lrno}
+                          </span>
+                          <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-400">
+                            Vehicle: {entry.vehicleNo}
+                          </span>
+                        </div>
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                          ❌ {entry.error}
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                  {importResult.errors.length > 20 && (
-                    <p className="text-slate-500 dark:text-slate-400 italic">... and {importResult.errors.length - 20} more errors</p>
-                  )}
-                </div>
-              </details>
-            )}
+                  </div>
+                ))}
+              </div>
+            </div>
             
-            {importResult.skipped && importResult.skipped.length > 0 && (
-              <details className="mt-2">
-                <summary className="text-xs font-bold text-yellow-600 dark:text-yellow-400 cursor-pointer">
-                  View Skipped ({importResult.skipped.length})
-                </summary>
-                <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
-                  {importResult.skipped.slice(0, 20).map((skip, idx) => (
-                    <div key={idx} className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-yellow-700 dark:text-yellow-300">
-                      <span className="font-mono">Row {skip.row || idx + 1}:</span> {skip.reason}
-                    </div>
-                  ))}
-                  {importResult.skipped.length > 20 && (
-                    <p className="text-slate-500 dark:text-slate-400 italic">... and {importResult.skipped.length - 20} more skipped</p>
-                  )}
-                </div>
-              </details>
-            )}
-            
-            <div className="mt-4">
+            <div className="border-t dark:border-slate-700 p-5 flex gap-3">
               <button
-                onClick={handleClose}
-                className="w-full py-2 bg-blue-600 text-white rounded font-black text-xs uppercase hover:bg-blue-700 transition-colors"
+                onClick={closeFailedPopup}
+                className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-black text-xs uppercase hover:bg-blue-700 transition-colors"
               >
                 Close
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 1: Select Type */}
-        {step === 1 && !isSubmitting && !progress && !importResult && !isComplete && (
-          <div className="space-y-6">
-            <p className="text-sm text-slate-600 dark:text-slate-300">Select the type of records to import:</p>
-            <div className="flex gap-4 flex-wrap">
               <button
-                onClick={() => { setImportType('bilty'); setStep(2); }}
-                className="flex-1 min-w-[180px] p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors group"
+                onClick={() => {
+                  setShowFailedPopup(false);
+                  resetModal();
+                  setStep(2);
+                }}
+                className="flex-1 py-3 bg-gray-600 text-white rounded-lg font-black text-xs uppercase hover:bg-gray-700 transition-colors"
               >
-                <FileSpreadsheet size={32} className="mx-auto mb-2 text-blue-600 dark:text-blue-400" />
-                <span className="font-black uppercase text-blue-700 dark:text-blue-300">Bilty Records</span>
-              </button>
-              <button
-                onClick={() => { setImportType('transaction'); setStep(2); }}
-                className="flex-1 min-w-[180px] p-4 border rounded-lg bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors group"
-              >
-                <FileSpreadsheet size={32} className="mx-auto mb-2 text-green-600 dark:text-green-400" />
-                <span className="font-black uppercase text-green-700 dark:text-green-300">Transaction Entries</span>
+                Try Again
               </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Step 2: Upload File */}
-        {step === 2 && !isSubmitting && !progress && !importResult && !isComplete && (
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-300">
-              {importType === 'bilty'
-                ? "Upload an Excel file with columns: InvoiceNo, DateOfIssueOfInvoice, NameOfRecipient, GSTINNo, Quantity, Packages, LRNO, VehicleNo, Destination, ratePMT, advanceCash, desilOnRent, petrolPump, challanNO, DONo, DINo, TotalInvoiceValue"
-                : "Upload an Excel file with columns: DateOfIssueOfInvoice, NameOfRecipient, VehicleNo, Amount, remark, Destination"}
-            </p>
-            <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center">
-              <input
-                type="file"
-                accept=".xlsx, .xls, .csv"
-                onChange={handleFileChange}
-                className="hidden"
-                id="file-upload"
-              />
-              <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center gap-2">
-                <Upload size={32} className="text-slate-400 dark:text-slate-500" />
-                <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">Click to upload Excel file</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">.xlsx, .xls, or .csv (Max 10MB)</span>
-              </label>
-            </div>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setStep(1)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">Back</button>
-            </div>
+      <div className="fixed inset-0 z-[100] bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-slate-900 w-full max-w-5xl rounded-xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-4 border-b dark:border-slate-700 pb-4 sticky top-0 bg-white dark:bg-slate-900 z-10">
+            <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase">Bulk Import</h2>
+            {!isSubmitting && !progress && !isComplete && (
+              <X onClick={handleClose} className="cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" size={20} />
+            )}
           </div>
-        )}
 
-        {/* Step 3: Preview and Confirm */}
-        {step === 3 && !isSubmitting && !progress && !importResult && !isComplete && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <p className="text-sm font-bold text-green-600 dark:text-green-400">📄 File: {fileName}</p>
-              {isProcessingFile && <ButtonLoaders />}
+          {/* Connection Error Warning */}
+          {connectionError && !progress && (
+            <div className="mb-6 p-4 rounded-lg border bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+              <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                ⚠️ Real-time progress is unavailable. Import will still complete, but you won't see live updates.
+              </p>
             </div>
-            {fullData.length > 0 && (
-              <div className="overflow-x-auto border rounded-lg dark:border-slate-700">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0">
-                    <tr>
-                      {Object.keys(fullData[0]).map(key => (
-                        <th key={key} className="px-2 py-2 border-b dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider whitespace-nowrap">{key}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                    {previewData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        {Object.values(row).map((val, i) => (
-                          <td key={i} className="px-2 py-1.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">{String(val).slice(0, 50)}</td>
+          )}
+
+          {/* Live Progress UI */}
+          {progress && progress.type !== 'complete' && (
+            <div className="mb-6 p-6 rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
+                  <span className="text-sm font-black text-blue-700 dark:text-blue-300">Importing Data...</span>
+                </div>
+                <span className="text-sm font-black text-blue-700 dark:text-blue-300">{progress.processed} / {progress.total}</span>
+              </div>
+              
+              <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-3 mb-4">
+                <div className="bg-blue-600 h-3 rounded-full transition-all duration-300" style={{ width: `${percent}%` }}></div>
+              </div>
+              
+              <div className="text-xs text-slate-600 dark:text-slate-300 space-y-2">
+                <p className="font-mono bg-white/50 dark:bg-slate-800/50 p-2 rounded">
+                  {progress.success === false ? '❌' : '✅'} Processing: 
+                  <span className="font-bold ml-1">LRNO {progress.currentLRNO || 'N/A'}</span> 
+                  <span className="mx-1">|</span>
+                  <span className="font-bold">Vehicle: {progress.currentVehicle || 'N/A'}</span>
+                </p>
+                <p>📊 Remaining: <span className="font-bold">{remaining}</span> entries</p>
+                {progress.success === false && progress.error && (
+                  <p className="text-red-500 bg-red-50 dark:bg-red-900/30 p-2 rounded">⚠️ Error: {progress.error}</p>
+                )}
+              </div>
+              
+              <div className="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700">
+                <p className="text-[10px] text-blue-600 dark:text-blue-400 text-center">
+                  ⏳ Please wait while your data is being imported. Do not close this window.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Final Summary */}
+          {importResult && (
+            <div className={`mb-6 p-4 rounded-lg border ${importResult.success ? 'bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                {importResult.success ? (
+                  <CheckCircle className="text-green-600 dark:text-green-400" size={20} />
+                ) : (
+                  <AlertCircle className="text-red-600 dark:text-red-400" size={20} />
+                )}
+                <h3 className="font-black text-slate-800 dark:text-white">Import Summary</h3>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">{importResult.message}</p>
+              
+              {importResult.summary && (
+                <div className="grid grid-cols-3 gap-2 mb-3 text-center text-xs">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded">
+                    <span className="font-black text-green-600">✅ {importResult.summary.succeeded || 0}</span>
+                    <span className="text-slate-500 ml-1">Succeeded</span>
+                  </div>
+                  <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded">
+                    <span className="font-black text-red-600">❌ {importResult.summary.failed || 0}</span>
+                    <span className="text-slate-500 ml-1">Failed</span>
+                  </div>
+                  <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded">
+                    <span className="font-black text-yellow-600">⏭️ {importResult.summary.skipped || 0}</span>
+                    <span className="text-slate-500 ml-1">Skipped</span>
+                  </div>
+                </div>
+              )}
+              
+              {/* Button to view failed entries */}
+              {failedEntries.length > 0 && (
+                <button
+                  onClick={() => setShowFailedPopup(true)}
+                  className="mt-3 w-full py-2 bg-red-600 text-white rounded font-black text-xs uppercase hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <List size={14} />
+                  View Failed Records ({failedEntries.length})
+                </button>
+              )}
+              
+              {importResult.errors && importResult.errors.length > 0 && failedEntries.length === 0 && (
+                <details className="mt-2">
+                  <summary className="text-xs font-bold text-red-600 dark:text-red-400 cursor-pointer">
+                    View Errors ({importResult.errors.length})
+                  </summary>
+                  <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
+                    {importResult.errors.slice(0, 20).map((err, idx) => (
+                      <div key={idx} className="p-2 bg-red-50 dark:bg-red-900/20 rounded text-red-700 dark:text-red-300">
+                        <span className="font-mono">Row {err.row || idx + 1}:</span> {err.error}
+                      </div>
+                    ))}
+                    {importResult.errors.length > 20 && (
+                      <p className="text-slate-500 dark:text-slate-400 italic">... and {importResult.errors.length - 20} more errors</p>
+                    )}
+                  </div>
+                </details>
+              )}
+              
+              {importResult.skipped && importResult.skipped.length > 0 && (
+                <details className="mt-2">
+                  <summary className="text-xs font-bold text-yellow-600 dark:text-yellow-400 cursor-pointer">
+                    View Skipped ({importResult.skipped.length})
+                  </summary>
+                  <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
+                    {importResult.skipped.slice(0, 20).map((skip, idx) => (
+                      <div key={idx} className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-yellow-700 dark:text-yellow-300">
+                        <span className="font-mono">Row {skip.row || idx + 1}:</span> {skip.reason}
+                      </div>
+                    ))}
+                    {importResult.skipped.length > 20 && (
+                      <p className="text-slate-500 dark:text-slate-400 italic">... and {importResult.skipped.length - 20} more skipped</p>
+                    )}
+                  </div>
+                </details>
+              )}
+              
+              <div className="mt-4">
+                <button
+                  onClick={handleClose}
+                  className="w-full py-2 bg-blue-600 text-white rounded font-black text-xs uppercase hover:bg-blue-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 1: Select Type */}
+          {step === 1 && !isSubmitting && !progress && !importResult && !isComplete && (
+            <div className="space-y-6">
+              <p className="text-sm text-slate-600 dark:text-slate-300">Select the type of records to import:</p>
+              <div className="flex gap-4 flex-wrap">
+                <button
+                  onClick={() => { setImportType('bilty'); setStep(2); }}
+                  className="flex-1 min-w-[180px] p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors group"
+                >
+                  <FileSpreadsheet size={32} className="mx-auto mb-2 text-blue-600 dark:text-blue-400" />
+                  <span className="font-black uppercase text-blue-700 dark:text-blue-300">Bilty Records</span>
+                </button>
+                <button
+                  onClick={() => { setImportType('transaction'); setStep(2); }}
+                  className="flex-1 min-w-[180px] p-4 border rounded-lg bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors group"
+                >
+                  <FileSpreadsheet size={32} className="mx-auto mb-2 text-green-600 dark:text-green-400" />
+                  <span className="font-black uppercase text-green-700 dark:text-green-300">Transaction Entries</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Upload File */}
+          {step === 2 && !isSubmitting && !progress && !importResult && !isComplete && (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                {importType === 'bilty'
+                  ? "Upload an Excel file with columns: InvoiceNo, DateOfIssueOfInvoice, NameOfRecipient, GSTINNo, Quantity, Packages, LRNO, VehicleNo, Destination, ratePMT, advanceCash, desilOnRent, petrolPump, challanNO, DONo, DINo, TotalInvoiceValue"
+                  : "Upload an Excel file with columns: DateOfIssueOfInvoice, NameOfRecipient, VehicleNo, Amount, remark, Destination"}
+              </p>
+              <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center">
+                <input
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center gap-2">
+                  <Upload size={32} className="text-slate-400 dark:text-slate-500" />
+                  <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">Click to upload Excel file</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">.xlsx, .xls, or .csv (Max 10MB)</span>
+                </label>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setStep(1)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">Back</button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Preview and Confirm */}
+          {step === 3 && !isSubmitting && !progress && !importResult && !isComplete && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <p className="text-sm font-bold text-green-600 dark:text-green-400">📄 File: {fileName}</p>
+                {isProcessingFile && <ButtonLoaders />}
+              </div>
+              {fullData.length > 0 && (
+                <div className="overflow-x-auto border rounded-lg dark:border-slate-700">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0">
+                      <tr>
+                        {Object.keys(fullData[0]).map(key => (
+                          <th key={key} className="px-2 py-2 border-b dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider whitespace-nowrap">{key}</th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="flex justify-between items-center p-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span>📊 Total {fullData.length} rows</span>
-                  {fullData.length > 10 && (
-                    <button
-                      onClick={() => setShowAllRows(!showAllRows)}
-                      className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      {showAllRows ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      {showAllRows ? "Show Less" : "Show All"}
-                    </button>
-                  )}
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {previewData.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          {Object.values(row).map((val, i) => (
+                            <td key={i} className="px-2 py-1.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">{String(val).slice(0, 50)}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="flex justify-between items-center p-2 text-xs text-slate-500 dark:text-slate-400">
+                    <span>📊 Total {fullData.length} rows</span>
+                    {fullData.length > 10 && (
+                      <button
+                        onClick={() => setShowAllRows(!showAllRows)}
+                        className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        {showAllRows ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        {showAllRows ? "Show Less" : "Show All"}
+                      </button>
+                    )}
+                  </div>
                 </div>
+              )}
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setStep(2)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">Back</button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-blue-600 text-white rounded font-black flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {isSubmitting ? <ButtonLoaders /> : "Confirm Import"}
+                </button>
               </div>
-            )}
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setStep(2)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">Back</button>
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="px-6 py-2 bg-blue-600 text-white rounded font-black flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {isSubmitting ? <ButtonLoaders /> : "Confirm Import"}
-              </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
