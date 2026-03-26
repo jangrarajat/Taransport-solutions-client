@@ -37,6 +37,11 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   const axiosRequestSentRef = useRef(false);
   const finalResultProcessedRef = useRef(false);
 
+  // Unique ID generator
+  const generateUniqueId = () => {
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  };
+
   // Connect to Socket.IO
   useEffect(() => {
     const renderBackendUrl = import.meta.env.VITE_BACKEND_URL || 'https://taransport-solutions-system.onrender.com';
@@ -169,18 +174,18 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           }
           
           // Store failed entries with unique IDs
-          const failed = data.errors ? data.errors.map((err, idx) => ({
-            uniqueId: `err-${Date.now()}-${idx}-${Math.random()}`,
+          const failed = (data.errors || []).map((err, idx) => ({
+            id: generateUniqueId(),
             lrno: err.lrno || err.data?.LRNO || err.entry?.LRNO || 'N/A',
             vehicleNo: err.vehicleNo || err.data?.VehicleNo || err.entry?.VehicleNo || 'N/A',
             error: err.error,
             row: err.row || idx + 1,
             isVehicleError: err.error && (err.error.includes('not registered') || err.vehicleNotRegistered)
-          })) : [];
+          }));
           
           // Store skipped entries with unique IDs
           const skipped = (data.skipped || []).map((skip, idx) => ({
-            uniqueId: `skip-${Date.now()}-${idx}-${Math.random()}`,
+            id: generateUniqueId(),
             lrno: skip.lrno || (skip.reason ? (skip.reason.match(/LRNO '([^']+)'/)?.[1] || 'N/A') : 'N/A'),
             vehicleNo: skip.vehicleNo || skip.entry?.VehicleNo || 'N/A',
             reason: skip.reason,
@@ -258,17 +263,15 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
       try {
         const response = await axios.post(endpoint, { entries: json, importId: newImportId }, { 
           withCredentials: true,
-          timeout: 600000 // 10 minutes
+          timeout: 600000
         });
         
         console.log('API Response:', response.data);
         
-        // Only process if socket hasn't already completed
         if (!socketCompletedRef.current && !finalResultProcessedRef.current) {
           if (response.data.success) {
-            // Store skipped entries with unique IDs
             const skipped = (response.data.skipped || []).map((skip, idx) => ({
-              uniqueId: `skip-fallback-${Date.now()}-${idx}-${Math.random()}`,
+              id: generateUniqueId(),
               lrno: skip.lrno || (skip.reason ? (skip.reason.match(/LRNO '([^']+)'/)?.[1] || 'N/A') : 'N/A'),
               vehicleNo: skip.vehicleNo || skip.entry?.VehicleNo || 'N/A',
               reason: skip.reason,
@@ -277,14 +280,14 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             
             const vehicleErrors = response.data.errors ? response.data.errors.filter(err => err.error && err.error.includes('not registered')) : [];
             const otherErrs = response.data.errors ? response.data.errors.filter(err => !err.error || !err.error.includes('not registered')) : [];
-            const failed = response.data.errors ? response.data.errors.map((err, idx) => ({
-              uniqueId: `err-fallback-${Date.now()}-${idx}-${Math.random()}`,
+            const failed = (response.data.errors || []).map((err, idx) => ({
+              id: generateUniqueId(),
               lrno: err.lrno || err.entry?.LRNO || 'N/A',
               vehicleNo: err.vehicleNo || err.entry?.VehicleNo || 'N/A',
               error: err.error,
               row: err.row || idx + 1,
               isVehicleError: err.error && err.error.includes('not registered')
-            })) : [];
+            }));
             
             setImportResult({
               success: true,
@@ -416,28 +419,31 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                     <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase">Unregistered Vehicles ({vehicleNotRegisteredEntries.length})</h4>
                   </div>
                   <div className="space-y-2">
-                    {vehicleNotRegisteredEntries.map((err, idx) => (
-                      <div key={`vehicle-${err.row}-${idx}-${Date.now()}`} className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
-                              Row #{err.row || idx + 1}
-                            </span>
-                            <span className="font-mono text-sm font-bold text-red-700 dark:text-red-400">
-                              Vehicle: {err.vehicleNo || err.data?.VehicleNo || err.entry?.VehicleNo || 'N/A'}
-                            </span>
-                            {err.lrno && err.lrno !== 'N/A' && (
-                              <span className="font-mono text-sm font-bold text-blue-700 dark:text-blue-400">
-                                LRNO: {err.lrno}
+                    {vehicleNotRegisteredEntries.map((err) => {
+                      const uniqueKey = err.uniqueId || err.id || `vehicle-${err.row}-${Math.random()}`;
+                      return (
+                        <div key={uniqueKey} className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
+                                Row #{err.row || '?'}
                               </span>
-                            )}
+                              <span className="font-mono text-sm font-bold text-red-700 dark:text-red-400">
+                                Vehicle: {err.vehicleNo || err.data?.VehicleNo || err.entry?.VehicleNo || 'N/A'}
+                              </span>
+                              {err.lrno && err.lrno !== 'N/A' && (
+                                <span className="font-mono text-sm font-bold text-blue-700 dark:text-blue-400">
+                                  LRNO: {err.lrno}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-red-600 dark:text-red-400">
+                              ❌ {err.error}
+                            </p>
                           </div>
-                          <p className="text-xs text-red-600 dark:text-red-400">
-                            ❌ {err.error}
-                          </p>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -450,28 +456,31 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                     <h4 className="text-sm font-black text-yellow-600 dark:text-yellow-400 uppercase">Other Errors ({otherErrors.length})</h4>
                   </div>
                   <div className="space-y-2">
-                    {otherErrors.map((err, idx) => (
-                      <div key={`other-${err.row}-${idx}-${Date.now()}`} className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
-                              Row #{err.row || idx + 1}
-                            </span>
-                            <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-400">
-                              Vehicle: {err.vehicleNo || 'N/A'}
-                            </span>
-                            {err.lrno && err.lrno !== 'N/A' && (
-                              <span className="font-mono text-sm font-bold text-blue-700 dark:text-blue-400">
-                                LRNO: {err.lrno}
+                    {otherErrors.map((err) => {
+                      const uniqueKey = err.uniqueId || err.id || `other-${err.row}-${Math.random()}`;
+                      return (
+                        <div key={uniqueKey} className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
+                                Row #{err.row || '?'}
                               </span>
-                            )}
+                              <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-400">
+                                Vehicle: {err.vehicleNo || 'N/A'}
+                              </span>
+                              {err.lrno && err.lrno !== 'N/A' && (
+                                <span className="font-mono text-sm font-bold text-blue-700 dark:text-blue-400">
+                                  LRNO: {err.lrno}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-red-600 dark:text-red-400">
+                              ❌ {err.error}
+                            </p>
                           </div>
-                          <p className="text-xs text-red-600 dark:text-red-400">
-                            ❌ {err.error}
-                          </p>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -484,26 +493,29 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                     <h4 className="text-sm font-black text-orange-600 dark:text-orange-400 uppercase">Skipped (Duplicates) ({duplicateEntries.length})</h4>
                   </div>
                   <div className="space-y-2">
-                    {duplicateEntries.map((skip, idx) => (
-                      <div key={`skip-${skip.row}-${idx}-${Date.now()}`} className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
-                              Row #{skip.row || idx + 1}
-                            </span>
-                            <span className="font-mono text-sm font-bold text-orange-700 dark:text-orange-400">
-                              LRNO: {skip.lrno}
-                            </span>
-                            <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-400">
-                              Vehicle: {skip.vehicleNo}
-                            </span>
+                    {duplicateEntries.map((skip) => {
+                      const uniqueKey = skip.uniqueId || skip.id || `skip-${skip.row}-${Math.random()}`;
+                      return (
+                        <div key={uniqueKey} className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
+                                Row #{skip.row || '?'}
+                              </span>
+                              <span className="font-mono text-sm font-bold text-orange-700 dark:text-orange-400">
+                                LRNO: {skip.lrno}
+                              </span>
+                              <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-400">
+                                Vehicle: {skip.vehicleNo}
+                              </span>
+                            </div>
+                            <p className="text-xs text-orange-600 dark:text-orange-400">
+                              ⏭️ {skip.reason}
+                            </p>
                           </div>
-                          <p className="text-xs text-orange-600 dark:text-orange-400">
-                            ⏭️ {skip.reason}
-                          </p>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -629,7 +641,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 </div>
               )}
               
-              {/* Button to view failed entries */}
               {(failedEntries.length > 0 || duplicateEntries.length > 0) && (
                 <button
                   onClick={() => setShowFailedPopup(true)}
@@ -714,16 +725,20 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0">
                       <tr>
-                        {Object.keys(fullData[0]).map((key, idx) => (
-                          <th key={`header-${key}-${idx}`} className="px-2 py-2 border-b dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider whitespace-nowrap">{key}</th>
+                        {Object.keys(fullData[0] || {}).map((key, idx) => (
+                          <th key={`header-${key}-${idx}`} className="px-2 py-2 border-b dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider whitespace-nowrap">
+                            {key}
+                          </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                       {previewData.map((row, rowIdx) => (
-                        <tr key={`row-${rowIdx}-${Date.now()}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <tr key={`row-${rowIdx}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                           {Object.values(row).map((val, colIdx) => (
-                            <td key={`cell-${rowIdx}-${colIdx}-${Date.now()}`} className="px-2 py-1.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">{String(val).slice(0, 50)}</td>
+                            <td key={`cell-${rowIdx}-${colIdx}`} className="px-2 py-1.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                              {String(val).slice(0, 50)}
+                            </td>
                           ))}
                         </tr>
                       ))}
@@ -744,7 +759,9 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 </div>
               )}
               <div className="flex justify-end gap-3">
-                <button onClick={() => setStep(2)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">Back</button>
+                <button onClick={() => setStep(2)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
+                  Back
+                </button>
                 <button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
