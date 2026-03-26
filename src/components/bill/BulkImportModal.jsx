@@ -177,22 +177,28 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           }
           
           // Store failed entries
-          const failed = (data.errors || []).map((err, idx) => ({
-            lrno: err.lrno || err.data?.LRNO || err.entry?.LRNO || 'N/A',
-            vehicleNo: err.vehicleNo || err.data?.VehicleNo || err.entry?.VehicleNo || 'N/A',
-            error: err.error,
-            row: err.row || idx + 1,
-            isVehicleError: err.error && (err.error.includes('not registered') || err.vehicleNotRegistered)
-          }));
+          const failed = (data.errors || []).map((err, idx) => {
+            const errorStr = typeof err.error === 'string' ? err.error : (err.error ? String(err.error) : 'Unknown error');
+            return {
+              lrno: err.lrno || err.data?.LRNO || err.entry?.LRNO || 'N/A',
+              vehicleNo: err.vehicleNo || err.data?.VehicleNo || err.entry?.VehicleNo || 'N/A',
+              error: errorStr,
+              row: err.row || idx + 1,
+              isVehicleError: errorStr.includes('not registered') || !!err.vehicleNotRegistered
+            };
+          });
           
           // Store skipped entries (duplicates)
-          const skipped = (data.skipped || []).map((skip, idx) => ({
-            lrno: skip.lrno || (skip.reason ? (skip.reason.match(/LRNO '([^']+)'/)?.[1] || 'N/A') : 'N/A'),
-            vehicleNo: skip.vehicleNo || skip.entry?.VehicleNo || 'N/A',
-            reason: skip.reason,
-            row: skip.row || idx + 1,
-            isDuplicate: true
-          }));
+          const skipped = (data.skipped || []).map((skip, idx) => {
+            const reasonStr = typeof skip.reason === 'string' ? skip.reason : (skip.reason ? String(skip.reason) : '');
+            return {
+              lrno: skip.lrno || (reasonStr ? (reasonStr.match(/LRNO '([^']+)'/)?.[1] || 'N/A') : 'N/A'),
+              vehicleNo: typeof skip.vehicleNo === 'string' ? skip.vehicleNo : (skip.entry?.VehicleNo || 'N/A'),
+              reason: reasonStr || 'Duplicate entry',
+              row: skip.row || idx + 1,
+              isDuplicate: true
+            };
+          });
           
           setFailedEntries(failed);
           setVehicleNotRegisteredEntries(vehicleErrors);
@@ -223,7 +229,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             summary: {
               succeeded: data.succeeded || 0,
               failed: data.failed || 0,
-              skipped: data.skipped || 0,
+              skipped: typeof data.skipped === 'number' ? data.skipped : (Array.isArray(data.skipped) ? data.skipped.length : 0),
               total: data.total || 0
             }
           });
@@ -271,23 +277,29 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           if (response.data.success) {
             setSuccessCount(response.data.summary?.succeeded || 0);
             
-            const skipped = (response.data.skipped || []).map((skip, idx) => ({
-              lrno: skip.lrno || (skip.reason ? (skip.reason.match(/LRNO '([^']+)'/)?.[1] || 'N/A') : 'N/A'),
-              vehicleNo: skip.vehicleNo || skip.entry?.VehicleNo || 'N/A',
-              reason: skip.reason,
-              row: skip.row || idx + 1,
-              isDuplicate: true
-            }));
+            const skipped = (response.data.skipped || []).map((skip, idx) => {
+              const reasonStr = typeof skip.reason === 'string' ? skip.reason : (skip.reason ? String(skip.reason) : '');
+              return {
+                lrno: skip.lrno || (reasonStr ? (reasonStr.match(/LRNO '([^']+)'/)?.[1] || 'N/A') : 'N/A'),
+                vehicleNo: typeof skip.vehicleNo === 'string' ? skip.vehicleNo : (skip.entry?.VehicleNo || 'N/A'),
+                reason: reasonStr || 'Duplicate entry',
+                row: skip.row || idx + 1,
+                isDuplicate: true
+              };
+            });
             
             const vehicleErrors = response.data.errors ? response.data.errors.filter(err => err.error && err.error.includes('not registered')) : [];
             const otherErrs = response.data.errors ? response.data.errors.filter(err => !err.error || !err.error.includes('not registered')) : [];
-            const failed = (response.data.errors || []).map((err, idx) => ({
-              lrno: err.lrno || err.entry?.LRNO || 'N/A',
-              vehicleNo: err.vehicleNo || err.entry?.VehicleNo || 'N/A',
-              error: err.error,
-              row: err.row || idx + 1,
-              isVehicleError: err.error && err.error.includes('not registered')
-            }));
+            const failed = (response.data.errors || []).map((err, idx) => {
+              const errorStr = typeof err.error === 'string' ? err.error : (err.error ? String(err.error) : 'Unknown error');
+              return {
+                lrno: err.lrno || err.entry?.LRNO || 'N/A',
+                vehicleNo: err.vehicleNo || err.entry?.VehicleNo || 'N/A',
+                error: errorStr,
+                row: err.row || idx + 1,
+                isVehicleError: errorStr.includes('not registered')
+              };
+            });
             
             setImportResult({
               success: true,
@@ -552,7 +564,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 <p>📊 Remaining: <span className="font-bold">{remaining}</span> entries</p>
                 {progress.success === false && progress.error && (
                   <p className="text-orange-500 bg-orange-50 dark:bg-orange-900/30 p-2 rounded">
-                    {progress.isDuplicate ? '⏭️ Duplicate skipped: ' : '⚠️ '}{progress.error}
+                    {progress.isDuplicate ? '⏭️ Duplicate skipped: ' : '⚠️ '}{typeof progress.error === 'string' ? progress.error : String(progress.error || '')}
                   </p>
                 )}
               </div>
