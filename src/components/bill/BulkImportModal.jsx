@@ -40,7 +40,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
 
   // Unique ID generator
   const generateUniqueId = () => {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${Math.random().toString(36).substr(2, 5)}`;
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   };
 
   // Connect to Socket.IO
@@ -178,7 +178,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           
           // Store failed entries
           const failed = (data.errors || []).map((err, idx) => ({
-            uniqueKey: generateUniqueId(),
             lrno: err.lrno || err.data?.LRNO || err.entry?.LRNO || 'N/A',
             vehicleNo: err.vehicleNo || err.data?.VehicleNo || err.entry?.VehicleNo || 'N/A',
             error: err.error,
@@ -188,7 +187,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           
           // Store skipped entries (duplicates)
           const skipped = (data.skipped || []).map((skip, idx) => ({
-            uniqueKey: generateUniqueId(),
             lrno: skip.lrno || (skip.reason ? (skip.reason.match(/LRNO '([^']+)'/)?.[1] || 'N/A') : 'N/A'),
             vehicleNo: skip.vehicleNo || skip.entry?.VehicleNo || 'N/A',
             reason: skip.reason,
@@ -213,7 +211,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           } else if (data.succeeded > 0 && data.skipped > 0 && data.failed > 0) {
             showNotification(false, `${data.succeeded} imported, ${data.failed} failed, ${data.skipped} duplicates skipped.`);
           } else if (data.skipped > 0 && data.succeeded === 0 && data.failed === 0) {
-            showNotification(true, `All ${data.skipped} records are duplicates and were skipped.`);
+            showNotification(true, `All ${data.skipped} records are duplicates.`);
           } else if (data.failed > 0 && data.skipped === 0) {
             showNotification(false, `${data.failed} records failed.`);
           }
@@ -270,7 +268,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             setSuccessCount(response.data.summary?.succeeded || 0);
             
             const skipped = (response.data.skipped || []).map((skip, idx) => ({
-              uniqueKey: generateUniqueId(),
               lrno: skip.lrno || (skip.reason ? (skip.reason.match(/LRNO '([^']+)'/)?.[1] || 'N/A') : 'N/A'),
               vehicleNo: skip.vehicleNo || skip.entry?.VehicleNo || 'N/A',
               reason: skip.reason,
@@ -281,7 +278,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             const vehicleErrors = response.data.errors ? response.data.errors.filter(err => err.error && err.error.includes('not registered')) : [];
             const otherErrs = response.data.errors ? response.data.errors.filter(err => !err.error || !err.error.includes('not registered')) : [];
             const failed = (response.data.errors || []).map((err, idx) => ({
-              uniqueKey: generateUniqueId(),
               lrno: err.lrno || err.entry?.LRNO || 'N/A',
               vehicleNo: err.vehicleNo || err.entry?.VehicleNo || 'N/A',
               error: err.error,
@@ -385,10 +381,10 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
 
   return (
     <>
-      {/* Failed Entries Popup */}
-      {showFailedPopup && (failedEntries.length > 0 || duplicateEntries.length > 0) && (
+      {/* Failed Entries Popup - Simplified */}
+      {showFailedPopup && (duplicateEntries.length > 0 || failedEntries.length > 0) && (
         <div className="fixed inset-0 z-[200] bg-black/70 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-xl shadow-2xl max-h-[85vh] overflow-hidden animate-in zoom-in duration-300">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-xl shadow-2xl max-h-[80vh] overflow-hidden animate-in zoom-in duration-300">
             <div className="flex justify-between items-center border-b dark:border-slate-700 p-5 sticky top-0 bg-white dark:bg-slate-900">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${duplicateEntries.length > 0 ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
@@ -417,103 +413,53 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               </button>
             </div>
             
-            <div className="p-5 overflow-y-auto max-h-[60vh] space-y-4">
-              {/* Duplicate/Skipped Entries */}
+            <div className="p-5 overflow-y-auto max-h-[60vh]">
+              {/* Duplicate/Skipped Entries - LRNOs only */}
               {duplicateEntries.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Copy className="text-yellow-500" size={18} />
-                    <h4 className="text-sm font-black text-yellow-600 dark:text-yellow-400 uppercase">Skipped - Already Exist ({duplicateEntries.length})</h4>
+                    <h4 className="text-sm font-black text-yellow-600 dark:text-yellow-400 uppercase">Skipped - Already Exist</h4>
                   </div>
-                  <div className="space-y-2">
-                    {duplicateEntries.map((skip, index) => (
-                      <div key={`dup-${skip.row || index}-${index}-${Date.now()}`} className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
-                              Row #{skip.row || index + 1}
-                            </span>
-                            <span className="font-mono text-sm font-bold text-yellow-700 dark:text-yellow-400">
-                              LRNO: {skip.lrno}
-                            </span>
-                            <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-400">
-                              Vehicle: {skip.vehicleNo}
-                            </span>
-                          </div>
-                          <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                            ⏭️ {skip.reason}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200 font-mono break-words">
+                      {duplicateEntries.map(skip => skip.lrno).filter(lr => lr !== 'N/A').join(', ')}
+                    </p>
+                    {duplicateEntries.filter(s => s.lrno === 'N/A').length > 0 && (
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                        * {duplicateEntries.filter(s => s.lrno === 'N/A').length} record(s) without LRNO
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
               
               {/* Vehicle Not Registered Errors */}
               {vehicleNotRegisteredEntries.length > 0 && (
-                <div>
+                <div className="mt-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Truck className="text-red-500" size={18} />
-                    <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase">Unregistered Vehicles ({vehicleNotRegisteredEntries.length})</h4>
+                    <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase">Unregistered Vehicles</h4>
                   </div>
-                  <div className="space-y-2">
-                    {vehicleNotRegisteredEntries.map((err, index) => (
-                      <div key={`vehicle-${err.row || index}-${index}-${Date.now()}`} className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
-                              Row #{err.row || index + 1}
-                            </span>
-                            <span className="font-mono text-sm font-bold text-red-700 dark:text-red-400">
-                              Vehicle: {err.vehicleNo || err.data?.VehicleNo || err.entry?.VehicleNo || 'N/A'}
-                            </span>
-                            {err.lrno && err.lrno !== 'N/A' && (
-                              <span className="font-mono text-sm font-bold text-blue-700 dark:text-blue-400">
-                                LRNO: {err.lrno}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-red-600 dark:text-red-400">
-                            ❌ {err.error}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <p className="text-sm text-red-800 dark:text-red-200 font-mono break-words">
+                      {vehicleNotRegisteredEntries.map(err => `${err.vehicleNo} (LRNO: ${err.lrno || 'N/A'})`).join(', ')}
+                    </p>
                   </div>
                 </div>
               )}
               
               {/* Other Errors */}
               {otherErrors.length > 0 && (
-                <div>
+                <div className="mt-4">
                   <div className="flex items-center gap-2 mb-3">
                     <AlertCircle className="text-red-500" size={18} />
-                    <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase">Other Errors ({otherErrors.length})</h4>
+                    <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase">Other Errors</h4>
                   </div>
-                  <div className="space-y-2">
-                    {otherErrors.map((err, index) => (
-                      <div key={`other-${err.row || index}-${index}-${Date.now()}`} className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
-                              Row #{err.row || index + 1}
-                            </span>
-                            <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-400">
-                              Vehicle: {err.vehicleNo || 'N/A'}
-                            </span>
-                            {err.lrno && err.lrno !== 'N/A' && (
-                              <span className="font-mono text-sm font-bold text-blue-700 dark:text-blue-400">
-                                LRNO: {err.lrno}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-red-600 dark:text-red-400">
-                            ❌ {err.error}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <p className="text-sm text-red-800 dark:text-red-200">
+                      {otherErrors.map(err => `Row ${err.row}: ${err.error}`).join('; ')}
+                    </p>
                   </div>
                 </div>
               )}
@@ -647,7 +593,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   className="mt-3 w-full py-2 bg-yellow-600 text-white rounded font-black text-xs uppercase hover:bg-yellow-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <List size={14} />
-                  View Details ({duplicateEntries.length > 0 ? `${duplicateEntries.length} Duplicates, ` : ''}{failedEntries.length} Failed)
+                  View Details ({duplicateEntries.length > 0 ? `${duplicateEntries.length} Duplicates` : `${failedEntries.length} Failed`})
                 </button>
               )}
               
@@ -738,7 +684,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                           {Object.values(row).map((val, colIdx) => (
                             <td key={`cell-${rowIdx}-${colIdx}`} className="px-2 py-1.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">
                               {String(val).slice(0, 50)}
-                             </td>
+                              </td>
                           ))}
                         </tr>
                       ))}
