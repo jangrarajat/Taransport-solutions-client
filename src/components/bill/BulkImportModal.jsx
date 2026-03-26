@@ -17,18 +17,18 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   const [fileName, setFileName] = useState('');
   const [importResult, setImportResult] = useState(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
 
+  // Progress state
   const [progress, setProgress] = useState(null);
   const [socket, setSocket] = useState(null);
   const [importId, setImportId] = useState(null);
   const [connectionError, setConnectionError] = useState(false);
 
-  // Connect to Socket.IO - DIRECT TO RENDER BACKEND
+  // Connect to Socket.IO
   useEffect(() => {
-    // Get Render backend URL from env or use production URL
     const renderBackendUrl = import.meta.env.VITE_BACKEND_URL || 'https://taransport-solutions-system.onrender.com';
     
-    // Convert http/https to ws/wss for WebSocket
     let socketUrl = renderBackendUrl;
     if (socketUrl.startsWith('https://')) {
       socketUrl = socketUrl.replace('https://', 'wss://');
@@ -83,6 +83,9 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           setFullData(json);
           setShowAllRows(false);
           setStep(3);
+          setImportResult(null);
+          setProgress(null);
+          setIsComplete(false);
         } catch (err) {
           showNotification(false, "Error reading file: " + err.message);
           setStep(2);
@@ -100,30 +103,53 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
 
   const handleSubmit = async () => {
     if (!file || isSubmitting) return;
+    
     setIsSubmitting(true);
     setImportResult(null);
     setProgress(null);
+    setIsComplete(false);
 
     const newImportId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     setImportId(newImportId);
 
+    let socketCompleteReceived = false;
+
+    // Setup socket listeners
     if (socket && socket.connected) {
       socket.emit('join', newImportId);
+      socket.off('progress');
+      
       socket.on('progress', (data) => {
         console.log('Progress update:', data);
         setProgress(data);
+        
         if (data.type === 'complete') {
+          socketCompleteReceived = true;
+          setIsComplete(true);
+          setIsSubmitting(false);
+          
+          // Show final notification based on results
+          if (data.failed === 0 && data.succeeded > 0) {
+            showNotification(true, `${data.succeeded} records imported successfully!`);
+          } else if (data.succeeded > 0 && data.failed > 0) {
+            showNotification(false, `${data.failed} records failed. Check details below.`);
+          } else if (data.failed > 0 && data.succeeded === 0) {
+            showNotification(false, `All ${data.failed} records failed.`);
+          }
+          
           setImportResult({
             success: true,
             message: `Completed: ${data.succeeded} succeeded, ${data.failed} failed, ${data.skipped} skipped.`,
             errors: data.errors,
-            skipped: data.skipped
+            skipped: data.skipped,
+            summary: data
           });
+          
           setTimeout(() => {
             resetModal();
             onClose();
           }, 3000);
-          onSuccess && onSuccess();
+          if (onSuccess) onSuccess();
         }
       });
     } else {
@@ -143,31 +169,78 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         : `${backendUrl}/api/bill/bulk-transaction`;
 
       try {
-        const response = await axios.post(endpoint, { entries: json, importId: newImportId }, { withCredentials: true });
-        console.log(response.data);
+        // IMPORTANT: Increase timeout to 10 minutes for large files
+        const response = await axios.post(endpoint, { entries: json, importId: newImportId }, { 
+          withCredentials: true,
+          timeout: 600000 // 10 minutes (600,000 ms)
+        });
+        
+        console.log('API Response:', response.data);
 
-        if (response.data.success) {
-          showNotification(true, response.data.message);
-          if (!progress || progress.type !== 'complete') {
-            setImportResult(response.data);
-          }
-        } else {
-          showNotification(false, response.data.message);
-          setImportResult(response.data);
+        // Only show error if API call itself failed
+        if (!response.data.success) {
+          showNotification(false, response.data.message || "Import failed");
+          setImportResult({
+            success: false,
+            message: response.data.message || "Import failed",
+            errors: response.data.errors || []
+          });
+          setIsSubmitting(false);
         }
+        
+        // If socket already sent complete, don't show duplicate summary
+        if (!socketCompleteReceived && response.data.success) {
+          setImportResult({
+            success: true,
+            message: response.data.message,
+            errors: response.data.errors,
+            skipped: response.data.skipped,
+            summary: response.data
+          });
+        }
+        
       } catch (error) {
-        console.error(error);
-        if (error.response?.status === 401) {
+        console.error('Axios error:', error);
+        
+        // Check if this is a timeout error
+        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          console.warn('Request timeout - but data may still be processing on server');
+          // Don't show error notification for timeout if socket is showing progress
+          if (!socketCompleteReceived && progress && progress.processed > 0) {
+            showNotification(false, "Request timed out, but data is still being processed. Check progress bar for updates.");
+          } else if (!socketCompleteReceived) {
+            showNotification(false, "Request timeout. The file may be too large. Please try with a smaller file.");
+          }
+        } else if (error.response?.status === 401) {
           const isRefreshed = await refreshToken();
-          if (isRefreshed) handleSubmit();
+          if (isRefreshed) {
+            setIsSubmitting(false);
+            return handleSubmit();
+          }
+          showNotification(false, "Session expired. Please login again.");
         } else if (error.response?.status === 413) {
-          showNotification(false, "File too large. Please split into smaller files.");
+          showNotification(false, "File too large. Please split into smaller files (max 10MB).");
         } else {
-          showNotification(false, "Bulk entry failed: " + (error.response?.data?.message || error.message));
+          // Only show error if socket hasn't already shown completion
+          if (!socketCompleteReceived) {
+            showNotification(false, "Bulk entry failed: " + (error.response?.data?.message || error.message));
+          }
         }
+        
+        setImportResult({
+          success: false,
+          message: error.response?.data?.message || error.message,
+          errors: [{ error: error.message }]
+        });
         setIsSubmitting(false);
       }
     };
+    
+    reader.onerror = () => {
+      showNotification(false, "Error reading file");
+      setIsSubmitting(false);
+    };
+    
     reader.readAsArrayBuffer(file);
   };
 
@@ -182,6 +255,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     setProgress(null);
     setImportId(null);
     setIsSubmitting(false);
+    setIsComplete(false);
   };
 
   const handleClose = () => {
@@ -200,10 +274,13 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
       <div className="bg-white dark:bg-slate-900 w-full max-w-5xl rounded-xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4 border-b dark:border-slate-700 pb-4 sticky top-0 bg-white dark:bg-slate-900 z-10">
           <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase">Bulk Import</h2>
-          <X onClick={handleClose} className="cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" size={20} />
+          {!isSubmitting && !progress && !isComplete && (
+            <X onClick={handleClose} className="cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" size={20} />
+          )}
         </div>
 
-        {connectionError && (
+        {/* Connection Error Warning */}
+        {connectionError && !progress && (
           <div className="mb-6 p-4 rounded-lg border bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
             <p className="text-sm text-yellow-800 dark:text-yellow-300">
               ⚠️ Real-time progress is unavailable. Import will still complete, but you won't see live updates.
@@ -211,32 +288,72 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           </div>
         )}
 
+        {/* Live Progress UI */}
         {progress && progress.type !== 'complete' && (
-          <div className="mb-6 p-4 rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-            <div className="flex justify-between text-sm font-bold mb-2">
-              <span>Import Progress</span>
-              <span>{progress.processed} / {progress.total}</span>
+          <div className="mb-6 p-6 rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
+                <span className="text-sm font-black text-blue-700 dark:text-blue-300">Importing Data...</span>
+              </div>
+              <span className="text-sm font-black text-blue-700 dark:text-blue-300">{progress.processed} / {progress.total}</span>
             </div>
-            <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2.5 mb-3">
-              <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${percent}%` }}></div>
+            
+            <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-3 mb-4">
+              <div className="bg-blue-600 h-3 rounded-full transition-all duration-300" style={{ width: `${percent}%` }}></div>
             </div>
-            <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
-              <p className="font-mono">Processing: LRNO {progress.currentLRNO} (Vehicle: {progress.currentVehicle})</p>
-              <p>Remaining: {remaining} entries</p>
+            
+            <div className="text-xs text-slate-600 dark:text-slate-300 space-y-2">
+              <p className="font-mono bg-white/50 dark:bg-slate-800/50 p-2 rounded">
+                {progress.success === false ? '❌' : '✅'} Processing: 
+                <span className="font-bold ml-1">LRNO {progress.currentLRNO || 'N/A'}</span> 
+                <span className="mx-1">|</span>
+                <span className="font-bold">Vehicle: {progress.currentVehicle || 'N/A'}</span>
+              </p>
+              <p>📊 Remaining: <span className="font-bold">{remaining}</span> entries</p>
               {progress.success === false && progress.error && (
-                <p className="text-red-500">Error: {progress.error}</p>
+                <p className="text-red-500 bg-red-50 dark:bg-red-900/30 p-2 rounded">⚠️ Error: {progress.error}</p>
               )}
+            </div>
+            
+            <div className="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700">
+              <p className="text-[10px] text-blue-600 dark:text-blue-400 text-center">
+                ⏳ Please wait while your data is being imported. Do not close this window.
+              </p>
             </div>
           </div>
         )}
 
+        {/* Final Summary */}
         {importResult && (
-          <div className="mb-6 p-4 rounded-lg border bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+          <div className={`mb-6 p-4 rounded-lg border ${importResult.success ? 'bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
             <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="text-green-600 dark:text-green-400" size={20} />
+              {importResult.success ? (
+                <CheckCircle className="text-green-600 dark:text-green-400" size={20} />
+              ) : (
+                <AlertCircle className="text-red-600 dark:text-red-400" size={20} />
+              )}
               <h3 className="font-black text-slate-800 dark:text-white">Import Summary</h3>
             </div>
             <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">{importResult.message}</p>
+            
+            {importResult.summary && (
+              <div className="grid grid-cols-3 gap-2 mb-3 text-center text-xs">
+                <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded">
+                  <span className="font-black text-green-600">✅ {importResult.summary.succeeded || 0}</span>
+                  <span className="text-slate-500 ml-1">Succeeded</span>
+                </div>
+                <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded">
+                  <span className="font-black text-red-600">❌ {importResult.summary.failed || 0}</span>
+                  <span className="text-slate-500 ml-1">Failed</span>
+                </div>
+                <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded">
+                  <span className="font-black text-yellow-600">⏭️ {importResult.summary.skipped || 0}</span>
+                  <span className="text-slate-500 ml-1">Skipped</span>
+                </div>
+              </div>
+            )}
+            
             {importResult.errors && importResult.errors.length > 0 && (
               <details className="mt-2">
                 <summary className="text-xs font-bold text-red-600 dark:text-red-400 cursor-pointer">
@@ -245,7 +362,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
                   {importResult.errors.slice(0, 20).map((err, idx) => (
                     <div key={idx} className="p-2 bg-red-50 dark:bg-red-900/20 rounded text-red-700 dark:text-red-300">
-                      <span className="font-mono">Row {idx + 1}:</span> {err.error}
+                      <span className="font-mono">Row {err.row || idx + 1}:</span> {err.error}
                     </div>
                   ))}
                   {importResult.errors.length > 20 && (
@@ -254,15 +371,16 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 </div>
               </details>
             )}
+            
             {importResult.skipped && importResult.skipped.length > 0 && (
               <details className="mt-2">
                 <summary className="text-xs font-bold text-yellow-600 dark:text-yellow-400 cursor-pointer">
-                  View Skipped (Duplicates) ({importResult.skipped.length})
+                  View Skipped ({importResult.skipped.length})
                 </summary>
                 <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
                   {importResult.skipped.slice(0, 20).map((skip, idx) => (
                     <div key={idx} className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-yellow-700 dark:text-yellow-300">
-                      <span className="font-mono">Row {idx + 1}:</span> {skip.reason}
+                      <span className="font-mono">Row {skip.row || idx + 1}:</span> {skip.reason}
                     </div>
                   ))}
                   {importResult.skipped.length > 20 && (
@@ -271,10 +389,20 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 </div>
               </details>
             )}
+            
+            <div className="mt-4">
+              <button
+                onClick={handleClose}
+                className="w-full py-2 bg-blue-600 text-white rounded font-black text-xs uppercase hover:bg-blue-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         )}
 
-        {step === 1 && (
+        {/* Step 1: Select Type */}
+        {step === 1 && !isSubmitting && !progress && !importResult && !isComplete && (
           <div className="space-y-6">
             <p className="text-sm text-slate-600 dark:text-slate-300">Select the type of records to import:</p>
             <div className="flex gap-4 flex-wrap">
@@ -296,7 +424,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           </div>
         )}
 
-        {step === 2 && (
+        {/* Step 2: Upload File */}
+        {step === 2 && !isSubmitting && !progress && !importResult && !isComplete && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-300">
               {importType === 'bilty'
@@ -314,7 +443,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center gap-2">
                 <Upload size={32} className="text-slate-400 dark:text-slate-500" />
                 <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">Click to upload Excel file</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">.xlsx, .xls, or .csv</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">.xlsx, .xls, or .csv (Max 10MB)</span>
               </label>
             </div>
             <div className="flex justify-end gap-3">
@@ -323,10 +452,11 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           </div>
         )}
 
-        {step === 3 && (
+        {/* Step 3: Preview and Confirm */}
+        {step === 3 && !isSubmitting && !progress && !importResult && !isComplete && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <p className="text-sm font-bold text-green-600 dark:text-green-400">File: {fileName}</p>
+              <p className="text-sm font-bold text-green-600 dark:text-green-400">📄 File: {fileName}</p>
               {isProcessingFile && <ButtonLoaders />}
             </div>
             {fullData.length > 0 && (
@@ -350,7 +480,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   </tbody>
                 </table>
                 <div className="flex justify-between items-center p-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span>Total {fullData.length} rows</span>
+                  <span>📊 Total {fullData.length} rows</span>
                   {fullData.length > 10 && (
                     <button
                       onClick={() => setShowAllRows(!showAllRows)}
