@@ -168,22 +168,31 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             });
           }
           
-          // Store failed entries
+          // Store failed entries with unique IDs
           const failed = data.errors ? data.errors.map((err, idx) => ({
-            id: `err-${idx}-${Date.now()}`,
+            uniqueId: `err-${Date.now()}-${idx}-${Math.random()}`,
             lrno: err.lrno || err.data?.LRNO || err.entry?.LRNO || 'N/A',
             vehicleNo: err.vehicleNo || err.data?.VehicleNo || err.entry?.VehicleNo || 'N/A',
             error: err.error,
-            row: err.row,
+            row: err.row || idx + 1,
             isVehicleError: err.error && (err.error.includes('not registered') || err.vehicleNotRegistered)
           })) : [];
           
+          // Store skipped entries with unique IDs
+          const skipped = (data.skipped || []).map((skip, idx) => ({
+            uniqueId: `skip-${Date.now()}-${idx}-${Math.random()}`,
+            lrno: skip.lrno || (skip.reason ? (skip.reason.match(/LRNO '([^']+)'/)?.[1] || 'N/A') : 'N/A'),
+            vehicleNo: skip.vehicleNo || skip.entry?.VehicleNo || 'N/A',
+            reason: skip.reason,
+            row: skip.row || idx + 1
+          }));
+          
           setFailedEntries(failed);
           setVehicleNotRegisteredEntries(vehicleErrors);
-          setDuplicateEntries(data.skipped || []);
+          setDuplicateEntries(skipped);
           setOtherErrors(otherErrs);
           
-          if (failed.length > 0 || (data.skipped && data.skipped.length > 0)) {
+          if (failed.length > 0 || skipped.length > 0) {
             setShowFailedPopup(true);
           }
           
@@ -202,6 +211,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             } else {
               showNotification(false, `All ${data.failed} records failed. Click 'View Failed' to see details.`);
             }
+          } else if (data.skipped > 0 && data.succeeded === 0 && data.failed === 0) {
+            showNotification(false, `All ${data.skipped} records were skipped (duplicates).`);
           }
           
           setImportResult({
@@ -213,8 +224,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           });
           finalResultProcessedRef.current = true;
           
-          // Auto close only if no failures
-          if (data.failed === 0) {
+          // Auto close only if no failures and no skipped
+          if (data.failed === 0 && data.skipped === 0) {
             setTimeout(() => {
               resetModal();
               onClose();
@@ -255,6 +266,26 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         // Only process if socket hasn't already completed
         if (!socketCompletedRef.current && !finalResultProcessedRef.current) {
           if (response.data.success) {
+            // Store skipped entries with unique IDs
+            const skipped = (response.data.skipped || []).map((skip, idx) => ({
+              uniqueId: `skip-fallback-${Date.now()}-${idx}-${Math.random()}`,
+              lrno: skip.lrno || (skip.reason ? (skip.reason.match(/LRNO '([^']+)'/)?.[1] || 'N/A') : 'N/A'),
+              vehicleNo: skip.vehicleNo || skip.entry?.VehicleNo || 'N/A',
+              reason: skip.reason,
+              row: skip.row || idx + 1
+            }));
+            
+            const vehicleErrors = response.data.errors ? response.data.errors.filter(err => err.error && err.error.includes('not registered')) : [];
+            const otherErrs = response.data.errors ? response.data.errors.filter(err => !err.error || !err.error.includes('not registered')) : [];
+            const failed = response.data.errors ? response.data.errors.map((err, idx) => ({
+              uniqueId: `err-fallback-${Date.now()}-${idx}-${Math.random()}`,
+              lrno: err.lrno || err.entry?.LRNO || 'N/A',
+              vehicleNo: err.vehicleNo || err.entry?.VehicleNo || 'N/A',
+              error: err.error,
+              row: err.row || idx + 1,
+              isVehicleError: err.error && err.error.includes('not registered')
+            })) : [];
+            
             setImportResult({
               success: true,
               message: response.data.message,
@@ -262,31 +293,23 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               skipped: response.data.skipped,
               summary: response.data
             });
+            setFailedEntries(failed);
+            setVehicleNotRegisteredEntries(vehicleErrors);
+            setDuplicateEntries(skipped);
+            setOtherErrors(otherErrs);
             
-            if (response.data.errors && response.data.errors.length > 0) {
-              const vehicleErrors = response.data.errors.filter(err => err.error && err.error.includes('not registered'));
-              const otherErrs = response.data.errors.filter(err => !err.error || !err.error.includes('not registered'));
-              const failed = response.data.errors.map((err, idx) => ({
-                id: `err-fallback-${idx}-${Date.now()}`,
-                lrno: err.lrno || err.entry?.LRNO || 'N/A',
-                vehicleNo: err.vehicleNo || err.entry?.VehicleNo || 'N/A',
-                error: err.error,
-                row: err.row,
-                isVehicleError: err.error && err.error.includes('not registered')
-              }));
-              setFailedEntries(failed);
-              setVehicleNotRegisteredEntries(vehicleErrors);
-              setDuplicateEntries(response.data.skipped || []);
-              setOtherErrors(otherErrs);
-              if (failed.length > 0) setShowFailedPopup(true);
+            if (failed.length > 0 || skipped.length > 0) {
+              setShowFailedPopup(true);
             }
             
-            if (response.data.summary?.failed === 0) {
+            if (response.data.summary?.failed === 0 && response.data.summary?.skipped === 0) {
               showNotification(true, `${response.data.summary?.succeeded || 0} records imported!`);
-            } else if (vehicleNotRegisteredEntries.length > 0) {
-              showNotification(false, `${vehicleNotRegisteredEntries.length} records failed due to unregistered vehicles.`);
-            } else {
+            } else if (vehicleErrors.length > 0) {
+              showNotification(false, `${vehicleErrors.length} records failed due to unregistered vehicles.`);
+            } else if (response.data.summary?.failed > 0) {
               showNotification(false, `${response.data.summary?.failed || 0} records failed.`);
+            } else if (response.data.summary?.skipped > 0) {
+              showNotification(false, `${response.data.summary?.skipped || 0} records skipped (duplicates).`);
             }
           }
         }
@@ -344,7 +367,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
 
   const closeFailedPopup = () => {
     setShowFailedPopup(false);
-    if (importResult && importResult.summary && importResult.summary.failed === 0) {
+    if (importResult && importResult.summary && importResult.summary.failed === 0 && importResult.summary.skipped === 0) {
       resetModal();
       onClose();
     }
@@ -394,7 +417,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   </div>
                   <div className="space-y-2">
                     {vehicleNotRegisteredEntries.map((err, idx) => (
-                      <div key={`vehicle-${err.row || idx}-${idx}`} className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                      <div key={`vehicle-${err.row}-${idx}-${Date.now()}`} className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-3 flex-wrap">
                             <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
@@ -428,7 +451,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   </div>
                   <div className="space-y-2">
                     {otherErrors.map((err, idx) => (
-                      <div key={`other-${err.row || idx}-${idx}`} className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                      <div key={`other-${err.row}-${idx}-${Date.now()}`} className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-3 flex-wrap">
                             <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
@@ -461,29 +484,26 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                     <h4 className="text-sm font-black text-orange-600 dark:text-orange-400 uppercase">Skipped (Duplicates) ({duplicateEntries.length})</h4>
                   </div>
                   <div className="space-y-2">
-                    {duplicateEntries.map((skip, idx) => {
-                      const lrnoMatch = skip.reason ? skip.reason.match(/LRNO '([^']+)'/) : null;
-                      return (
-                        <div key={`skip-${skip.row || idx}-${idx}`} className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
-                                Row #{skip.row || idx + 1}
-                              </span>
-                              <span className="font-mono text-sm font-bold text-orange-700 dark:text-orange-400">
-                                LRNO: {skip.lrno || (lrnoMatch ? lrnoMatch[1] : 'N/A')}
-                              </span>
-                              <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-400">
-                                Vehicle: {skip.vehicleNo || 'N/A'}
-                              </span>
-                            </div>
-                            <p className="text-xs text-orange-600 dark:text-orange-400">
-                              ⏭️ {skip.reason}
-                            </p>
+                    {duplicateEntries.map((skip, idx) => (
+                      <div key={`skip-${skip.row}-${idx}-${Date.now()}`} className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-xs font-black text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded">
+                              Row #{skip.row || idx + 1}
+                            </span>
+                            <span className="font-mono text-sm font-bold text-orange-700 dark:text-orange-400">
+                              LRNO: {skip.lrno}
+                            </span>
+                            <span className="font-mono text-sm font-bold text-purple-700 dark:text-purple-400">
+                              Vehicle: {skip.vehicleNo}
+                            </span>
                           </div>
+                          <p className="text-xs text-orange-600 dark:text-orange-400">
+                            ⏭️ {skip.reason}
+                          </p>
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -694,16 +714,16 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0">
                       <tr>
-                        {Object.keys(fullData[0]).map(key => (
-                          <th key={key} className="px-2 py-2 border-b dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider whitespace-nowrap">{key}</th>
+                        {Object.keys(fullData[0]).map((key, idx) => (
+                          <th key={`header-${key}-${idx}`} className="px-2 py-2 border-b dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider whitespace-nowrap">{key}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                      {previewData.map((row, idx) => (
-                        <tr key={`preview-${idx}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          {Object.values(row).map((val, i) => (
-                            <td key={`preview-cell-${idx}-${i}`} className="px-2 py-1.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">{String(val).slice(0, 50)}</td>
+                      {previewData.map((row, rowIdx) => (
+                        <tr key={`row-${rowIdx}-${Date.now()}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          {Object.values(row).map((val, colIdx) => (
+                            <td key={`cell-${rowIdx}-${colIdx}-${Date.now()}`} className="px-2 py-1.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">{String(val).slice(0, 50)}</td>
                           ))}
                         </tr>
                       ))}
