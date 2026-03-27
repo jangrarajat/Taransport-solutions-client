@@ -564,9 +564,9 @@ function Home() {
             { name: "home", icon: <BarChart3 size={20} />, label: "Dashboard" },
             { name: "accounts", icon: <CircleUserRound size={20} />, label: "Accounts" },
             { name: "biltiy", icon: <FileText size={20} />, label: "Bilty Records" },
-            { name: "expantion", icon: <Receipt size={20} />, label: "Expenses" },
             { name: "Reports", icon: <ClipboardPlus size={20} />, label: "Reports" },
             { name: "petrolPump", icon: <Fuel size={20} />, label: "Petrol Pump" },
+            { name: "expantion", icon: <Receipt size={20} />, label: "Expenses" },
           ].map((item) => (
             <button
               key={item.name}
@@ -883,7 +883,7 @@ function Home() {
                       type="text"
                       list="vehicleSearchList"
                       placeholder="Search LR, Vehicle..."
-                      className="w-full pl-8 pr-3 py-2 border rounded text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
+                      className="w-full pl-8 pr-3 py-2 border  border-gray-400 rounded text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyDown={handleKeyDown}
@@ -894,18 +894,18 @@ function Home() {
                       ))}
                     </datalist>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 ">
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="border rounded px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                      className="border rounded px-2 py-2 text-[10px]  border-gray-400 font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="border rounded px-2 py-2 text-[10px] font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                      className="border rounded px-2 py-2 text-[10px]   border-gray-400 font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <button
                       onClick={handleSearch}
@@ -915,7 +915,7 @@ function Home() {
                     </button>
                     <button
                       onClick={resetToCurrentMonth}
-                      className="p-2 bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+                      className="p-2 bg-gray-200  border border-gray-400 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
                       title="Reset to current month"
                     >
                       <RotateCcw size={12} className="text-slate-700 dark:text-white" />
@@ -930,17 +930,17 @@ function Home() {
                     <Plus size={14} /> New Bilty
                   </button>
                   {showNewBiltyMenu && (
-                    <div className="absolute top-full right-0 mt-1 bg-blue-500 p-2 text-white dark:bg-slate-800 shadow-lg rounded border dark:border-slate-700 z-10 w-48">
+                    <div className="absolute top-full  mt-1  bg-white  text-white  border-gray-400 dark:bg-slate-800 shadow-lg rounded border dark:border-slate-700 z-10 w-48">
                       <button
                         onClick={() => { setIsModalOpen(true); setShowNewBiltyMenu(false); }}
-                        className="w-full text-left px-4 py-2 text-xs hover:bg-slate-100 hover:text-black dark:hover:bg-slate-700 dark:text-white"
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-blue-600 text-black hover:text-white dark:hover:bg-slate-700 dark:text-white"
                       >
                         Single Entry
                       </button>
                       <hr />
                       <button
                         onClick={() => { setBulkImportOpen(true); setShowNewBiltyMenu(false); }}
-                        className="w-full text-left px-4 py-2 text-xs hover:bg-slate-100 hover:text-black dark:hover:bg-slate-700 dark:text-white"
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-blue-600 text-black hover:text-white dark:hover:bg-slate-700 dark:text-white"
                       >
                         Multiple Entries
                       </button>
@@ -948,8 +948,8 @@ function Home() {
                   )}
                 </div>
                  {/* Page size selector */}
-                <div className="flex items-center gap-2">
-                  <ListChecks size={12} className="text-slate-500 dark:text-slate-400" />
+                <div className="flex items-center gap-2 border border-gray-400 rounded-md">
+                
                   <select
                     value={pageSize}
                     onChange={handlePageSizeChange}

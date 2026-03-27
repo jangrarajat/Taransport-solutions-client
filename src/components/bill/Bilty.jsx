@@ -1,9 +1,37 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 
 function Bilty({ pData }) {
-    useEffect(()=>{
+
+    const [formData, setFormData] = useState({
+        userEmail: '',
+        companyName: '',
+        number: '',
+        address: '',
+        headOfficeAddress: '',
+        gstin: '',
+        sapCode: ''
+    });
+
+
+
+    useEffect(() => {
         console.log(pData.Packages)
-    },[])
+        const getData = localStorage.getItem('transportUser')
+        console.log(JSON.parse(getData))
+        const data = JSON.parse(getData)
+        console.log(data)
+        setFormData({
+            userEmail: data.email,
+            companyName: data.companyName,
+            number: data.number,
+            address: data.address,
+            headOfficeAddress: data.headOfficeAddress,
+            gstin: data.gstinNo,
+            sapCode: data.sapCode
+        });
+    }, [])
+
+
     return (
         <div className="invoice-box   text-xs">
             <table className="main-table">
@@ -13,25 +41,25 @@ function Bilty({ pData }) {
                             <div className="spiritual-logo">
                                 <img
                                     height={100}
-                                    src="https://res.cloudinary.com/drrj8rl9n/image/upload/v1771238114/Sawariya_logistic_logo_su5kt2.png" alt="logo" />
+                                    src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1774593897/truck-logo-vector-45757689_qmids4.png" alt="logo" />
                             </div>
-                            <div className="email-text">Email:sawariyalogistic@gmail.com</div>
+                            <div className="email-text   ">Email: <br /><span className=' lowercase'>{formData.userEmail}</span></div>
                         </td>
                         <td colSpan="4">
                             <div className="sub-header">All subject to Jurisdiction only</div>
-                            <h1 className="header-title ">SAWARIYA LOGISTIC</h1>
+                            <h1 className="header-title ">{formData.companyName}</h1>
                             <div className="bold-center">Authorised Transporter for - <span className="">ULTRATECH CEMENT LTD.</span></div>
                             <div className="address-text">
-                                Add.: Vill.-Mohanpura, Tehsil - Kotputli, Jaipur (Raj.) 303108<br />
-                                Head Office : 188, Mehrana, Charkhi Dadri, Haryana 127308
+                                Add.: {formData.address}<br />
+                                Head Office : {formData.headOfficeAddress}
                             </div>
                         </td>
                         <td colSpan="2" className="driver-info">
                             Driver Name:...........<br />
                             Mob. No:...............<br />
-                            Mob : 9992269616 & 7027500769<br />
-                            GSTIN : 06ILXPS5422N2ZZ<br />
-                            <b style={{ fontSize: '13px' }}>SAP Code No- 2122541</b>
+                            Mob : {formData.number}<br />
+                            GSTIN : {formData.gstin}<br />
+                            <b style={{ fontSize: '13px' }}>SAP Code No-{formData.sapCode}</b>
                         </td>
                     </tr>
 

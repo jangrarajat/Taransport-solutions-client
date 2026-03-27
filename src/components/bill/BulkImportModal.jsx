@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, ChevronDown, ChevronUp, List, Truck, Copy } from 'lucide-react';
+import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, ChevronDown, ChevronUp, List, Truck, Copy, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 import { backendUrl } from '../../utils/backendUrl';
@@ -26,12 +26,16 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   const [duplicateEntries, setDuplicateEntries] = useState([]);
   const [otherErrors, setOtherErrors] = useState([]);
   const [successCount, setSuccessCount] = useState(0);
+  const [unregisteredVehiclesList, setUnregisteredVehiclesList] = useState([]);
 
   // Progress state
   const [progress, setProgress] = useState(null);
   const [socket, setSocket] = useState(null);
   const [importId, setImportId] = useState(null);
   const [connectionError, setConnectionError] = useState(false);
+  
+  // Auto-close timer ref
+  const autoCloseTimerRef = useRef(null);
   
   // Refs to track completion
   const socketCompletedRef = useRef(false);
@@ -76,6 +80,10 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
       if (newSocket) {
         newSocket.disconnect();
       }
+      // Clear auto-close timer on unmount
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+      }
     };
   }, []);
 
@@ -107,7 +115,12 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           setDuplicateEntries([]);
           setOtherErrors([]);
           setSuccessCount(0);
+          setUnregisteredVehiclesList([]);
           setShowFailedPopup(false);
+          // Clear auto-close timer
+          if (autoCloseTimerRef.current) {
+            clearTimeout(autoCloseTimerRef.current);
+          }
         } catch (err) {
           showNotification(false, "Error reading file: " + err.message);
           setStep(2);
@@ -138,7 +151,13 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     setDuplicateEntries([]);
     setOtherErrors([]);
     setSuccessCount(0);
+    setUnregisteredVehiclesList([]);
     setShowFailedPopup(false);
+    
+    // Clear any existing auto-close timer
+    if (autoCloseTimerRef.current) {
+      clearTimeout(autoCloseTimerRef.current);
+    }
 
     const newImportId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     setImportId(newImportId);
@@ -156,6 +175,11 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           setIsComplete(true);
           setIsSubmitting(false);
           setSuccessCount(data.succeeded || 0);
+          
+          // Store unregistered vehicles list from backend
+          if (data.unregisteredVehicles && data.unregisteredVehicles.length > 0) {
+            setUnregisteredVehiclesList(data.unregisteredVehicles);
+          }
           
           // Separate errors by type
           const vehicleErrors = [];
@@ -200,8 +224,16 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           setDuplicateEntries(skipped);
           setOtherErrors(otherErrs);
           
+          // Show popup only if there are errors or duplicates
           if (failed.length > 0 || skipped.length > 0) {
             setShowFailedPopup(true);
+          } else {
+            // Auto-close if no errors and no duplicates
+            autoCloseTimerRef.current = setTimeout(() => {
+              resetModal();
+              onClose();
+              showNotification(true, "Import completed successfully!");
+            }, 3000);
           }
           
           // Show final notification
@@ -230,12 +262,6 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           });
           finalResultProcessedRef.current = true;
           
-          if (data.failed === 0) {
-            setTimeout(() => {
-              resetModal();
-              onClose();
-            }, 3000);
-          }
           if (onSuccess) onSuccess();
         }
       });
@@ -271,6 +297,11 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         if (!socketCompletedRef.current && !finalResultProcessedRef.current) {
           if (response.data.success) {
             setSuccessCount(response.data.summary?.succeeded || 0);
+            
+            // Set unregistered vehicles from response
+            if (response.data.unregisteredVehicles && response.data.unregisteredVehicles.length > 0) {
+              setUnregisteredVehiclesList(response.data.unregisteredVehicles);
+            }
             
             const skipped = (response.data.skipped || []).map((skip, idx) => {
               const reasonStr = typeof skip.reason === 'string' ? skip.reason : (skip.reason ? String(skip.reason) : '');
@@ -312,8 +343,16 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             setDuplicateEntries(skipped);
             setOtherErrors(otherErrs);
             
+            // Show popup only if there are errors or duplicates
             if (failed.length > 0 || skipped.length > 0) {
               setShowFailedPopup(true);
+            } else {
+              // Auto-close if no errors and no duplicates
+              autoCloseTimerRef.current = setTimeout(() => {
+                resetModal();
+                onClose();
+                showNotification(true, "Import completed successfully!");
+              }, 3000);
             }
             
             if (response.data.summary?.failed === 0 && response.data.summary?.skipped === 0) {
@@ -372,7 +411,12 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     setDuplicateEntries([]);
     setOtherErrors([]);
     setSuccessCount(0);
+    setUnregisteredVehiclesList([]);
     setShowFailedPopup(false);
+    // Clear auto-close timer
+    if (autoCloseTimerRef.current) {
+      clearTimeout(autoCloseTimerRef.current);
+    }
   };
 
   const handleClose = () => {
@@ -382,9 +426,30 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
 
   const closeFailedPopup = () => {
     setShowFailedPopup(false);
-    if (importResult && importResult.summary && importResult.summary.failed === 0) {
+    if (importResult && importResult.summary && importResult.summary.failed === 0 && importResult.summary.skipped === 0) {
       resetModal();
       onClose();
+    }
+  };
+
+  // Copy unregistered vehicles to clipboard
+  const copyUnregisteredVehicles = () => {
+    if (unregisteredVehiclesList.length > 0) {
+      navigator.clipboard.writeText(unregisteredVehiclesList.join(', '));
+      showNotification(true, 'Vehicle numbers copied to clipboard');
+    } else if (vehicleNotRegisteredEntries.length > 0) {
+      const vehicles = [...new Set(vehicleNotRegisteredEntries.map(err => err.vehicleNo))];
+      navigator.clipboard.writeText(vehicles.join(', '));
+      showNotification(true, 'Vehicle numbers copied to clipboard');
+    }
+  };
+
+  // Copy duplicate LRNOs to clipboard
+  const copyDuplicateLRNos = () => {
+    const lrnos = duplicateEntries.map(skip => skip.lrno).filter(lr => lr !== 'N/A');
+    if (lrnos.length > 0) {
+      navigator.clipboard.writeText(lrnos.join(', '));
+      showNotification(true, 'LRNOs copied to clipboard');
     }
   };
 
@@ -394,12 +459,17 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
 
   if (!isOpen) return null;
 
+  // Get unique unregistered vehicles for display
+  const uniqueUnregisteredVehicles = unregisteredVehiclesList.length > 0 
+    ? unregisteredVehiclesList 
+    : [...new Set(vehicleNotRegisteredEntries.map(err => err.vehicleNo))];
+
   return (
     <>
-      {/* Failed Entries Popup - Simplified */}
+      {/* Failed Entries Popup - Enhanced with better vehicle display */}
       {showFailedPopup && (duplicateEntries.length > 0 || failedEntries.length > 0) && (
         <div className="fixed inset-0 z-[200] bg-black/70 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-xl shadow-2xl max-h-[80vh] overflow-hidden animate-in zoom-in duration-300">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-xl shadow-2xl max-h-[85vh] overflow-hidden animate-in zoom-in duration-300">
             <div className="flex justify-between items-center border-b dark:border-slate-700 p-5 sticky top-0 bg-white dark:bg-slate-900">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${duplicateEntries.length > 0 ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
@@ -411,7 +481,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight">
-                    {duplicateEntries.length > 0 ? 'Duplicate Records Found' : 'Failed Records'}
+                    {duplicateEntries.length > 0 ? 'Duplicate & Failed Records' : 'Failed Records'}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {successCount > 0 && `${successCount} records imported successfully. `}
@@ -428,18 +498,80 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               </button>
             </div>
             
-            <div className="p-5 overflow-y-auto max-h-[60vh] space-y-4">
-              {/* Duplicate/Skipped Entries - LRNOs only */}
-              {duplicateEntries.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Copy className="text-yellow-500" size={18} />
-                    <h4 className="text-sm font-black text-yellow-600 dark:text-yellow-400 uppercase">Skipped - Already Exist</h4>
+            <div className="p-5 overflow-y-auto max-h-[60vh] space-y-5">
+              {/* Unregistered Vehicles Section - Enhanced */}
+              {uniqueUnregisteredVehicles.length > 0 && (
+                <div className="border border-red-200 dark:border-red-800 rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 p-4 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+                    <div className="flex items-center gap-2">
+                      <Truck className="text-red-500" size={18} />
+                      <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase">Unregistered Vehicles</h4>
+                    </div>
+                    <button
+                      onClick={copyUnregisteredVehicles}
+                      className="flex items-center gap-1 px-2 py-1 text-xs bg-white dark:bg-slate-800 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                    >
+                      <Copy size={12} />
+                      Copy List
+                    </button>
                   </div>
-                  <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200 font-mono break-words">
-                      {duplicateEntries.map(skip => skip.lrno).filter(lr => lr !== 'N/A').join(', ') || 'None'}
+                  <div className="p-4">
+                    <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-3">
+                      The following vehicles are not registered in your system:
                     </p>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {uniqueUnregisteredVehicles.map((vehicle, idx) => (
+                        <span key={idx} className="px-3 py-1.5 bg-red-100 dark:bg-red-800/50 text-red-700 dark:text-red-300 rounded-full text-sm font-mono font-bold">
+                          {vehicle}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                      <p className="text-xs text-yellow-800 dark:text-yellow-300">
+                        ⚠️ <span className="font-bold">Action Required:</span> Please register these vehicles in <span className="font-mono">Reports → Vehicles</span> before importing their data.
+                      </p>
+                    </div>
+                    {vehicleNotRegisteredEntries.length > 0 && (
+                      <div className="mt-3 text-xs text-red-600 dark:text-red-400 border-t border-red-200 dark:border-red-700 pt-2">
+                        <details className="cursor-pointer">
+                          <summary className="font-semibold mb-1">Affected LRNOs ({vehicleNotRegisteredEntries.length})</summary>
+                          <p className="font-mono break-words mt-1 pl-2">
+                            {vehicleNotRegisteredEntries.map(err => `${err.lrno} (${err.vehicleNo})`).join(', ')}
+                          </p>
+                        </details>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Duplicate/Skipped Entries - Enhanced */}
+              {duplicateEntries.length > 0 && (
+                <div className="border border-yellow-200 dark:border-yellow-800 rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800">
+                    <div className="flex items-center gap-2">
+                      <Copy className="text-yellow-500" size={18} />
+                      <h4 className="text-sm font-black text-yellow-600 dark:text-yellow-400 uppercase">Skipped - Already Exist</h4>
+                    </div>
+                    <button
+                      onClick={copyDuplicateLRNos}
+                      className="flex items-center gap-1 px-2 py-1 text-xs bg-white dark:bg-slate-800 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                    >
+                      <Copy size={12} />
+                      Copy LRNOs
+                    </button>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-3">
+                      These LRNOs already exist in your system:
+                    </p>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {duplicateEntries.map((skip, idx) => skip.lrno !== 'N/A' && (
+                        <span key={idx} className="px-2 py-1 bg-yellow-100 dark:bg-yellow-800/50 text-yellow-700 dark:text-yellow-300 rounded text-xs font-mono">
+                          {skip.lrno}
+                        </span>
+                      ))}
+                    </div>
                     {duplicateEntries.filter(s => s.lrno === 'N/A').length > 0 && (
                       <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
                         * {duplicateEntries.filter(s => s.lrno === 'N/A').length} record(s) without LRNO
@@ -449,32 +581,22 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 </div>
               )}
               
-              {/* Vehicle Not Registered Errors */}
-              {vehicleNotRegisteredEntries.length > 0 && (
-                <div className="mt-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Truck className="text-red-500" size={18} />
-                    <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase">Unregistered Vehicles</h4>
-                  </div>
-                  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                    <p className="text-sm text-red-800 dark:text-red-200 font-mono break-words">
-                      {vehicleNotRegisteredEntries.map(err => `${err.vehicleNo} (LRNO: ${err.lrno || 'N/A'})`).join(', ')}
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {/* Other Errors */}
+              {/* Other Errors Section */}
               {otherErrors.length > 0 && (
-                <div className="mt-4">
-                  <div className="flex items-center gap-2 mb-3">
+                <div className="border border-red-200 dark:border-red-800 rounded-lg overflow-hidden">
+                  <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
                     <AlertCircle className="text-red-500" size={18} />
                     <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase">Other Errors</h4>
                   </div>
-                  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                    <p className="text-sm text-red-800 dark:text-red-200">
-                      {otherErrors.map(err => `Row ${err.row}: ${err.error}`).join('; ')}
-                    </p>
+                  <div className="p-4">
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {otherErrors.map((err, idx) => (
+                        <div key={idx} className="text-xs text-red-700 dark:text-red-300 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+                          <span className="font-mono font-bold">Row {err.row}:</span> {err.error}
+                          {err.lrno !== 'N/A' && <span className="ml-2 text-gray-500">(LRNO: {err.lrno})</span>}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -487,7 +609,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               >
                 Close
               </button>
-              {vehicleNotRegisteredEntries.length > 0 && (
+              {uniqueUnregisteredVehicles.length > 0 && (
                 <button
                   onClick={() => {
                     setShowFailedPopup(false);
@@ -524,6 +646,16 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               <X onClick={handleClose} className="cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" size={20} />
             )}
           </div>
+
+          {/* Auto-close info message */}
+          {importResult && importResult.summary && importResult.summary.failed === 0 && importResult.summary.skipped === 0 && (
+            <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <p className="text-sm text-green-700 dark:text-green-300 flex items-center gap-2">
+                <CheckCircle size={16} />
+                Import completed successfully! Closing in 3 seconds...
+              </p>
+            </div>
+          )}
 
           {/* Connection Error Warning */}
           {connectionError && !progress && (
@@ -739,4 +871,4 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   );
 };
 
-export default BulkImportModal
+export default BulkImportModal;

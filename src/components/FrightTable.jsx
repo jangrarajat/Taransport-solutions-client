@@ -709,7 +709,7 @@ const FrightTable = ({
                   </td>
                   <td className="px-4 py-3 border-r dark:border-slate-700">
                     <div className="flex items-center justify-center gap-2">
-                      {!item.isDesil && (
+                      {item.LRNO && (
                         <button onClick={() => { setSelectedBill(item); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded"><Edit3 size={14} /></button>
                       )}
                     </div>
