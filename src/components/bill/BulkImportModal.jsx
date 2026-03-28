@@ -18,7 +18,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   const [importResult, setImportResult] = useState(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
-  
+
   // Failed entries popup state
   const [showFailedPopup, setShowFailedPopup] = useState(false);
   const [failedEntries, setFailedEntries] = useState([]);
@@ -33,10 +33,10 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   const [socket, setSocket] = useState(null);
   const [importId, setImportId] = useState(null);
   const [connectionError, setConnectionError] = useState(false);
-  
+
   // Auto-close timer ref
   const autoCloseTimerRef = useRef(null);
-  
+
   // Refs to track completion
   const socketCompletedRef = useRef(false);
   const axiosRequestSentRef = useRef(false);
@@ -45,7 +45,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   // Connect to Socket.IO
   useEffect(() => {
     const renderBackendUrl = import.meta.env.VITE_BACKEND_URL || 'https://taransport-solutions-system.onrender.com';
-    
+
     let socketUrl = renderBackendUrl;
     if (socketUrl.startsWith('https://')) {
       socketUrl = socketUrl.replace('https://', 'wss://');
@@ -138,7 +138,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
 
   const handleSubmit = async () => {
     if (!file || isSubmitting) return;
-    
+
     setIsSubmitting(true);
     setImportResult(null);
     setProgress(null);
@@ -153,7 +153,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     setSuccessCount(0);
     setUnregisteredVehiclesList([]);
     setShowFailedPopup(false);
-    
+
     // Clear any existing auto-close timer
     if (autoCloseTimerRef.current) {
       clearTimeout(autoCloseTimerRef.current);
@@ -165,26 +165,26 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
     if (socket && socket.connected) {
       socket.emit('join', newImportId);
       socket.off('progress');
-      
+
       socket.on('progress', (data) => {
         console.log('Progress update:', data);
         setProgress(data);
-        
+
         if (data.type === 'complete') {
           socketCompletedRef.current = true;
           setIsComplete(true);
           setIsSubmitting(false);
           setSuccessCount(data.succeeded || 0);
-          
+
           // Store unregistered vehicles list from backend
           if (data.unregisteredVehicles && data.unregisteredVehicles.length > 0) {
             setUnregisteredVehiclesList(data.unregisteredVehicles);
           }
-          
+
           // Separate errors by type
           const vehicleErrors = [];
           const otherErrs = [];
-          
+
           if (data.errors && data.errors.length > 0) {
             data.errors.forEach(err => {
               if (err.error && (err.error.includes('not registered') || err.vehicleNotRegistered)) {
@@ -194,7 +194,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               }
             });
           }
-          
+
           // Store failed entries
           const failed = (data.errors || []).map((err, idx) => {
             const errorStr = typeof err.error === 'string' ? err.error : (err.error ? String(err.error) : 'Unknown error');
@@ -206,7 +206,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               isVehicleError: errorStr.includes('not registered') || !!err.vehicleNotRegistered
             };
           });
-          
+
           // Store skipped entries (duplicates)
           const skipped = (data.skipped || []).map((skip, idx) => {
             const reasonStr = typeof skip.reason === 'string' ? skip.reason : (skip.reason ? String(skip.reason) : '');
@@ -218,12 +218,12 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               isDuplicate: true
             };
           });
-          
+
           setFailedEntries(failed);
           setVehicleNotRegisteredEntries(vehicleErrors);
           setDuplicateEntries(skipped);
           setOtherErrors(otherErrs);
-          
+
           // Show popup only if there are errors or duplicates
           if (failed.length > 0 || skipped.length > 0) {
             setShowFailedPopup(true);
@@ -235,7 +235,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
               showNotification(true, "Import completed successfully!");
             }, 3000);
           }
-          
+
           // Show final notification
           if (data.failed === 0 && data.skipped === 0 && data.succeeded > 0) {
             showNotification(true, `${data.succeeded} records imported successfully!`);
@@ -248,7 +248,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           } else if (data.failed > 0 && data.skipped === 0) {
             showNotification(false, `${data.failed} records failed.`);
           }
-          
+
           setImportResult({
             success: true,
             message: `Completed: ${data.succeeded} succeeded, ${data.failed} failed, ${data.skipped} skipped.`,
@@ -261,7 +261,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             }
           });
           finalResultProcessedRef.current = true;
-          
+
           if (onSuccess) onSuccess();
         }
       });
@@ -285,24 +285,24 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         : `${backendUrl}/api/bill/bulk-transaction`;
 
       axiosRequestSentRef.current = true;
-      
+
       try {
-        const response = await axios.post(endpoint, { entries: json, importId: newImportId }, { 
+        const response = await axios.post(endpoint, { entries: json, importId: newImportId }, {
           withCredentials: true,
           timeout: 600000
         });
-        
+
         console.log('API Response:', response.data);
-        
+
         if (!socketCompletedRef.current && !finalResultProcessedRef.current) {
           if (response.data.success) {
             setSuccessCount(response.data.summary?.succeeded || 0);
-            
+
             // Set unregistered vehicles from response
             if (response.data.unregisteredVehicles && response.data.unregisteredVehicles.length > 0) {
               setUnregisteredVehiclesList(response.data.unregisteredVehicles);
             }
-            
+
             const skipped = (response.data.skipped || []).map((skip, idx) => {
               const reasonStr = typeof skip.reason === 'string' ? skip.reason : (skip.reason ? String(skip.reason) : '');
               return {
@@ -313,7 +313,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 isDuplicate: true
               };
             });
-            
+
             const vehicleErrors = response.data.errors ? response.data.errors.filter(err => err.error && err.error.includes('not registered')) : [];
             const otherErrs = response.data.errors ? response.data.errors.filter(err => !err.error || !err.error.includes('not registered')) : [];
             const failed = (response.data.errors || []).map((err, idx) => {
@@ -326,7 +326,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 isVehicleError: errorStr.includes('not registered')
               };
             });
-            
+
             setImportResult({
               success: true,
               message: response.data.message,
@@ -342,7 +342,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             setVehicleNotRegisteredEntries(vehicleErrors);
             setDuplicateEntries(skipped);
             setOtherErrors(otherErrs);
-            
+
             // Show popup only if there are errors or duplicates
             if (failed.length > 0 || skipped.length > 0) {
               setShowFailedPopup(true);
@@ -354,7 +354,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 showNotification(true, "Import completed successfully!");
               }, 3000);
             }
-            
+
             if (response.data.summary?.failed === 0 && response.data.summary?.skipped === 0) {
               showNotification(true, `${response.data.summary?.succeeded || 0} records imported!`);
             } else if (response.data.summary?.succeeded > 0 && response.data.summary?.skipped > 0 && response.data.summary?.failed === 0) {
@@ -366,7 +366,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             }
           }
         }
-        
+
       } catch (error) {
         console.error('Axios error (ignored):', error.message);
         if (!socketCompletedRef.current && !finalResultProcessedRef.current && progress && progress.processed > 0) {
@@ -382,12 +382,12 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
         }
       }
     };
-    
+
     reader.onerror = () => {
       showNotification(false, "Error reading file");
       setIsSubmitting(false);
     };
-    
+
     reader.readAsArrayBuffer(file);
   };
 
@@ -460,8 +460,8 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   if (!isOpen) return null;
 
   // Get unique unregistered vehicles for display
-  const uniqueUnregisteredVehicles = unregisteredVehiclesList.length > 0 
-    ? unregisteredVehiclesList 
+  const uniqueUnregisteredVehicles = unregisteredVehiclesList.length > 0
+    ? unregisteredVehiclesList
     : [...new Set(vehicleNotRegisteredEntries.map(err => err.vehicleNo))];
 
   return (
@@ -490,14 +490,14 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   </p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={closeFailedPopup}
                 className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
               >
                 <X size={20} className="text-slate-500 dark:text-slate-400" />
               </button>
             </div>
-            
+
             <div className="p-5 overflow-y-auto max-h-[60vh] space-y-5">
               {/* Unregistered Vehicles Section - Enhanced */}
               {uniqueUnregisteredVehicles.length > 0 && (
@@ -544,7 +544,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   </div>
                 </div>
               )}
-              
+
               {/* Duplicate/Skipped Entries - Enhanced */}
               {duplicateEntries.length > 0 && (
                 <div className="border border-yellow-200 dark:border-yellow-800 rounded-lg overflow-hidden">
@@ -580,7 +580,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   </div>
                 </div>
               )}
-              
+
               {/* Other Errors Section */}
               {otherErrors.length > 0 && (
                 <div className="border border-red-200 dark:border-red-800 rounded-lg overflow-hidden">
@@ -601,7 +601,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 </div>
               )}
             </div>
-            
+
             <div className="border-t dark:border-slate-700 p-5 flex gap-3">
               <button
                 onClick={closeFailedPopup}
@@ -676,15 +676,15 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 </div>
                 <span className="text-sm font-black text-blue-700 dark:text-blue-300">{progress.processed} / {progress.total}</span>
               </div>
-              
+
               <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-3 mb-4">
                 <div className="bg-blue-600 h-3 rounded-full transition-all duration-300" style={{ width: `${percent}%` }}></div>
               </div>
-              
+
               <div className="text-xs text-slate-600 dark:text-slate-300 space-y-2">
                 <p className="font-mono bg-white/50 dark:bg-slate-800/50 p-2 rounded">
-                  {progress.success === false ? '⚠️' : '✅'} Processing: 
-                  <span className="font-bold ml-1">LRNO {progress.currentLRNO || 'N/A'}</span> 
+                  {progress.success === false ? '⚠️' : '✅'} Processing:
+                  <span className="font-bold ml-1">LRNO {progress.currentLRNO || 'N/A'}</span>
                   <span className="mx-1">|</span>
                   <span className="font-bold">Vehicle: {progress.currentVehicle || 'N/A'}</span>
                 </p>
@@ -695,7 +695,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   </p>
                 )}
               </div>
-              
+
               <div className="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700">
                 <p className="text-[10px] text-blue-600 dark:text-blue-400 text-center">
                   ⏳ Please wait while your data is being imported. Do not close this window.
@@ -712,7 +712,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                 <h3 className="font-black text-slate-800 dark:text-white">Import Summary</h3>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">{importResult.message}</p>
-              
+
               {importResult.summary && (
                 <div className="grid grid-cols-4 gap-2 mb-3 text-center text-xs">
                   <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded">
@@ -733,7 +733,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   </div>
                 </div>
               )}
-              
+
               {(failedEntries.length > 0 || duplicateEntries.length > 0) && (
                 <button
                   onClick={() => setShowFailedPopup(true)}
@@ -743,7 +743,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   View Details ({duplicateEntries.length > 0 ? `${duplicateEntries.length} Duplicates` : `${failedEntries.length} Failed`})
                 </button>
               )}
-              
+
               <div className="mt-4">
                 <button
                   onClick={handleClose}
@@ -767,13 +767,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   <FileSpreadsheet size={32} className="mx-auto mb-2 text-blue-600 dark:text-blue-400" />
                   <span className="font-black uppercase text-blue-700 dark:text-blue-300">Bilty Records</span>
                 </button>
-                <button
-                  onClick={() => { setImportType('transaction'); setStep(2); }}
-                  className="flex-1 min-w-[180px] p-4 border rounded-lg bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors group"
-                >
-                  <FileSpreadsheet size={32} className="mx-auto mb-2 text-green-600 dark:text-green-400" />
-                  <span className="font-black uppercase text-green-700 dark:text-green-300">Transaction Entries</span>
-                </button>
+
               </div>
             </div>
           )}
