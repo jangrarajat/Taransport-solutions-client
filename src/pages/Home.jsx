@@ -540,25 +540,52 @@ function Home() {
       <AddBiltyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(msg) => { getBilty(1, pageSize); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
       <AddExpenseModal isOpen={isExModalOpen} onClose={() => setIsExModalOpen(false)} onSuccess={(msg) => { getExpenses(1, pageSize); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
       <Pricing isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
-      <BulkImportModal 
-        isOpen={bulkImportOpen} 
-        onClose={() => setBulkImportOpen(false)} 
-        showNotification={showNotification} 
-        onSuccess={() => { 
+      <BulkImportModal
+        isOpen={bulkImportOpen}
+        onClose={() => setBulkImportOpen(false)}
+        showNotification={showNotification}
+        onSuccess={() => {
           if (menuOption === "biltiy" || menuOption === "accounts") {
             getBilty(currentPage, pageSize);
           }
-        }} 
+        }}
       />
 
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-white dark:bg-gray-900 text-gray-700 transition-all duration-300 flex flex-col shadow-2xl w-64`}>
+      <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-white dark:bg-gray-900 text-blue-400 transition-all duration-300 flex flex-col shadow-2xl w-64`}>
         <div className="p-5 flex items-center justify-between dark:border-slate-900">
-          <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded">
-            <X size={20} />
-          </button>
-          <span className="text-sm font-black">MENU</span>
-        </div>
+  <button 
+    onClick={() => setSidebarOpen(false)} 
+    className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded transition-all duration-300"
+  >
+    <X size={20} />
+  </button>
+  
+  <div className="flex items-center gap-3 group cursor-pointer">
+    {/* Animated Logo Container */}
+    <div className="relative">
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-md opacity-0 group-hover:opacity-70 transition-opacity duration-500"></div>
+      <img 
+        src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1774862288/Screenshot_2026-03-29_155255_r70pha-removebg-preview_rrdxac.png" 
+        alt="logo"
+        className="h-12 w-12 object-contain relative z-10 group-hover:scale-110 transition-transform duration-300"
+      />
+    </div>
+    
+    {/* Text with Creative Typography */}
+    <div className="flex flex-col leading-tight">
+      <div className="flex items-baseline gap-0.5">
+        <span className="text-2xl font-black bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          RM
+        </span>
+        <span className="text-xs font-semibold text-slate-400 ml-0.5">™</span>
+      </div>
+      <span className="text-[11px] font-medium tracking-wide text-slate-600 dark:text-slate-400 uppercase">
+        SMART TMS
+      </span>
+    </div>
+  </div>
+</div>
         <nav className="flex-1 p-4 space-y-2 mt-2 tracking-widest text-[10px] overflow-y-auto">
           {[
             { name: "home", icon: <BarChart3 size={20} />, label: "Dashboard" },
@@ -947,9 +974,9 @@ function Home() {
                     </div>
                   )}
                 </div>
-                 {/* Page size selector */}
+                {/* Page size selector */}
                 <div className="flex items-center gap-2 border border-gray-400 rounded-md">
-                
+
                   <select
                     value={pageSize}
                     onChange={handlePageSizeChange}
@@ -960,7 +987,7 @@ function Home() {
                     <option value={50}>50   </option>
                     <option value={100}>100 </option>
                     <option value={500}>500 </option>
-                    
+
                   </select>
                 </div>
               </div>
@@ -1074,7 +1101,7 @@ function Home() {
                 >
                   <Plus size={14} /> New Expense
                 </button>
-                
+
               </div>
               <div className="overflow-x-auto">
                 <ExpenseTable
@@ -1084,7 +1111,7 @@ function Home() {
                   refreshData={() => getExpenses(currentPage, pageSize)}
                 />
               </div>
-              
+
             </div>
           )}
 
@@ -1095,7 +1122,7 @@ function Home() {
                 <p className="text-[8px] uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">
                   Page {currentPage} of {totalPages}
                 </p>
-               
+
               </div>
               <div className="flex gap-2">
                 <button
