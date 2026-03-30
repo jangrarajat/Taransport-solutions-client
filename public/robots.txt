@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://taransport-solutions-client-g1lq.vercel.app/sitemap.xml
