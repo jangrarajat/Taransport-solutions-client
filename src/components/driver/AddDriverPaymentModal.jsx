@@ -62,7 +62,7 @@ const AddDriverPaymentModal = ({ isOpen, onClose, onSubmit, showNotification }) 
               onChange={(e) => setAmount(e.target.value)} 
               className="w-full border border-slate-200 dark:border-slate-700 px-4 py-3 text-sm focus:ring-4 focus:ring-green-500/10 focus:border-green-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white" 
               required 
-              min="1" 
+              
               step="1" 
             />
           </div>

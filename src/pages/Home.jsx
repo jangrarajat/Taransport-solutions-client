@@ -1,10 +1,10 @@
-// Home.jsx – with dashboard refresh after any operation
+// Home.jsx – with collapsible sidebar feature
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound, ClipboardPlus,
   ChevronLeft, ChevronRight, Plus, LogOut, Crown,
   TrendingUp, Wallet, Receipt, Search, User as UserIcon, Settings,
-  RotateCcw, AlertCircle, RefreshCw, ListChecks, Upload
+  RotateCcw, AlertCircle, RefreshCw, ListChecks, Upload, PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 import axios from "axios";
 import { refreshToken, fetchLatestUserData } from "../api/api";
@@ -80,6 +80,7 @@ function Home() {
 
   const [menuOption, setMenuOption] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [loading, setLoading] = useState({
     dashboard: false,
@@ -176,6 +177,18 @@ function Home() {
     const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
     return `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
   });
+
+  // Save sidebar collapsed state to localStorage
+  useEffect(() => {
+    const savedState = localStorage.getItem('sidebarCollapsed');
+    if (savedState !== null) {
+      setSidebarCollapsed(savedState === 'true');
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', sidebarCollapsed);
+  }, [sidebarCollapsed]);
 
   // Dark mode effect
   useEffect(() => {
@@ -522,6 +535,11 @@ function Home() {
     navigate("/auth");
   };
 
+  // Toggle sidebar collapse
+  const toggleSidebarCollapse = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
+
   // If profile page is open, show it
   if (showProfile) {
     return (
@@ -534,7 +552,7 @@ function Home() {
   }
 
   return (
-    <div className="flex fixed h-screen  w-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden uppercase font-bold text-xs">
+    <div className="flex fixed h-screen w-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden uppercase font-bold text-xs">
       {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
 
       <AddBiltyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(msg) => { getBilty(1, pageSize); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
@@ -551,41 +569,44 @@ function Home() {
         }}
       />
 
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} fixed md:relative md:translate-x-0 z-50 h-full bg-white dark:bg-gray-900 text-blue-400 transition-all duration-300 flex flex-col shadow-2xl w-64`}>
-        <div className="p-5 flex items-center justify-between dark:border-slate-900">
-  <button 
-    onClick={() => setSidebarOpen(false)} 
-    className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded transition-all duration-300"
-  >
-    <X size={20} />
-  </button>
-  
-  <div className="flex items-center gap-3 group cursor-pointer">
-    {/* Animated Logo Container */}
-    <div className="relative">
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-md opacity-0 group-hover:opacity-70 transition-opacity duration-500"></div>
-      <img 
-        src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1774862288/Screenshot_2026-03-29_155255_r70pha-removebg-preview_rrdxac.png" 
-        alt="logo"
-        className="h-12 w-12 object-contain relative z-10 group-hover:scale-110 transition-transform duration-300"
-      />
-    </div>
-    
-    {/* Text with Creative Typography */}
-    <div className="flex flex-col leading-tight">
-      <div className="flex items-baseline gap-0.5">
-        <span className="text-2xl font-black bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-          RM
-        </span>
-        <span className="text-xs font-semibold text-slate-400 ml-0.5">™</span>
-      </div>
-      <span className="text-[11px] font-medium tracking-wide text-slate-600 dark:text-slate-400 uppercase">
-        SMART TMS
-      </span>
-    </div>
-  </div>
-</div>
+      {/* Sidebar - Collapsible */}
+      <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 fixed md:relative z-50 h-full bg-white dark:bg-gray-900 text-blue-400 transition-all duration-300 flex flex-col shadow-2xl ${sidebarCollapsed ? 'w-20' : 'w-64'}`}>
+        <div className={`p-5 flex items-center justify-between dark:border-slate-900 ${sidebarCollapsed ? 'flex-col gap-3' : ''}`}>
+          <button 
+            onClick={() => setSidebarOpen(false)} 
+            className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded transition-all duration-300"
+          >
+            <X size={20} />
+          </button>
+          
+          <div className={`flex items-center gap-3 group cursor-pointer ${sidebarCollapsed ? 'flex-col' : ''}`}>
+            {/* Animated Logo Container */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-md opacity-0 group-hover:opacity-70 transition-opacity duration-500"></div>
+              <img 
+                src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1774862288/Screenshot_2026-03-29_155255_r70pha-removebg-preview_rrdxac.png" 
+                alt="logo"
+                className="h-12 w-12 object-contain relative z-10 group-hover:scale-110 transition-transform duration-300"
+              />
+            </div>
+            
+            {/* Text with Creative Typography - Hide when collapsed */}
+            {!sidebarCollapsed && (
+              <div className="flex flex-col leading-tight">
+                <div className="flex items-baseline gap-0.5">
+                  <span className="text-2xl font-black bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                    RM
+                  </span>
+                  <span className="text-xs font-semibold text-slate-400 ml-0.5">™</span>
+                </div>
+                <span className="text-[11px] font-medium tracking-wide text-slate-600 dark:text-slate-400 uppercase">
+                  SMART TMS
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+        
         <nav className="flex-1 p-4 space-y-2 mt-2 tracking-widest text-[10px] overflow-y-auto">
           {[
             { name: "home", icon: <BarChart3 size={20} />, label: "Dashboard" },
@@ -598,24 +619,45 @@ function Home() {
             <button
               key={item.name}
               onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); setSidebarOpen(false); setSelectedPump(null); }}
-              className={`w-full flex items-center gap-4 p-4 rounded transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"}`}
+              className={`w-full flex items-center gap-4 p-4 rounded transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"} ${sidebarCollapsed ? 'justify-center' : ''}`}
+              title={sidebarCollapsed ? item.label : ""}
             >
               {item.icon}
-              <span>{item.label}</span>
+              {!sidebarCollapsed && <span>{item.label}</span>}
             </button>
           ))}
-          <button onClick={() => setShowProfile(true)} className="w-full flex items-center gap-4 p-4 rounded text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 mt-10">
-            <Settings size={20} /> <span>Edit Profile</span>
+          <button 
+            onClick={() => setShowProfile(true)} 
+            className={`w-full flex items-center gap-4 p-4 rounded text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 mt-10 ${sidebarCollapsed ? 'justify-center' : ''}`}
+            title={sidebarCollapsed ? "Edit Profile" : ""}
+          >
+            <Settings size={20} /> 
+            {!sidebarCollapsed && <span>Edit Profile</span>}
           </button>
         </nav>
-        <div className="p-4 dark:border-slate-900">
-          <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 rounded text-red-400 font-bold hover:bg-red-500/10">
-            <LogOut size={20} /> <span>Logout</span>
+        
+        <div className="p-4 dark:border-slate-900 space-y-2">
+          {/* Collapse Toggle Button */}
+          <button 
+            onClick={toggleSidebarCollapse} 
+            className={`w-full flex items-center gap-4 p-4 rounded text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 transition-all ${sidebarCollapsed ? 'justify-center' : ''}`}
+            title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+          </button>
+          
+          <button 
+            onClick={handleLogout} 
+            className={`w-full flex items-center gap-4 p-4 rounded text-red-400 font-bold hover:bg-red-500/10 ${sidebarCollapsed ? 'justify-center' : ''}`}
+            title={sidebarCollapsed ? "Logout" : ""}
+          >
+            <LogOut size={20} /> 
+            {!sidebarCollapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>
 
-      {/* Main content */}
+      {/* Main content - Adjust margin based on sidebar state */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-20 bg-white dark:bg-slate-900 border-b dark:border-slate-800 flex items-center justify-between px-3 md:px-8 shrink-0 shadow-sm uppercase italic">
           <div className="flex items-center gap-2">
@@ -640,6 +682,7 @@ function Home() {
         </header>
 
         <main className="p-3 sm:p-4 md:p-6 lg:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
+          {/* Rest of the main content remains exactly the same */}
           {menuOption === "home" && (
             <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black pb-48">
               {/* Premium Status Banner */}

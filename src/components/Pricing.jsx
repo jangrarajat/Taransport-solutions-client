@@ -15,7 +15,7 @@ const Pricing = ({ isOpen, onClose }) => {
     };
 
     const plans = [
-        { id: "monthly", name: "Silver", price: "2,999", duration: "1 Month", color: "text-slate-600 dark:text-slate-400", btn: "bg-slate-900 dark:bg-black", features: ["5 Bilty Demo", "Basic Reports", "Expense Tracking"] },
+        { id: "monthly", name: "Silver", price: "1,999", duration: "1 Month", color: "text-slate-600 dark:text-slate-400", btn: "bg-slate-900 dark:bg-black", features: ["500 Bilty ", "Basic Reports", "Expense Tracking"] },
         { id: "halfYearly", name: "Gold", price: "15,999", duration: "6 Months", popular: true, color: "text-blue-600 dark:text-blue-400", btn: "bg-blue-600", features: ["Unlimited Bilty", "Priority Support", "Advanced Analytics"] },
         { id: "yearly", name: "Platinum", price: "31,999", duration: "1 Year", color: "text-orange-600 dark:text-orange-400", btn: "bg-orange-600", features: ["Unlimited Everything", "Multi-device Sync", "24/7 Phone Support"] }
     ];
