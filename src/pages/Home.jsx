@@ -45,8 +45,8 @@ const TableRowSkeleton = ({ rows = 3 }) => (
   <>
     {[...Array(rows)].map((_, i) => (
       <tr key={i} className="animate-pulse">
-        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24"></div></td>
-        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32"></div></td>
+        <td className="px-4 py-2">{<div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24"></div>}</td>
+        <td className="px-4 py-2">{<div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32"></div>}</td>
       </tr>
     ))}
   </>
@@ -87,12 +87,14 @@ function Home() {
     bilty: false,
     expense: false,
     pumpSummary: false,
-    stats: false
+    stats: false,
+    counts: false
   });
   const [error, setError] = useState({
     dashboard: null,
     pumpSummary: null,
-    stats: null
+    stats: null,
+    counts: null
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -124,6 +126,10 @@ function Home() {
   const [driverCount, setDriverCount] = useState(0);
   const [driverMonthlyPayments, setDriverMonthlyPayments] = useState([]);
   const [totalDriverPayments, setTotalDriverPayments] = useState(0);
+  
+  // New stats for dashboard
+  const [totalQuantity, setTotalQuantity] = useState(0);
+  const [totalPmt, setTotalPmt] = useState(0);
 
   // New dashboard totals
   const [expenseTotal, setExpenseTotal] = useState(0);
@@ -177,6 +183,14 @@ function Home() {
     const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
     return `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
   });
+
+  // Reset dashboard date range to current month
+  const resetDashboardDateRange = useCallback(() => {
+    const currentMonthRange = getCurrentMonthRange();
+    setDashStartDate(currentMonthRange.start);
+    setDashEndDate(currentMonthRange.end);
+    setDashFilterType("custom");
+  }, []);
 
   // Save sidebar collapsed state to localStorage
   useEffect(() => {
@@ -248,7 +262,9 @@ function Home() {
       fetchPumpSummary(dashStartDate, dashEndDate);
       fetchDriverMonthlyPayments(dashStartDate, dashEndDate);
       fetchExpenseTotal();
-      fetchDriverPendingTotal();
+      fetchTotalPmt();
+      fetchTotalQuantity();
+      fetchCounts();
     }
   }, [menuOption, dashFilterType, dashStartDate, dashEndDate]);
 
@@ -285,6 +301,61 @@ function Home() {
       console.error("Failed to fetch vehicles", error);
     }
   };
+
+  // Fetch counts (vehicles, drivers)
+  const fetchCounts = async () => {
+    setLoading(prev => ({ ...prev, counts: true }));
+    try {
+      const vehicleRes = await axios.get(`${backendUrl}/api/vehicle-master/stats`, { withCredentials: true });
+      const driverRes = await axios.get(`${backendUrl}/api/driver-master/stats`, { withCredentials: true });
+      if (vehicleRes.data.success) setVehicleCount(vehicleRes.data.count);
+      if (driverRes.data.success) setDriverCount(driverRes.data.count);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const isRefreshed = await refreshToken();
+        if (isRefreshed) return fetchCounts();
+      }
+      setError(prev => ({ ...prev, counts: "Failed to load counts" }));
+    } finally {
+      setLoading(prev => ({ ...prev, counts: false }));
+    }
+  };
+
+  // Fetch total quantity from bilty records within date range
+  const fetchTotalQuantity = useCallback(async () => {
+    try {
+      let url = `${backendUrl}/api/bill/total-quantity?`;
+      if (dashFilterType === "custom" && dashStartDate && dashEndDate) {
+        url += `startDate=${dashStartDate}&endDate=${dashEndDate}`;
+      } else if (dashFilterType !== "custom") {
+        url += `filter=${dashFilterType}`;
+      }
+      const res = await axios.get(url, { withCredentials: true });
+      if (res.data.success) {
+        setTotalQuantity(res.data.totalQuantity || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch total quantity", error);
+    }
+  }, [dashFilterType, dashStartDate, dashEndDate]);
+
+  // Fetch total PMT (ratePMT) from bilty records within date range
+  const fetchTotalPmt = useCallback(async () => {
+    try {
+      let url = `${backendUrl}/api/bill/total-pmt?`;
+      if (dashFilterType === "custom" && dashStartDate && dashEndDate) {
+        url += `startDate=${dashStartDate}&endDate=${dashEndDate}`;
+      } else if (dashFilterType !== "custom") {
+        url += `filter=${dashFilterType}`;
+      }
+      const res = await axios.get(url, { withCredentials: true });
+      if (res.data.success) {
+        setTotalPmt(res.data.totalPmt || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch total PMT", error);
+    }
+  }, [dashFilterType, dashStartDate, dashEndDate]);
 
   // Dashboard data fetch with new filter
   const getDashboardData = useCallback(async (type = dashFilterType, start = dashStartDate, end = dashEndDate) => {
@@ -336,44 +407,19 @@ function Home() {
     }
   }, []);
 
-  // Vehicle & Driver stats (not date‑dependent)
-  const fetchVehicleStats = async () => {
-    try {
-      const res = await axios.get(`${backendUrl}/api/vehicle-master/stats`, { withCredentials: true });
-      if (res.data.success) setVehicleCount(res.data.count);
-    } catch (error) {
-      if (error.response?.status === 401) {
-        const isRefreshed = await refreshToken();
-        if (isRefreshed) fetchVehicleStats();
-      }
-    }
-  };
-
-  const fetchDriverStats = async () => {
-    try {
-      const res = await axios.get(`${backendUrl}/api/driver-master/stats`, { withCredentials: true });
-      if (res.data.success) setDriverCount(res.data.count);
-    } catch (error) {
-      if (error.response?.status === 401) {
-        const isRefreshed = await refreshToken();
-        if (isRefreshed) fetchDriverStats();
-      }
-    }
-  };
-
   // Driver payments with date filter
   const fetchDriverMonthlyPayments = useCallback(async (start, end) => {
     setLoading(prev => ({ ...prev, stats: true }));
     setError(prev => ({ ...prev, stats: null }));
     try {
-      let url = `${backendUrl}/api/driver-transactions/current-month`;
+      let url = `${backendUrl}/api/driver-transactions/payments-by-date`;
       if (start && end) {
         url += `?startDate=${start}&endDate=${end}`;
       }
       const res = await axios.get(url, { withCredentials: true });
       if (res.data.success) {
-        setDriverMonthlyPayments(res.data.drivers);
-        setTotalDriverPayments(res.data.totalPayments);
+        setDriverMonthlyPayments(res.data.drivers || []);
+        setTotalDriverPayments(res.data.totals?.totalGiven || 0);
       }
     } catch (error) {
       if (error.response?.status === 401) {
@@ -393,16 +439,6 @@ function Home() {
       if (res.data.success) setExpenseTotal(res.data.total);
     } catch (error) {
       console.error("Failed to fetch expense total", error);
-    }
-  };
-
-  // New: fetch driver pending total
-  const fetchDriverPendingTotal = async () => {
-    try {
-      const res = await axios.get(`${backendUrl}/api/user/driver-pending`, { withCredentials: true });
-      if (res.data.success) setDriverPendingTotal(res.data.total);
-    } catch (error) {
-      console.error("Failed to fetch driver pending", error);
     }
   };
 
@@ -497,12 +533,12 @@ function Home() {
     if (menuOption === "home") {
       getDashboardData(dashFilterType, dashStartDate, dashEndDate);
       fetchPumpSummary(dashStartDate, dashEndDate);
-      fetchVehicleStats();
-      fetchDriverStats();
       fetchDriverMonthlyPayments(dashStartDate, dashEndDate);
       fetchVehicles();
       fetchExpenseTotal();
-      fetchDriverPendingTotal();
+      fetchTotalPmt();
+      fetchTotalQuantity();
+      fetchCounts();
     } else if (menuOption === "biltiy" || menuOption === "accounts") {
       fetchVehicles();
       handleSearch();
@@ -519,8 +555,10 @@ function Home() {
       getDashboardData(dashFilterType, dashStartDate, dashEndDate);
       fetchPumpSummary(dashStartDate, dashEndDate);
       fetchDriverMonthlyPayments(dashStartDate, dashEndDate);
+      fetchTotalPmt();
+      fetchTotalQuantity();
     }
-  }, [dashFilterType, dashStartDate, dashEndDate, menuOption, getDashboardData, fetchPumpSummary, fetchDriverMonthlyPayments]);
+  }, [dashFilterType, dashStartDate, dashEndDate, menuOption, getDashboardData, fetchPumpSummary, fetchDriverMonthlyPayments, fetchTotalPmt, fetchTotalQuantity]);
 
   // Determine if current search term is an exact vehicle number
   const isVehicleFilter = useMemo(() => {
@@ -619,7 +657,7 @@ function Home() {
             <button
               key={item.name}
               onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); setSidebarOpen(false); setSelectedPump(null); }}
-              className={`w-full flex items-center gap-4 p-4 rounded transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"} ${sidebarCollapsed ? 'justify-center' : ''}`}
+              className={`w-full flex items-center gap-4 p-4 rounded-tr-[100px] rounded-br-[100px]  transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"} ${sidebarCollapsed ? 'justify-center' : ''}`}
               title={sidebarCollapsed ? item.label : ""}
             >
               {item.icon}
@@ -682,7 +720,6 @@ function Home() {
         </header>
 
         <main className="p-3 sm:p-4 md:p-6 lg:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
-          {/* Rest of the main content remains exactly the same */}
           {menuOption === "home" && (
             <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black pb-48">
               {/* Premium Status Banner */}
@@ -740,23 +777,7 @@ function Home() {
                 <h2 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">
                   Dashboard
                 </h2>
-                <div className="flex flex-wrap items-center gap-2">
-                
-                  {/* Refresh button */}
-                  <button
-                    onClick={() => {
-                      getDashboardData(dashFilterType, dashStartDate, dashEndDate);
-                      fetchPumpSummary(dashStartDate, dashEndDate);
-                      fetchDriverMonthlyPayments(dashStartDate, dashEndDate);
-                      fetchExpenseTotal();
-                      fetchDriverPendingTotal();
-                    }}
-                    className="p-2 bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
-                    title="Refresh Dashboard"
-                  >
-                    <RefreshCw size={14} className="text-slate-700 dark:text-white" />
-                  </button>
-                </div>
+              
               </div>
 
               {/* Custom date range inputs */}
@@ -775,12 +796,35 @@ function Home() {
                     onChange={(e) => setDashEndDate(e.target.value)}
                     className="border px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700 rounded"
                   />
+                    <div className="flex flex-wrap items-center gap-2">
+                  {/* Refresh button */}
+                  <button
+                    onClick={() => {
+                      getDashboardData(dashFilterType, dashStartDate, dashEndDate);
+                      fetchPumpSummary(dashStartDate, dashEndDate);
+                      fetchDriverMonthlyPayments(dashStartDate, dashEndDate);
+                      fetchExpenseTotal();
+                      fetchTotalPmt();
+                      fetchTotalQuantity();
+                      fetchCounts();
+                      resetDashboardDateRange()
+                    }}
+                    className="p-2 bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+                    title="Refresh Dashboard"
+                  >
+                    <RefreshCw size={14} className="text-slate-700 dark:text-white" />
+                  </button>
+                  {/* Reset to Current Month Button */}
+                 
                 </div>
+                </div>
+                
               )}
 
-              {/* Dashboard Cards - 5 Cards */}
-              {loading.dashboard ? (
+              {/* Dashboard Cards - 6 Cards */}
+              {loading.dashboard || loading.counts ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                  <DashboardCardSkeleton />
                   <DashboardCardSkeleton />
                   <DashboardCardSkeleton />
                   <DashboardCardSkeleton />
@@ -790,31 +834,41 @@ function Home() {
               ) : error.dashboard ? (
                 <ErrorState message={error.dashboard} onRetry={() => getDashboardData(dashFilterType, dashStartDate, dashEndDate)} />
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
                   {/* Total Revenue */}
                   <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Revenue</p>
-                    <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">₹{dashData.totalRevenue?.toLocaleString('en-IN')}</p>
+                    <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">₹{dashData.totalRevenue?.toLocaleString('en-IN') || 0}</p>
                   </div>
                   {/* Trip Balance */}
                   <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trip Balance</p>
-                    <p className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">₹{dashData.totalTripBalance?.toLocaleString('en-IN')}</p>
+                    <p className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">₹{dashData.totalTripBalance?.toLocaleString('en-IN') || 0}</p>
                   </div>
                   {/* Total Expense */}
                   <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Expense</p>
-                    <p className="text-2xl font-black text-red-600 dark:text-red-400 mt-1">₹{expenseTotal.toLocaleString('en-IN')}</p>
+                    <p className="text-2xl font-black text-red-600 dark:text-red-400 mt-1">₹{expenseTotal?.toLocaleString('en-IN') || 0}</p>
                   </div>
-                  {/* Total Driver Pending */}
+                
+                  {/* Total Quantity */}
                   <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Driver Pending</p>
-                    <p className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">₹{driverPendingTotal.toLocaleString('en-IN')}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Quantity</p>
+                    <p className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">{totalQuantity?.toLocaleString('en-IN') || 0}</p>
                   </div>
-                  {/* Total Payable */}
+                  {/* Total Vehicles & Drivers */}
                   <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Payable</p>
-                    <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">₹{totalPumpBalance.toLocaleString('en-IN')}</p>
+                  
+                    <div className="flex justify-between items-center mt-1">
+                      <div>
+                        <p className="text-xs text-slate-400">Vehicles</p>
+                        <p className="text-xl font-black text-blue-600 dark:text-blue-400">{vehicleCount || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400">Drivers</p>
+                        <p className="text-xl font-black text-green-600 dark:text-green-400">{driverCount || 0}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -891,23 +945,29 @@ function Home() {
                 <div className="mt-6">
                   <ErrorState message={error.stats} onRetry={() => fetchDriverMonthlyPayments(dashStartDate, dashEndDate)} />
                 </div>
-              ) : driverMonthlyPayments.length > 0 ? (
+              ) : driverMonthlyPayments && driverMonthlyPayments.length > 0 ? (
                 <div className="mt-6 pb-20">
-                  <h4 className="text-sm font-black text-slate-900 dark:text-white mb-3 underline decoration-blue-500 decoration-4 underline-offset-8">Driver Payments (Selected Period)</h4>
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white mb-3 underline decoration-blue-500 decoration-4 underline-offset-8">Driver Transactions (Selected Period)</h4>
                   <div className="bg-white dark:bg-slate-800 rounded shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
                           <tr>
                             <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Driver Name</th>
-                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Total Paid (₹)</th>
+                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Given (I paid)</th>
+                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Received (I got)</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                           {driverMonthlyPayments.map(d => (
                             <tr key={d.driverId} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                              <td className="px-4 py-2 text-slate-800 dark:text-slate-200 font-bold">{d.driverName}</td>
-                              <td className="px-4 py-2 font-black text-right text-green-600 dark:text-green-400">₹{d.totalAmount.toLocaleString('en-IN')}</td>
+                              <td className="px-4 py-2 text-slate-800 dark:text-slate-200 font-bold">{d.driverName || 'Unknown'}</td>
+                              <td className="px-4 py-2 font-black text-right text-red-600 dark:text-red-400">
+                                ₹{(d.totalGiven || 0).toLocaleString('en-IN')}
+                              </td>
+                              <td className="px-4 py-2 font-black text-right text-green-600 dark:text-green-400">
+                                ₹{(d.totalReceived || 0).toLocaleString('en-IN')}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -995,18 +1055,19 @@ function Home() {
                   )}
                 </div>
                 {/* Page size selector */}
-                <div className="flex items-center gap-2 border border-gray-400 rounded-md">
+                <div className="flex items-center gap-2  rounded-md">
 
                   <select
                     value={pageSize}
                     onChange={handlePageSizeChange}
-                    className="border rounded px-2 py-1 text-[10px] font-bold bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                    className="border rounded px-3 py-3 text-[10px] font-bold bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                   >
                     <option value={10}>10   </option>
                     <option value={20}>20   </option>
                     <option value={50}>50   </option>
                     <option value={100}>100 </option>
                     <option value={500}>500 </option>
+                    <option value={1000}>1000 </option>
 
                   </select>
                 </div>

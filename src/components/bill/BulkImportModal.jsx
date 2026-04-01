@@ -7,6 +7,37 @@ import ButtonLoaders from '../loaders/ButtonLoaders';
 import { refreshToken } from '../../api/api';
 import { io } from 'socket.io-client';
 
+// Template headers for Bilty import
+const BILTY_TEMPLATE_HEADERS = [
+  'InvoiceNo',
+  'DateOfIssueOfInvoice',
+  'NameOfRecipient',
+  'GSTINNo',
+  'Quantity',
+  'Packages',
+  'LRNO',
+  'VehicleNo',
+  'Destination',
+  'ratePMT',
+  'advanceCash',
+  'desilOnRent',
+  'petrolPump',
+  'challanNO',
+  'DONo',
+  'DINo',
+  'TotalInvoiceValue'
+];
+
+// Template headers for Transaction import
+const TRANSACTION_TEMPLATE_HEADERS = [
+  'DateOfIssueOfInvoice',
+  'NameOfRecipient',
+  'VehicleNo',
+  'Amount',
+  'remark',
+  'Destination'
+];
+
 const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
   const [importType, setImportType] = useState('bilty');
   const [file, setFile] = useState(null);
@@ -86,6 +117,75 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
       }
     };
   }, []);
+
+  // Download template Excel file
+  const downloadTemplate = () => {
+    try {
+      // Create worksheet with headers only (empty data row)
+      const headers = importType === 'bilty' ? BILTY_TEMPLATE_HEADERS : TRANSACTION_TEMPLATE_HEADERS;
+      
+      // Create an array with headers and one empty row for example
+      const data = [headers];
+      
+      // Add a sample row to help users understand the format (optional)
+      if (importType === 'bilty') {
+        data.push([
+          '001',           // InvoiceNo
+          '01/04/2026',        // DateOfIssueOfInvoice
+          'ABC enterprises',     // NameOfRecipient
+          '27ABCDE1234F1Z5',   // GSTINNo
+          '1000',              // Quantity
+          '5',                 // Packages
+          '001',       // LRNO
+          'UP78AB1234',        // VehicleNo
+          'Delhi',             // Destination
+          '10.5',              // ratePMT
+          '5000',              // advanceCash
+          '2000',              // desilOnRent
+          'Indian Oil',        // petrolPump
+          '001',            // challanNO
+          '001',            // DONo
+          '001',            // DINo
+          '15000'              // TotalInvoiceValue
+        ]);
+      } else {
+        data.push([
+          '01/04/2026',        // DateOfIssueOfInvoice
+          'ABC enterprises',     // NameOfRecipient
+          'UP78AB1234',        // VehicleNo
+          '5000',              // Amount
+          'Advance payment',   // remark
+          'Delhi'              // Destination
+        ]);
+      }
+
+      // Convert to worksheet
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      
+      // Set column widths
+      const colWidths = headers.map(() => ({ wch: 20 }));
+      ws['!cols'] = colWidths;
+      
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      const sheetName = importType === 'bilty' ? 'Bilty_Template' : 'Transaction_Template';
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      
+      // Generate filename with current date
+      const date = new Date().toISOString().slice(0, 10);
+      const filename = importType === 'bilty' 
+        ? `bilty_import_template_${date}.xlsx` 
+        : `transaction_import_template_${date}.xlsx`;
+      
+      // Download file
+      XLSX.writeFile(wb, filename);
+      
+      showNotification(true, `Template downloaded: ${filename}`);
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      showNotification(false, 'Failed to download template');
+    }
+  };
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -767,7 +867,7 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   <FileSpreadsheet size={32} className="mx-auto mb-2 text-blue-600 dark:text-blue-400" />
                   <span className="font-black uppercase text-blue-700 dark:text-blue-300">Bilty Records</span>
                 </button>
-
+               
               </div>
             </div>
           )}
@@ -775,11 +875,20 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
           {/* Step 2: Upload File */}
           {step === 2 && !isSubmitting && !progress && !importResult && !isComplete && (
             <div className="space-y-4">
-              <p className="text-sm text-slate-600 dark:text-slate-300">
-                {importType === 'bilty'
-                  ? "Upload an Excel file with columns: InvoiceNo, DateOfIssueOfInvoice, NameOfRecipient, GSTINNo, Quantity, Packages, LRNO, VehicleNo, Destination, ratePMT, advanceCash, desilOnRent, petrolPump, challanNO, DONo, DINo, TotalInvoiceValue"
-                  : "Upload an Excel file with columns: DateOfIssueOfInvoice, NameOfRecipient, VehicleNo, Amount, remark, Destination"}
-              </p>
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                 
+                  Upload an Excel file with columns
+                </p>
+                {/* Download Template Button */}
+                <button
+                  onClick={downloadTemplate}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-black text-xs uppercase hover:bg-green-700 transition-colors shadow-md"
+                >
+                  <Download size={20} />
+                  Download Template
+                </button>
+              </div>
               <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center">
                 <input
                   type="file"
@@ -794,8 +903,11 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   <span className="text-xs text-slate-500 dark:text-slate-400">.xlsx, .xls, or .csv (Max 10MB)</span>
                 </label>
               </div>
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-between gap-3">
                 <button onClick={() => setStep(1)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">Back</button>
+                <div className="flex gap-2">
+               
+                </div>
               </div>
             </div>
           )}
@@ -805,8 +917,9 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <p className="text-sm font-bold text-green-600 dark:text-green-400">📄 File: {fileName}</p>
-                {isProcessingFile && <ButtonLoaders />}
+            
               </div>
+              {isProcessingFile && <ButtonLoaders />}
               {fullData.length > 0 && (
                 <div className="overflow-x-auto border rounded-lg dark:border-slate-700">
                   <table className="w-full text-xs">
@@ -833,29 +946,34 @@ const BulkImportModal = ({ isOpen, onClose, showNotification, onSuccess }) => {
                   </table>
                   <div className="flex justify-between items-center p-2 text-xs text-slate-500 dark:text-slate-400">
                     <span>📊 Total {fullData.length} rows</span>
-                    {fullData.length > 10 && (
-                      <button
-                        onClick={() => setShowAllRows(!showAllRows)}
-                        className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        {showAllRows ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                        {showAllRows ? "Show Less" : "Show All"}
-                      </button>
-                    )}
+                    <div className="flex gap-2">
+                      {fullData.length > 10 && (
+                        <button
+                          onClick={() => setShowAllRows(!showAllRows)}
+                          className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          {showAllRows ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          {showAllRows ? "Show Less" : "Show All"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-between gap-3">
                 <button onClick={() => setStep(2)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
                   Back
                 </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="px-6 py-2 bg-blue-600 text-white rounded font-black flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {isSubmitting ? <ButtonLoaders /> : "Confirm Import"}
-                </button>
+                <div className="flex gap-2">
+               
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className="px-6 py-2 bg-blue-600 text-white rounded font-black flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    {isSubmitting ? <ButtonLoaders /> : "Confirm Import"}
+                  </button>
+                </div>
               </div>
             </div>
           )}
