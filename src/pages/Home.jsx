@@ -163,7 +163,7 @@ function Home() {
   const [endDate, setEndDate] = useState(initialRange.end);
 
   // Dashboard filter states
-  const [dashFilterType, setDashFilterType] = useState("month");
+  const [dashFilterType, setDashFilterType] = useState("custom");
   const [dashStartDate, setDashStartDate] = useState(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -741,30 +741,7 @@ function Home() {
                   Dashboard
                 </h2>
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => setDashFilterType("week")}
-                    className={`px-3 py-1.5 text-xs font-black uppercase rounded transition-colors ${dashFilterType === "week" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
-                  >
-                    Week
-                  </button>
-                  <button
-                    onClick={() => setDashFilterType("month")}
-                    className={`px-3 py-1.5 text-xs font-black uppercase rounded transition-colors ${dashFilterType === "month" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
-                  >
-                    Month
-                  </button>
-                  <button
-                    onClick={() => setDashFilterType("year")}
-                    className={`px-3 py-1.5 text-xs font-black uppercase rounded transition-colors ${dashFilterType === "year" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
-                  >
-                    Year
-                  </button>
-                  <button
-                    onClick={() => setDashFilterType("custom")}
-                    className={`px-3 py-1.5 text-xs font-black uppercase rounded transition-colors ${dashFilterType === "custom" ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}
-                  >
-                    Custom
-                  </button>
+                
                   {/* Refresh button */}
                   <button
                     onClick={() => {
