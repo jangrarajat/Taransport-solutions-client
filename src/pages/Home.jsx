@@ -1,5 +1,5 @@
-// Home.jsx – with collapsible sidebar feature
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+// Home.jsx – with smooth auto-search (no loader flicker)
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound, ClipboardPlus,
   ChevronLeft, ChevronRight, Plus, LogOut, Crown,
@@ -27,6 +27,7 @@ import ReportsManager from "../components/ReportsManager";
 import ButtonLoaders from "../components/loaders/ButtonLoaders";
 import ProfilePage from "../components/ProfilePage";
 import BulkImportModal from "../components/bill/BulkImportModal";
+import BoxLoader from "../components/loaders/BoxLoader";
 
 // Skeleton Loaders
 const DashboardCardSkeleton = () => (
@@ -45,8 +46,8 @@ const TableRowSkeleton = ({ rows = 3 }) => (
   <>
     {[...Array(rows)].map((_, i) => (
       <tr key={i} className="animate-pulse">
-        <td className="px-4 py-2">{<div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24"></div>}</td>
-        <td className="px-4 py-2">{<div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32"></div>}</td>
+        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24"></div></td>
+        <td className="px-4 py-2"><div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32"></div></td>
       </tr>
     ))}
   </>
@@ -82,6 +83,8 @@ function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+
+  // Loading states - but we won't show loader for search
   const [loading, setLoading] = useState({
     dashboard: false,
     bilty: false,
@@ -90,6 +93,7 @@ function Home() {
     stats: false,
     counts: false
   });
+
   const [error, setError] = useState({
     dashboard: null,
     pumpSummary: null,
@@ -117,6 +121,10 @@ function Home() {
   const [openingBalance, setOpeningBalance] = useState(null);
   const [closingBalance, setClosingBalance] = useState(null);
 
+  // Debounce timeout refs
+  const searchTimeoutRef = useRef(null);
+  const isSearchingRef = useRef(false);
+
   // Pump summary
   const [pumpSummary, setPumpSummary] = useState([]);
   const [totalPumpBalance, setTotalPumpBalance] = useState(0);
@@ -126,7 +134,7 @@ function Home() {
   const [driverCount, setDriverCount] = useState(0);
   const [driverMonthlyPayments, setDriverMonthlyPayments] = useState([]);
   const [totalDriverPayments, setTotalDriverPayments] = useState(0);
-  
+
   // New stats for dashboard
   const [totalQuantity, setTotalQuantity] = useState(0);
   const [totalPmt, setTotalPmt] = useState(0);
@@ -145,7 +153,7 @@ function Home() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
-  // Subscription time remaining - real-time update
+  // Subscription time remaining
   const [timeRemaining, setTimeRemaining] = useState(null);
 
   // Date helpers
@@ -184,15 +192,7 @@ function Home() {
     return `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
   });
 
-  // Reset dashboard date range to current month
-  const resetDashboardDateRange = useCallback(() => {
-    const currentMonthRange = getCurrentMonthRange();
-    setDashStartDate(currentMonthRange.start);
-    setDashEndDate(currentMonthRange.end);
-    setDashFilterType("custom");
-  }, []);
-
-  // Save sidebar collapsed state to localStorage
+  // Save sidebar collapsed state
   useEffect(() => {
     const savedState = localStorage.getItem('sidebarCollapsed');
     if (savedState !== null) {
@@ -230,7 +230,7 @@ function Home() {
     return () => clearInterval(interval);
   }, [user]);
 
-  // User update events listen karein
+  // User update events
   useEffect(() => {
     const handleUserUpdate = (event) => {
       setUser(event.detail);
@@ -251,12 +251,11 @@ function Home() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showNewBiltyMenu]);
 
-  // Notification & refresh dashboard when on home
+  // Notification & refresh dashboard
   const showNotification = useCallback((success, msg) => {
     setToast({ show: true, success, msg, id: Date.now() });
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
 
-    // If currently on home page, refresh dashboard data
     if (menuOption === "home") {
       getDashboardData(dashFilterType, dashStartDate, dashEndDate);
       fetchPumpSummary(dashStartDate, dashEndDate);
@@ -273,7 +272,6 @@ function Home() {
     setStartDate(range.start);
     setEndDate(range.end);
     setCurrentPage(1);
-    handleSearch();
   };
 
   const formatDate = (dateString) => {
@@ -286,7 +284,7 @@ function Home() {
     return `${day}-${month}-${year}`;
   };
 
-  // Fetch vehicles for suggestions
+  // Fetch vehicles
   const fetchVehicles = async () => {
     try {
       const res = await axios.get(`${backendUrl}/api/vehicle-master`, { withCredentials: true });
@@ -302,7 +300,7 @@ function Home() {
     }
   };
 
-  // Fetch counts (vehicles, drivers)
+  // Fetch counts
   const fetchCounts = async () => {
     setLoading(prev => ({ ...prev, counts: true }));
     try {
@@ -321,7 +319,7 @@ function Home() {
     }
   };
 
-  // Fetch total quantity from bilty records within date range
+  // Fetch total quantity
   const fetchTotalQuantity = useCallback(async () => {
     try {
       let url = `${backendUrl}/api/bill/total-quantity?`;
@@ -339,7 +337,7 @@ function Home() {
     }
   }, [dashFilterType, dashStartDate, dashEndDate]);
 
-  // Fetch total PMT (ratePMT) from bilty records within date range
+  // Fetch total PMT
   const fetchTotalPmt = useCallback(async () => {
     try {
       let url = `${backendUrl}/api/bill/total-pmt?`;
@@ -357,7 +355,7 @@ function Home() {
     }
   }, [dashFilterType, dashStartDate, dashEndDate]);
 
-  // Dashboard data fetch with new filter
+  // Dashboard data fetch
   const getDashboardData = useCallback(async (type = dashFilterType, start = dashStartDate, end = dashEndDate) => {
     setLoading(prev => ({ ...prev, dashboard: true }));
     setError(prev => ({ ...prev, dashboard: null }));
@@ -381,7 +379,7 @@ function Home() {
     }
   }, [dashFilterType, dashStartDate, dashEndDate]);
 
-  // Pump summary with date filter
+  // Pump summary
   const fetchPumpSummary = useCallback(async (start, end) => {
     setLoading(prev => ({ ...prev, pumpSummary: true }));
     setError(prev => ({ ...prev, pumpSummary: null }));
@@ -407,7 +405,7 @@ function Home() {
     }
   }, []);
 
-  // Driver payments with date filter
+  // Driver payments
   const fetchDriverMonthlyPayments = useCallback(async (start, end) => {
     setLoading(prev => ({ ...prev, stats: true }));
     setError(prev => ({ ...prev, stats: null }));
@@ -432,7 +430,7 @@ function Home() {
     }
   }, []);
 
-  // New: fetch expense total
+  // Fetch expense total
   const fetchExpenseTotal = async () => {
     try {
       const res = await axios.get(`${backendUrl}/api/user/expense-total`, { withCredentials: true });
@@ -442,9 +440,13 @@ function Home() {
     }
   };
 
-  // Bilty data – with pageSize
-  const getBilty = useCallback(async (page = 1, limit = pageSize) => {
-    setLoading(prev => ({ ...prev, bilty: true }));
+  // Bilty data - NO LOADER for search
+  const getBilty = useCallback(async (page = 1, limit = pageSize, showLoader = false) => {
+    // Only show loader for initial load or manual refresh, not for auto-search
+    if (showLoader) {
+      setLoading(prev => ({ ...prev, bilty: true }));
+    }
+
     try {
       const url = `${backendUrl}/api/bill/get-bills?page=${page}&limit=${limit}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
@@ -465,14 +467,23 @@ function Home() {
     } catch (error) {
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
-        if (isRefreshed) getBilty(page, limit);
+        if (isRefreshed) return getBilty(page, limit, showLoader);
       }
-    } finally { setLoading(prev => ({ ...prev, bilty: false })); }
+      console.error("Error fetching bilty:", error);
+    } finally {
+      if (showLoader) {
+        setLoading(prev => ({ ...prev, bilty: false }));
+      }
+    }
   }, [searchTerm, startDate, endDate, pageSize]);
 
-  // Expenses function – with pageSize
-  const getExpenses = useCallback(async (page = 1, limit = pageSize) => {
-    setLoading(prev => ({ ...prev, expense: true }));
+  // Expenses function - NO LOADER for search
+  const getExpenses = useCallback(async (page = 1, limit = pageSize, showLoader = false) => {
+    // Only show loader for initial load or manual refresh
+    if (showLoader) {
+      setLoading(prev => ({ ...prev, expense: true }));
+    }
+
     try {
       const url = `${backendUrl}/api/persnol/get-expantion?page=${page}&limit=${limit}&search=${searchTerm}&startDate=${startDate}&endDate=${endDate}`;
       const response = await axios.get(url, { withCredentials: true });
@@ -490,18 +501,61 @@ function Home() {
     } catch (error) {
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
-        if (isRefreshed) getExpenses(page, limit);
+        if (isRefreshed) return getExpenses(page, limit, showLoader);
       }
       console.error("Error fetching expenses:", error);
-    } finally { setLoading(prev => ({ ...prev, expense: false })); }
+    } finally {
+      if (showLoader) {
+        setLoading(prev => ({ ...prev, expense: false }));
+      }
+    }
   }, [searchTerm, startDate, endDate, pageSize]);
 
+  // Debounced auto-search function
+  const debouncedAutoSearch = useCallback(() => {
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set new timeout
+    searchTimeoutRef.current = setTimeout(() => {
+      setCurrentPage(1);
+      if (menuOption === "biltiy" || menuOption === "accounts") {
+        getBilty(1, pageSize, false); // false = no loader
+      } else if (menuOption === "expantion") {
+        getExpenses(1, pageSize, false); // false = no loader
+      }
+    }, 300); // 300ms delay
+  }, [menuOption, pageSize, getBilty, getExpenses]);
+
+  // Auto-search when searchTerm changes
+  useEffect(() => {
+    if ((menuOption === "biltiy" || menuOption === "accounts" || menuOption === "expantion") &&
+      (searchTimeoutRef.current !== null || searchTerm !== undefined)) {
+      debouncedAutoSearch();
+    }
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchTerm, debouncedAutoSearch, menuOption]);
+
+  // Auto-search when dates change
+  useEffect(() => {
+    if (menuOption === "biltiy" || menuOption === "accounts" || menuOption === "expantion") {
+      debouncedAutoSearch();
+    }
+  }, [startDate, endDate, debouncedAutoSearch, menuOption]);
+
+  // Manual search with loader (for search button)
   const handleSearch = () => {
     setCurrentPage(1);
     if (menuOption === "biltiy" || menuOption === "accounts") {
-      getBilty(1, pageSize);
+      getBilty(1, pageSize, true); // true = show loader
     } else if (menuOption === "expantion") {
-      getExpenses(1, pageSize);
+      getExpenses(1, pageSize, true); // true = show loader
     }
   };
 
@@ -515,13 +569,34 @@ function Home() {
     setPageSize(newSize);
     setCurrentPage(1);
     if (menuOption === "biltiy" || menuOption === "accounts") {
-      getBilty(1, newSize);
+      getBilty(1, newSize, true);
     } else if (menuOption === "expantion") {
-      getExpenses(1, newSize);
+      getExpenses(1, newSize, true);
     }
   };
 
-  // Event listener for opening pricing modal from other components
+  // Pagination handlers
+  const handlePrevPage = () => {
+    const newPage = currentPage - 1;
+    setCurrentPage(newPage);
+    if (menuOption === "biltiy" || menuOption === "accounts") {
+      getBilty(newPage, pageSize, true);
+    } else if (menuOption === "expantion") {
+      getExpenses(newPage, pageSize, true);
+    }
+  };
+
+  const handleNextPage = () => {
+    const newPage = currentPage + 1;
+    setCurrentPage(newPage);
+    if (menuOption === "biltiy" || menuOption === "accounts") {
+      getBilty(newPage, pageSize, true);
+    } else if (menuOption === "expantion") {
+      getExpenses(newPage, pageSize, true);
+    }
+  };
+
+  // Event listener for pricing modal
   useEffect(() => {
     const handleOpenPricing = () => setIsPricingOpen(true);
     window.addEventListener('openPricing', handleOpenPricing);
@@ -541,11 +616,9 @@ function Home() {
       fetchCounts();
     } else if (menuOption === "biltiy" || menuOption === "accounts") {
       fetchVehicles();
-      handleSearch();
+      getBilty(1, pageSize, true); // Show loader on initial load
     } else if (menuOption === "expantion") {
-      handleSearch();
-    } else if (menuOption !== "petrolPump" && menuOption !== "Reports") {
-      handleSearch();
+      getExpenses(1, pageSize, true); // Show loader on initial load
     }
   }, [menuOption]);
 
@@ -558,7 +631,7 @@ function Home() {
       fetchTotalPmt();
       fetchTotalQuantity();
     }
-  }, [dashFilterType, dashStartDate, dashEndDate, menuOption, getDashboardData, fetchPumpSummary, fetchDriverMonthlyPayments, fetchTotalPmt, fetchTotalQuantity]);
+  }, [dashFilterType, dashStartDate, dashEndDate]);
 
   // Determine if current search term is an exact vehicle number
   const isVehicleFilter = useMemo(() => {
@@ -578,6 +651,13 @@ function Home() {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
+  const resetDashboardDateRange = useCallback(() => {
+    const currentMonthRange = getCurrentMonthRange();
+    setDashStartDate(currentMonthRange.start);
+    setDashEndDate(currentMonthRange.end);
+    setDashFilterType("custom");
+  }, []);
+
   // If profile page is open, show it
   if (showProfile) {
     return (
@@ -593,8 +673,8 @@ function Home() {
     <div className="flex fixed h-screen w-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden uppercase font-bold text-xs">
       {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
 
-      <AddBiltyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(msg) => { getBilty(1, pageSize); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
-      <AddExpenseModal isOpen={isExModalOpen} onClose={() => setIsExModalOpen(false)} onSuccess={(msg) => { getExpenses(1, pageSize); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
+      <AddBiltyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={(msg) => { getBilty(1, pageSize, true); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
+      <AddExpenseModal isOpen={isExModalOpen} onClose={() => setIsExModalOpen(false)} onSuccess={(msg) => { getExpenses(1, pageSize, true); showNotification(true, msg); }} onError={(msg) => showNotification(false, msg)} />
       <Pricing isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
       <BulkImportModal
         isOpen={bulkImportOpen}
@@ -602,33 +682,31 @@ function Home() {
         showNotification={showNotification}
         onSuccess={() => {
           if (menuOption === "biltiy" || menuOption === "accounts") {
-            getBilty(currentPage, pageSize);
+            getBilty(currentPage, pageSize, true);
           }
         }}
       />
 
-      {/* Sidebar - Collapsible */}
-      <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 fixed md:relative z-50 h-full bg-white dark:bg-gray-900 text-blue-400 transition-all duration-300 flex flex-col shadow-2xl ${sidebarCollapsed ? 'w-20' : 'w-64'}`}>
+      {/* Sidebar - same as before */}
+      <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 fixed md:relative z-50 h-full bg-white dark:bg-gray-900 text-blue-400 transition-all duration-300 flex flex-col shadow-2xl ${sidebarCollapsed ? 'w-20' : 'w-52'}`}>
         <div className={`p-5 flex items-center justify-between dark:border-slate-900 ${sidebarCollapsed ? 'flex-col gap-3' : ''}`}>
-          <button 
-            onClick={() => setSidebarOpen(false)} 
+          <button
+            onClick={() => setSidebarOpen(false)}
             className="md:hidden p-1.5 hover:bg-slate-800 dark:hover:bg-slate-900 rounded transition-all duration-300"
           >
             <X size={20} />
           </button>
-          
+
           <div className={`flex items-center gap-3 group cursor-pointer ${sidebarCollapsed ? 'flex-col' : ''}`}>
-            {/* Animated Logo Container */}
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-md opacity-0 group-hover:opacity-70 transition-opacity duration-500"></div>
-              <img 
-                src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1774862288/Screenshot_2026-03-29_155255_r70pha-removebg-preview_rrdxac.png" 
+              <img
+                src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1774862288/Screenshot_2026-03-29_155255_r70pha-removebg-preview_rrdxac.png"
                 alt="logo"
                 className="h-12 w-12 object-contain relative z-10 group-hover:scale-110 transition-transform duration-300"
               />
             </div>
-            
-            {/* Text with Creative Typography - Hide when collapsed */}
+
             {!sidebarCollapsed && (
               <div className="flex flex-col leading-tight">
                 <div className="flex items-baseline gap-0.5">
@@ -644,7 +722,7 @@ function Home() {
             )}
           </div>
         </div>
-        
+
         <nav className="flex-1 p-4 space-y-2 mt-2 tracking-widest text-[10px] overflow-y-auto">
           {[
             { name: "home", icon: <BarChart3 size={20} />, label: "Dashboard" },
@@ -657,45 +735,45 @@ function Home() {
             <button
               key={item.name}
               onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); setSidebarOpen(false); setSelectedPump(null); }}
-              className={`w-full flex items-center gap-4 p-4 rounded-tr-[100px] rounded-br-[100px]  transition-all ${menuOption === item.name ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"} ${sidebarCollapsed ? 'justify-center' : ''}`}
+              className={`w-full flex items-center gap-4 p-2 rounded rounded-tl-xl  [clip-path:polygon(0%_0%,_90%_0%,_100%_50%,_90%_100%,_0%_100%)] transition-all ${menuOption === item.name ? "bg-blue-600 scale-105 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"} ${sidebarCollapsed ? 'justify-center' : ''} duration-300`}
               title={sidebarCollapsed ? item.label : ""}
             >
               {item.icon}
               {!sidebarCollapsed && <span>{item.label}</span>}
             </button>
+             
           ))}
-          <button 
-            onClick={() => setShowProfile(true)} 
-            className={`w-full flex items-center gap-4 p-4 rounded text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 mt-10 ${sidebarCollapsed ? 'justify-center' : ''}`}
-            title={sidebarCollapsed ? "Edit Profile" : ""}
-          >
-            <Settings size={20} /> 
-            {!sidebarCollapsed && <span>Edit Profile</span>}
-          </button>
+            
         </nav>
-        
-        <div className="p-4 dark:border-slate-900 space-y-2">
-          {/* Collapse Toggle Button */}
-          <button 
-            onClick={toggleSidebarCollapse} 
+
+        <div className="p-4 dark:border-slate-900 space-y-[-8px]">
+          <button
+            onClick={toggleSidebarCollapse}
             className={`w-full flex items-center gap-4 p-4 rounded text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 transition-all ${sidebarCollapsed ? 'justify-center' : ''}`}
             title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {sidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
           </button>
-          
-          <button 
-            onClick={handleLogout} 
+          <button
+            onClick={() => setShowProfile(true)}
+            className={`w-full flex items-center gap-4 p-4 rounded text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900 mt-10 ${sidebarCollapsed ? 'justify-center' : ''}`}
+            title={sidebarCollapsed ? "Edit Profile" : ""}
+          >
+            <Settings size={20} />
+            {!sidebarCollapsed && <span>Edit Profile</span>}
+          </button>
+          <button
+            onClick={handleLogout}
             className={`w-full flex items-center gap-4 p-4 rounded text-red-400 font-bold hover:bg-red-500/10 ${sidebarCollapsed ? 'justify-center' : ''}`}
             title={sidebarCollapsed ? "Logout" : ""}
           >
-            <LogOut size={20} /> 
+            <LogOut size={20} />
             {!sidebarCollapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>
 
-      {/* Main content - Adjust margin based on sidebar state */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-20 bg-white dark:bg-slate-900 border-b dark:border-slate-800 flex items-center justify-between px-3 md:px-8 shrink-0 shadow-sm uppercase italic">
           <div className="flex items-center gap-2">
@@ -720,6 +798,7 @@ function Home() {
         </header>
 
         <main className="p-3 sm:p-4 md:p-6 lg:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
+          {/* Dashboard Section - same as before */}
           {menuOption === "home" && (
             <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black pb-48">
               {/* Premium Status Banner */}
@@ -772,15 +851,12 @@ function Home() {
                 </div>
               )}
 
-              {/* Dashboard Filter Bar */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <h2 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">
                   Dashboard
                 </h2>
-              
               </div>
 
-              {/* Custom date range inputs */}
               {dashFilterType === "custom" && (
                 <div className="flex flex-wrap items-center gap-2 mt-3">
                   <input
@@ -796,32 +872,27 @@ function Home() {
                     onChange={(e) => setDashEndDate(e.target.value)}
                     className="border px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700 rounded"
                   />
-                    <div className="flex flex-wrap items-center gap-2">
-                  {/* Refresh button */}
-                  <button
-                    onClick={() => {
-                      getDashboardData(dashFilterType, dashStartDate, dashEndDate);
-                      fetchPumpSummary(dashStartDate, dashEndDate);
-                      fetchDriverMonthlyPayments(dashStartDate, dashEndDate);
-                      fetchExpenseTotal();
-                      fetchTotalPmt();
-                      fetchTotalQuantity();
-                      fetchCounts();
-                      resetDashboardDateRange()
-                    }}
-                    className="p-2 bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
-                    title="Refresh Dashboard"
-                  >
-                    <RefreshCw size={14} className="text-slate-700 dark:text-white" />
-                  </button>
-                  {/* Reset to Current Month Button */}
-                 
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => {
+                        getDashboardData(dashFilterType, dashStartDate, dashEndDate);
+                        fetchPumpSummary(dashStartDate, dashEndDate);
+                        fetchDriverMonthlyPayments(dashStartDate, dashEndDate);
+                        fetchExpenseTotal();
+                        fetchTotalPmt();
+                        fetchTotalQuantity();
+                        fetchCounts();
+                      }}
+                      className="p-2 bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+                      title="Refresh Dashboard"
+                    >
+                      <RefreshCw size={14} className="text-slate-700 dark:text-white" />
+                    </button>
+                  </div>
                 </div>
-                </div>
-                
               )}
 
-              {/* Dashboard Cards - 6 Cards */}
+              {/* Dashboard Cards */}
               {loading.dashboard || loading.counts ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                   <DashboardCardSkeleton />
@@ -835,30 +906,23 @@ function Home() {
                 <ErrorState message={error.dashboard} onRetry={() => getDashboardData(dashFilterType, dashStartDate, dashEndDate)} />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-                  {/* Total Revenue */}
                   <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Revenue</p>
                     <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">₹{dashData.totalRevenue?.toLocaleString('en-IN') || 0}</p>
                   </div>
-                  {/* Trip Balance */}
                   <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trip Balance</p>
                     <p className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">₹{dashData.totalTripBalance?.toLocaleString('en-IN') || 0}</p>
                   </div>
-                  {/* Total Expense */}
                   <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Expense</p>
                     <p className="text-2xl font-black text-red-600 dark:text-red-400 mt-1">₹{expenseTotal?.toLocaleString('en-IN') || 0}</p>
                   </div>
-                
-                  {/* Total Quantity */}
                   <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Quantity</p>
                     <p className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">{totalQuantity?.toLocaleString('en-IN') || 0}</p>
                   </div>
-                  {/* Total Vehicles & Drivers */}
                   <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
-                  
                     <div className="flex justify-between items-center mt-1">
                       <div>
                         <p className="text-xs text-slate-400">Vehicles</p>
@@ -883,14 +947,9 @@ function Home() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
-                          <tr>
-                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Pump Name</th>
-                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Balance (₹)</th>
-                          </tr>
+                          <tr><th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Pump Name</th><th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Balance (₹)</th></tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                          <TableRowSkeleton rows={3} />
-                        </tbody>
+                        <tbody><TableRowSkeleton rows={3} /></tbody>
                       </table>
                     </div>
                   </div>
@@ -903,10 +962,7 @@ function Home() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
-                          <tr>
-                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Pump Name</th>
-                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Balance (₹)</th>
-                          </tr>
+                          <tr><th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Pump Name</th><th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Balance (₹)</th></tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                           {pumpSummary.map(pump => (
@@ -919,12 +975,7 @@ function Home() {
                           ))}
                         </tbody>
                         <tfoot className="bg-slate-100 dark:bg-slate-700 border-t dark:border-slate-600 font-black">
-                          <tr>
-                            <td className="px-4 py-3 text-slate-800 dark:text-white uppercase">Total Payable</td>
-                            <td className="px-4 py-3 text-right text-red-600 dark:text-red-400">
-                              ₹{totalPumpBalance.toLocaleString('en-IN')}
-                            </td>
-                          </tr>
+                          <tr><td className="px-4 py-3 text-slate-800 dark:text-white uppercase">Total Payable</td><td className="px-4 py-3 text-right text-red-600 dark:text-red-400">₹{totalPumpBalance.toLocaleString('en-IN')}</td></tr>
                         </tfoot>
                       </table>
                     </div>
@@ -932,19 +983,11 @@ function Home() {
                 )}
               </div>
 
-              {/* Driver Payments List */}
+              {/* Driver Payments */}
               {loading.stats ? (
-                <div className="mt-6">
-                  <div className="bg-white dark:bg-slate-800 rounded shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div className="p-8 text-center">
-                      <ButtonLoaders />
-                    </div>
-                  </div>
-                </div>
+                <div className="mt-6"><div className="bg-white dark:bg-slate-800 rounded shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"><div className="p-8 text-center"><ButtonLoaders /></div></div></div>
               ) : error.stats ? (
-                <div className="mt-6">
-                  <ErrorState message={error.stats} onRetry={() => fetchDriverMonthlyPayments(dashStartDate, dashEndDate)} />
-                </div>
+                <div className="mt-6"><ErrorState message={error.stats} onRetry={() => fetchDriverMonthlyPayments(dashStartDate, dashEndDate)} /></div>
               ) : driverMonthlyPayments && driverMonthlyPayments.length > 0 ? (
                 <div className="mt-6 pb-20">
                   <h4 className="text-sm font-black text-slate-900 dark:text-white mb-3 underline decoration-blue-500 decoration-4 underline-offset-8">Driver Transactions (Selected Period)</h4>
@@ -952,22 +995,14 @@ function Home() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
-                          <tr>
-                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Driver Name</th>
-                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Given (I paid)</th>
-                            <th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Received (I got)</th>
-                          </tr>
+                          <tr><th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Driver Name</th><th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Given (I paid)</th><th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Received (I got)</th></tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                           {driverMonthlyPayments.map(d => (
                             <tr key={d.driverId} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                               <td className="px-4 py-2 text-slate-800 dark:text-slate-200 font-bold">{d.driverName || 'Unknown'}</td>
-                              <td className="px-4 py-2 font-black text-right text-red-600 dark:text-red-400">
-                                ₹{(d.totalGiven || 0).toLocaleString('en-IN')}
-                              </td>
-                              <td className="px-4 py-2 font-black text-right text-green-600 dark:text-green-400">
-                                ₹{(d.totalReceived || 0).toLocaleString('en-IN')}
-                              </td>
+                              <td className="px-4 py-2 font-black text-right text-red-600 dark:text-red-400">₹{(d.totalGiven || 0).toLocaleString('en-IN')}</td>
+                              <td className="px-4 py-2 font-black text-right text-green-600 dark:text-green-400">₹{(d.totalReceived || 0).toLocaleString('en-IN')}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -979,10 +1014,10 @@ function Home() {
             </div>
           )}
 
+          {/* Bilty/Accounts Section - WITH AUTO-SEARCH (NO LOADER FLICKER) */}
           {(menuOption === "biltiy" || menuOption === "accounts") && (
-            <div className="space-y-3 animate-in fade-in duration-500 ">
-              {/* Filter bar with vehicle suggestions */}
-              <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded shadow-sm border border-slate-200 dark:border-slate-700">
+            <div className="space-y-3 animate-in fade-in duration-500">
+              <div className="flex flex-col lg:flex-row justify-between items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
                   <div className="relative flex-1 min-w-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={14} />
@@ -990,7 +1025,7 @@ function Home() {
                       type="text"
                       list="vehicleSearchList"
                       placeholder="Search LR, Vehicle..."
-                      className="w-full pl-8 pr-3 py-2 border  border-gray-400 rounded text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
+                      className="w-full pl-8 pr-3 py-2 border border-gray-400 rounded text-[10px] font-bold outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyDown={handleKeyDown}
@@ -1001,18 +1036,18 @@ function Home() {
                       ))}
                     </datalist>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 ">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="border rounded px-2 py-2 text-[10px]  border-gray-400 font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                      className="border rounded px-2 py-2 text-[10px] border-gray-400 font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="border rounded px-2 py-2 text-[10px]   border-gray-400 font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
+                      className="border rounded px-2 py-2 text-[10px] border-gray-400 font-bold bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white flex-1 min-w-[120px]"
                     />
                     <button
                       onClick={handleSearch}
@@ -1022,7 +1057,7 @@ function Home() {
                     </button>
                     <button
                       onClick={resetToCurrentMonth}
-                      className="p-2 bg-gray-200  border border-gray-400 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
+                      className="p-2 bg-gray-200 border border-gray-400 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
                       title="Reset to current month"
                     >
                       <RotateCcw size={12} className="text-slate-700 dark:text-white" />
@@ -1037,7 +1072,7 @@ function Home() {
                     <Plus size={14} /> New Bilty
                   </button>
                   {showNewBiltyMenu && (
-                    <div className="absolute top-full  mt-1  bg-white  text-white  border-gray-400 dark:bg-slate-800 shadow-lg rounded border dark:border-slate-700 z-10 w-48">
+                    <div className="absolute top-full mt-1 bg-white text-white border-gray-400 dark:bg-slate-800 shadow-lg rounded border dark:border-slate-700 z-10 w-48">
                       <button
                         onClick={() => { setIsModalOpen(true); setShowNewBiltyMenu(false); }}
                         className="w-full text-left px-4 py-2 text-xs hover:bg-blue-600 text-black hover:text-white dark:hover:bg-slate-700 dark:text-white"
@@ -1054,33 +1089,29 @@ function Home() {
                     </div>
                   )}
                 </div>
-                {/* Page size selector */}
-                <div className="flex items-center gap-2  rounded-md">
-
+                <div className="flex items-center gap-2 rounded-md">
                   <select
                     value={pageSize}
                     onChange={handlePageSizeChange}
-                    className="border rounded px-3 py-3 text-[10px] font-bold bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                    className="border rounded px-3 py-2 text-[10px] font-bold bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                   >
-                    <option value={10}>10   </option>
-                    <option value={20}>20   </option>
-                    <option value={50}>50   </option>
-                    <option value={100}>100 </option>
-                    <option value={500}>500 </option>
-                    <option value={1000}>1000 </option>
-
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={500}>500</option>
+                    <option value={1000}>1000</option>
                   </select>
                 </div>
               </div>
 
-              {/* Table container */}
-              <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden rounded">
+              <div className="bg-white dark:bg-slate-900 shadow-sm    overflow-hidden rounded">
                 <div className="overflow-x-auto">
                   {menuOption === "biltiy" ? (
                     <BiltyTable
                       data={biltyData}
                       loading={loading.bilty}
-                      refreshData={() => getBilty(currentPage, pageSize)}
+                      refreshData={() => getBilty(currentPage, pageSize, true)}
                       showNotification={showNotification}
                       vehicleTotalBalance={vehicleTotalBalance}
                       openingBalance={openingBalance}
@@ -1090,7 +1121,7 @@ function Home() {
                     <FrightTable
                       data={biltyData}
                       loading={loading.bilty}
-                      refreshData={() => getBilty(currentPage, pageSize)}
+                      refreshData={() => getBilty(currentPage, pageSize, true)}
                       showNotification={showNotification}
                       vehicleTotalBalance={vehicleTotalBalance}
                       openingBalance={openingBalance}
@@ -1109,7 +1140,7 @@ function Home() {
 
           {/* Petrol Pump Section */}
           {menuOption === "petrolPump" && (
-            <div className="space-y-4 ">
+            <div className="space-y-4">
               {!selectedPump ? (
                 <PumpMasterList
                   showNotification={showNotification}
@@ -1132,9 +1163,9 @@ function Home() {
             <ReportsManager showNotification={showNotification} />
           )}
 
-          {/* Expenses Section */}
+          {/* Expenses Section - WITH AUTO-SEARCH (NO LOADER FLICKER) */}
           {menuOption === "expantion" && (
-            <div className="space-y-3 animate-in fade-in duration-500 ">
+            <div className="space-y-3 animate-in fade-in duration-500">
               <div className="flex flex-col lg:flex-row justify-between items-stretch gap-3 bg-white dark:bg-slate-800 p-3 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row items-stretch gap-2 flex-1">
                   <div className="relative flex-1 min-w-0">
@@ -1182,56 +1213,37 @@ function Home() {
                 >
                   <Plus size={14} /> New Expense
                 </button>
-
               </div>
               <div className="overflow-x-auto">
                 <ExpenseTable
                   data={expenseData}
                   loading={loading.expense}
                   filterTerm={searchTerm}
-                  refreshData={() => getExpenses(currentPage, pageSize)}
+                  refreshData={() => getExpenses(currentPage, pageSize, true)}
                 />
               </div>
-
             </div>
           )}
 
-          {/* Pagination footer with page size selector */}
+          {/* Pagination */}
           {menuOption !== "home" && menuOption !== "petrolPump" && menuOption !== "Reports" && totalPages > 1 && (
             <div className="flex items-center mb-48 justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4 rounded border dark:border-slate-700 shadow-sm">
               <div className="flex items-center gap-4">
                 <p className="text-[8px] uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">
                   Page {currentPage} of {totalPages}
                 </p>
-
               </div>
               <div className="flex gap-2">
                 <button
                   disabled={currentPage === 1}
-                  onClick={() => {
-                    const newPage = currentPage - 1;
-                    setCurrentPage(newPage);
-                    if (menuOption === "biltiy" || menuOption === "accounts") {
-                      getBilty(newPage, pageSize);
-                    } else if (menuOption === "expantion") {
-                      getExpenses(newPage, pageSize);
-                    }
-                  }}
+                  onClick={handlePrevPage}
                   className="p-1 border border-gray-300 dark:border-slate-600 rounded disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
                 >
                   <ChevronLeft size={14} className="dark:text-white" />
                 </button>
                 <button
                   disabled={currentPage === totalPages}
-                  onClick={() => {
-                    const newPage = currentPage + 1;
-                    setCurrentPage(newPage);
-                    if (menuOption === "biltiy" || menuOption === "accounts") {
-                      getBilty(newPage, pageSize);
-                    } else if (menuOption === "expantion") {
-                      getExpenses(newPage, pageSize);
-                    }
-                  }}
+                  onClick={handleNextPage}
                   className="p-1 border border-gray-300 dark:border-slate-600 rounded disabled:opacity-20 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
                 >
                   <ChevronRight size={14} className="dark:text-white" />

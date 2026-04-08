@@ -181,36 +181,38 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
             <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden  ">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
-                        <thead className="sticky top-0 z-20 bg-slate-800 dark:bg-black text-white">
+                        <thead className="sticky top-0 z-20 bg-blue-500 dark:bg-gray-800 text-white dark:text-blue-300">
                             <tr>
-                                <th className="px-4 py-4 text-center border-r border-slate-700 dark:border-slate-800">
+                                 <th className="px-4 py-1 text-center border-r border-slate-700 dark:border-slate-800"></th>
+                                <th className="px-4 py-1 text-center border-r border-slate-700 dark:border-slate-800">
                                     <input
                                         type="checkbox"
                                         ref={headerCheckboxRef}
                                         onChange={handleSelectAll}
                                         checked={selectedIds.length === sortedData.length && sortedData.length > 0}
-                                        className="w-4 h-4   dark:bg-slate-700 dark:border-slate-600"
+                                        className="w-4 h-4  cursor-pointer  dark:bg-slate-700 dark:border-slate-600"
                                     />
                                 </th>
-                                <th className="px-4 py-4 text-center border-r border-slate-700 dark:border-slate-800">Actions</th>
+                                <th className="px-4 py-1 text-center border-r border-slate-700 dark:border-slate-800">Actions</th>
                                 {[
                                     "Date", "LR NO.", "Vehicle", "Invoice No", "DI No.", "DO No.",
                                     "Recipient", "Destination", "Qty", "Packages", "GSTIN No",
                                     "Total Value", 
                                 ].map((h) => (
-                                    <th key={h} className="px-4 text-center py-4 text-[11px] uppercase tracking-wider font-bold border-r border-slate-700 dark:border-slate-800 whitespace-nowrap">
+                                    <th key={h} className="px-4 text-center py-1 text-[11px] uppercase tracking-wider font-bold border-r border-slate-700 dark:border-slate-800 whitespace-nowrap">
                                         {h}
                                     </th>
                                 ))}
                              </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-bold uppercase text-[11px] text-slate-700 dark:text-slate-300">
-                            {sortedData.map((bill) => bill.LRNO ?  (
-                                <tr key={bill._id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                    <td className="px-4 py-3 text-center border-r dark:border-slate-700">
+                            {sortedData.map((bill , i ) => bill.LRNO ?  (
+                                <tr key={bill._id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ">
+                                    <td className="px-4 py-1 text-center border-r dark:border-slate-700">{i+1}</td>
+                                    <td className="px-4 py-1 text-center border-r dark:border-slate-700">
                                         <input
                                             type="checkbox"
-                                            className="w-4 h-4   dark:bg-slate-700 dark:border-slate-600"
+                                            className="w-4 h-4  cursor-pointer  dark:bg-slate-700 dark:border-slate-600"
                                             checked={selectedIds.includes(bill._id)}
                                             onChange={() => setSelectedIds(prev => 
                                                 prev.includes(bill._id) 
@@ -219,25 +221,25 @@ const BiltyTable = ({ data, loading, refreshData, showNotification }) => {
                                             )}
                                         />
                                     </td>
-                                    <td className="px-4 py-3 border-r dark:border-slate-700">
+                                    <td className="px-3 py-1 border-r dark:border-slate-700">
                                         <div className="flex items-center justify-center gap-2">
                                             <Printer className="mx-auto cursor-pointer hover:text-blue-600 dark:hover:text-blue-400" onClick={() => { setPData(bill); setPrintBityBtn(true); }} size={18} />
-                                            <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30  "><Edit3 size={14} /></button>
+                                            <button onClick={() => { setSelectedBill(bill); setIsEditOpen(true); }} className="text-blue-500 p-1.5  "><Edit3 size={14} /></button>
                                         </div>
                                     </td>
 
-                                    <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{bill.DateOfIssueOfInvoice}</td>
-                                    <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{bill.LRNO}</td>
-                                    <td className="px-4 py-3 text-center font-mono text-slate-800 dark:text-white">{bill.VehicleNo}</td>
-                                    <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.InvoiceNo}</td>
-                                    <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.DINo}</td>
-                                    <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.DONo || "0"}</td>
-                                    <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200 min-w-[150px]">{bill.NameOfRecipient}</td>
-                                    <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{bill.Destination}</td>
-                                    <td className="px-4 py-3 text-center dark:text-slate-200">{bill.Quantity}</td>
-                                    <td className="px-4 py-3 text-center dark:text-slate-200">{bill.Packages}</td>
-                                    <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 text-[10px]">{bill.GSTINNo}</td>
-                                    <td className="px-4 py-3 text-center text-green-700 dark:text-green-400 font-black">₹{bill.TotalInvoiceValue?.toLocaleString('en-IN')}</td>
+                                    <td className=" px-3 py-1 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{bill.DateOfIssueOfInvoice}</td>
+                                    <td className=" px-3 py-1 text-center font-medium text-blue-600 dark:text-blue-400">{bill.LRNO}</td>
+                                    <td className=" px-3 py-1 text-center font-mono text-slate-800 dark:text-white">{bill.VehicleNo}</td>
+                                    <td className=" px-3 py-1 text-center text-slate-600 dark:text-slate-300">{bill.InvoiceNo}</td>
+                                    <td className=" px-3 py-1 text-center text-slate-600 dark:text-slate-300">{bill.DINo}</td>
+                                    <td className=" px-3 py-1 text-center text-slate-600 dark:text-slate-300">{bill.DONo || "0"}</td>
+                                    <td className=" px-3 py-1 text-center text-slate-700 dark:text-slate-200 min-w-[150px]">{bill.NameOfRecipient}</td>
+                                    <td className=" px-3 py-1 text-center text-slate-600 dark:text-slate-300">{bill.Destination}</td>
+                                    <td className=" px-3 py-1 text-center dark:text-slate-200">{bill.Quantity}</td>
+                                    <td className=" px-3 py-1 text-center dark:text-slate-200">{bill.Packages}</td>
+                                    <td className=" px-3 py-1 text-center text-slate-500 dark:text-slate-400 text-[10px]">{bill.GSTINNo}</td>
+                                    <td className=" px-3 py-1 text-center text-green-700 dark:text-green-400 font-black">₹{bill.TotalInvoiceValue?.toLocaleString('en-IN')}</td>
                                 </tr>
                             ) : null)}
                         </tbody>

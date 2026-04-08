@@ -110,7 +110,7 @@ const FrightTable = ({
   const [fetchingPumps, setFetchingPumps] = useState(false);
   const [desilEntries, setDesilEntries] = useState([]);
   const [loadingDesil, setLoadingDesil] = useState(false);
-
+  const count = 0
   const headerCheckboxRef = useRef(null);
 
   useEffect(() => {
@@ -680,9 +680,12 @@ const FrightTable = ({
       <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden rounded">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 z-20 bg-slate-800 dark:bg-black text-white">
-              <tr>
-                <th className="px-4 py-4 text-center border-r border-slate-700 dark:border-slate-800">
+            <thead className="sticky top-0 z-20 bg-blue-500 dark:bg-gray-800 text-white dark:text-blue-300">
+              <tr >
+                <th className="px-4 py-1 text-center border-r border-slate-700 dark:border-slate-800">
+
+                </th>
+                <th className="px-4 py-1 text-center border-r border-slate-700 dark:border-slate-800">
                   <input
                     type="checkbox"
                     ref={headerCheckboxRef}
@@ -691,46 +694,50 @@ const FrightTable = ({
                     className="dark:bg-slate-700 dark:border-slate-600"
                   />
                 </th>
-                <th className="px-4 py-4 text-center border-r border-slate-700 dark:border-slate-800">Actions</th>
+                <th className="px-4 py-1 text-center border-r border-slate-700 dark:border-slate-800">Actions</th>
                 {mainHeaders.map((h) => (
-                  <th key={h} className="px-4 text-center py-4 text-[11px] uppercase tracking-wider font-bold border-r border-slate-700 dark:border-slate-800 whitespace-nowrap">
+                  <th key={h} className="px-4 text-center py-1 text-[11px] uppercase tracking-wider font-bold border-r border-slate-700 dark:border-slate-800 whitespace-nowrap">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-bold uppercase text-[11px] text-slate-700 dark:text-slate-300">
-              {sortedData.map((item) => (
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-thin uppercase text-[11px] text-slate-700 dark:text-slate-300">
+              {sortedData.map((item , i) => (
+                
                 <tr key={item._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${selectedIds.includes(item._id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''} ${item.isDesil ? 'bg-orange-50/30 dark:bg-orange-900/10' : ''}`}>
-                  <td className="px-4 py-3 text-center border-r dark:border-slate-700">
+                 <td className="px-4 py-1 text-center border-r dark:border-slate-700">
+                  { i+1 }
+                 </td>
+                  <td className="px-4 py-1 text-center border-r dark:border-slate-700">
                     <input type="checkbox" checked={selectedIds.includes(item._id)}
                       onChange={() => setSelectedIds(prev => prev.includes(item._id) ? prev.filter(i => i !== item._id) : [...prev, item._id])}
                       className="dark:bg-slate-700 dark:border-slate-600" />
                   </td>
-                  <td className="px-4 py-3 border-r dark:border-slate-700">
+                  <td className="px-4 py-1 border-r dark:border-slate-700">
                     <div className="flex items-center justify-center gap-2">
                       {item.LRNO && (
                         <button onClick={() => { setSelectedBill(item); setIsEditOpen(true); }} className="text-blue-500 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded"><Edit3 size={14} /></button>
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{item.DateOfIssueOfInvoice}</td>
-                  <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{item.LRNO}</td>
-                  <td className="px-4 py-3 text-center font-medium text-blue-600 dark:text-blue-400">{item.challanNO}</td>
-                  <td className="px-4 py-3 text-center font-mono text-slate-800 dark:text-white">{item.VehicleNo}</td>
-                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{item.DINo}</td>
-                  <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-200 min-w-[150px]">{item.NameOfRecipient}</td>
-                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{item.Destination}</td>
-                  <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(item.Quantity)}</td>
-                  <td className="px-4 py-3 text-center dark:text-slate-200">{parseQty(item.pmt)}</td>
-                  <td className="px-4 py-3 text-center text-blue-600 dark:text-blue-400">₹{item.frightAmount || 0}</td>
-                  <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">₹{item.commeion || 0}</td>
-                  <td className="px-4 py-3 text-center text-red-600 dark:text-red-400">₹{item.advanceCash || 0}</td>
-                  <td className="px-4 py-3 text-center text-red-500 dark:text-red-400">₹{item.desil || 0}</td>
-                  <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 uppercase">{item.petrolPump || "N/A"}</td>
-                  <td className="px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black bg-blue-50 dark:bg-blue-900/20">₹{item.faynalAmmount || 0}</td>
-                  <td className="px-4 py-3 text-center text-nowrap">{item.remark}</td>
-                  <td className={`px-4 py-3 text-center font-black border-x dark:border-slate-700 ${item.tripBalanceAmmount < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
+                  <td className="px-4 py-1 text-center text-slate-500 dark:text-slate-400 whitespace-nowrap">{item.DateOfIssueOfInvoice}</td>
+                  <td className="px-4 py-1 text-center font-medium text-blue-600 dark:text-blue-400">{item.LRNO}</td>
+                  <td className="px-4 py-1 text-center font-medium text-blue-600 dark:text-blue-400">{item.challanNO}</td>
+                  <td className="px-4 py-1 text-center font-mono text-slate-800 dark:text-white">{item.VehicleNo}</td>
+                  <td className="px-4 py-1 text-center text-slate-600 dark:text-slate-300">{item.DINo}</td>
+                  <td className="px-4 py-1 text-center  text-slate-700 dark:text-slate-200 font-thin min-w-[150px]">{item.NameOfRecipient}</td>
+                  <td className="px-4 py-1 text-center text-slate-600 font-thin dark:text-slate-300">{item.Destination}</td>
+                  <td className="px-4 py-1 text-center dark:text-slate-200">{parseQty(item.Quantity)}</td>
+                  <td className="px-4 py-1 text-center dark:text-slate-200">{parseQty(item.pmt)}</td>
+                  <td className="px-4 py-1 text-center text-blue-600 dark:text-blue-400">₹{item.frightAmount || 0}</td>
+                  <td className="px-4 py-1 text-center text-slate-600 dark:text-slate-300">₹{item.commeion || 0}</td>
+                  <td className="px-4 py-1 text-center text-red-600 dark:text-red-400">₹{item.advanceCash || 0}</td>
+                  <td className="px-4 py-1 text-center text-red-500 dark:text-red-400">₹{item.desil || 0}</td>
+                  <td className="px-4 py-1 text-center text-slate-500 dark:text-slate-400 uppercase">{item.petrolPump || "N/A"}</td>
+                  <td className="px-4 py-1 text-center text-blue-800 dark:text-blue-300 font-black bg-blue-50 dark:bg-blue-900/20">₹{item.faynalAmmount || 0}</td>
+                  <td className="px-4 py-1 text-center text-nowrap">{item.remark}</td>
+                  <td className={`px-4 py-1 text-center font-black border-x dark:border-slate-700 ${item.tripBalanceAmmount < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"}`}>
                     ₹{item.tripBalanceAmmount || 0}
                   </td>
                 </tr>
@@ -741,23 +748,25 @@ const FrightTable = ({
                 {(() => {
                   const cells = [
                     { colSpan: 2, content: "Totals", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
-                    { content: "", className: "px-4 py-3 text-center text-slate-700 dark:text-slate-200" },
-                    { content: totals.qty, className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" },
-                    { content: "", className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" },
-                    { content: `₹${totals.freight}`, className: "px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-black" },
-                    { content: `₹${totals.commission}`, className: "px-4 py-3 text-center text-slate-600 dark:text-slate-300 font-black" },
-                    { content: `₹${totals.advance}`, className: "px-4 py-3 text-center text-red-600 dark:text-red-400 font-black" },
-                    { content: `₹${totals.diesel}`, className: "px-4 py-3 text-center text-red-500 dark:text-red-400 font-black" },
-                    { content: "", className: "px-4 py-3 text-center text-slate-500 dark:text-slate-400" },
-                    { content: `₹${totals.final}`, className: "px-4 py-3 text-center text-blue-800 dark:text-blue-300 font-black" },
-                    { content: "", className: "px-4 py-3 text-center text-orange-600 dark:text-orange-400 font-black" },
-                    { content: `₹${totals.balance}`, className: `px-4 py-3 text-center font-black ${totals.balance < 0 ? "text-red-700 dark:text-red-300" : "text-green-700 dark:text-green-300"}` },
+                    { content: "", className: "px-4 py-1 text-center text-slate-700 dark:text-slate-200" },
+                    { content: "", className: "px-4 py-1 text-center text-slate-700 dark:text-slate-200" },
+                                        { content: "", className: "px-4 py-1 text-center text-slate-700 dark:text-slate-200" },
+
+                    { content: "", className: "px-4 py-1 text-center text-slate-700 dark:text-slate-200" },
+                    { content: "", className: "px-4 py-1 text-center text-slate-700 dark:text-slate-200" },
+                    { content: "", className: "px-4 py-1 text-center text-slate-700 dark:text-slate-200" },
+                    { content: "", className: "px-4 py-1 text-center text-slate-700 dark:text-slate-200" },
+                    { content: "", className: "px-4 py-1 text-center text-slate-700 dark:text-slate-200" },
+                    { content: totals.qty, className: "px-4 py-1 text-center text-blue-600 dark:text-blue-400 font-black" },
+                    { content: "", className: "px-4 py-1 text-center text-blue-600 dark:text-blue-400 font-black" },
+                    { content: `₹${totals.freight}`, className: "px-4 py-1 text-center text-blue-600 dark:text-blue-400 font-black" },
+                    { content: `₹${totals.commission}`, className: "px-4 py-1 text-center text-slate-600 dark:text-slate-300 font-black" },
+                    { content: `₹${totals.advance}`, className: "px-4 py-1 text-center text-red-600 dark:text-red-400 font-black" },
+                    { content: `₹${totals.diesel}`, className: "px-4 py-1 text-center text-red-500 dark:text-red-400 font-black" },
+                    { content: "", className: "px-4 py-1 text-center text-slate-500 dark:text-slate-400" },
+                    { content: `₹${totals.final}`, className: "px-4 py-1 text-center text-blue-800 dark:text-blue-300 font-black" },
+                    { content: "", className: "px-4 py-1 text-center text-orange-600 dark:text-orange-400 font-black" },
+                    { content: `₹${totals.balance}`, className: `px-4 py-1 text-center font-black ${totals.balance < 0 ? "text-red-700 dark:text-red-300" : "text-green-700 dark:text-green-300"}` },
                   ];
                   return cells.map((cell, idx) => {
                     if (cell.colSpan) {

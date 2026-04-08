@@ -33,7 +33,8 @@ function Login({ setAuthForm, setInfo }) {
         setTimeout(() => navigate("/"), 2000);
       }
     } catch (error) {
-      setToast({ id: Date.now(), show: true, success: false, message: error.response?.data?.message || "Invalid credentials" });
+      console.log(error.response)
+      setToast({ id: Date.now(), show: true, success: false, message: error.response?.data?.message || "Login failed" });
     } finally {
       setLoading(false);
     }
