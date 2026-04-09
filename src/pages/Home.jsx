@@ -31,14 +31,8 @@ import BoxLoader from "../components/loaders/BoxLoader";
 
 // Skeleton Loaders
 const DashboardCardSkeleton = () => (
-  <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded shadow-sm border border-slate-100 dark:border-slate-700 animate-pulse">
-    <div className="flex items-center gap-3">
-      <div className="p-2 sm:p-3 bg-slate-200 dark:bg-slate-700 rounded w-10 h-10 sm:w-12 sm:h-12"></div>
-      <div className="flex-1">
-        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-2"></div>
-        <div className="h-6 bg-slate-300 dark:bg-slate-600 rounded w-32"></div>
-      </div>
-    </div>
+  <div className="bg-white  flex justify-center items-center dark:bg-slate-800 p-4 sm:p-6 rounded shadow-sm border border-slate-100 dark:border-slate-700 animate-pulse">
+    <BoxLoader />
   </div>
 );
 
@@ -741,9 +735,9 @@ function Home() {
               {item.icon}
               {!sidebarCollapsed && <span>{item.label}</span>}
             </button>
-             
+
           ))}
-            
+
         </nav>
 
         <div className="p-4 dark:border-slate-900 space-y-[-8px]">
@@ -783,7 +777,9 @@ function Home() {
             <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-slate-800 dark:text-white tracking-tighter truncate max-w-[120px] sm:max-w-[200px] md:max-w-full">
               {menuOption} Manager
             </h1>
+
           </div>
+
           <div className="flex items-center gap-2 sm:gap-3">
             <div onClick={() => setShowProfile(true)} className="cursor-pointer group flex items-center gap-2">
               <div className="text-right hidden sm:block">
@@ -795,21 +791,22 @@ function Home() {
               </div>
             </div>
           </div>
+
         </header>
 
         <main className="p-3 sm:p-4 md:p-6 lg:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
           {/* Dashboard Section - same as before */}
           {menuOption === "home" && (
-            <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 font-black pb-48">
+            <div className="space-y-4  sm:space-y-6 animate-in fade-in duration-500 font-black pb-48">
               {/* Premium Status Banner */}
               {user?.isPremium && (
-                <div className={`mb-6 p-4 rounded shadow-lg border-l-4 ${timeRemaining?.expired
+                <div className={`mb-6 m-auto md:m-0  p-4 w-fit rounded shadow-lg border-l-4 ${timeRemaining?.expired
                   ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
                   : timeRemaining?.days <= 7
                     ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-500'
                     : 'bg-green-50 dark:bg-green-900/20 border-green-500'
                   }`}>
-                  <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex  items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded ${timeRemaining?.expired
                         ? 'bg-red-100 dark:bg-red-900/40'
@@ -847,18 +844,14 @@ function Home() {
                         {timeRemaining?.expired ? 'Renew Now' : 'Extend'}
                       </button>
                     )}
+
                   </div>
+
                 </div>
               )}
 
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                <h2 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">
-                  Dashboard
-                </h2>
-              </div>
-
               {dashFilterType === "custom" && (
-                <div className="flex flex-wrap items-center gap-2 mt-3">
+                <div className="flex  justify-center md:justify-start flex-wrap items-center gap-2 mt-3">
                   <input
                     type="date"
                     value={dashStartDate}
@@ -872,7 +865,7 @@ function Home() {
                     onChange={(e) => setDashEndDate(e.target.value)}
                     className="border px-3 py-2 text-xs bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700 rounded"
                   />
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex  flex-wrap items-center gap-2">
                     <button
                       onClick={() => {
                         getDashboardData(dashFilterType, dashStartDate, dashEndDate);
@@ -891,21 +884,28 @@ function Home() {
                   </div>
                 </div>
               )}
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <h2 className="text-lg sm:text-xl md:text-2xl text-slate-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-8 tracking-tighter">
+                  Dashboard
+                </h2>
+              </div>
 
-              {/* Dashboard Cards */}
+
+
+              {/* Dashboard Cards |||||  */}
               {loading.dashboard || loading.counts ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 lg:grid-cols-5 gap-3 sm:gap-4">
                   <DashboardCardSkeleton />
                   <DashboardCardSkeleton />
                   <DashboardCardSkeleton />
                   <DashboardCardSkeleton />
                   <DashboardCardSkeleton />
-                  <DashboardCardSkeleton />
+
                 </div>
               ) : error.dashboard ? (
                 <ErrorState message={error.dashboard} onRetry={() => getDashboardData(dashFilterType, dashStartDate, dashEndDate)} />
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                   <div className="bg-white dark:bg-slate-800 p-5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Revenue</p>
                     <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">₹{dashData.totalRevenue?.toLocaleString('en-IN') || 0}</p>
@@ -937,19 +937,20 @@ function Home() {
                 </div>
               )}
 
-              {/* Pump Summary */}
+              {/* Pump Summary /  */}
               <div className="mt-8">
-                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 underline decoration-green-500 decoration-4 underline-offset-8">
-                  Petrol Pumps Payable (as of {dashEndDate})
-                </h3>
+
                 {loading.pumpSummary ? (
                   <div className="bg-white dark:bg-slate-800 rounded shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
-                          <tr><th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase">Pump Name</th><th className="px-4 py-3 font-black text-slate-600 dark:text-slate-300 uppercase text-right">Balance (₹)</th></tr>
-                        </thead>
-                        <tbody><TableRowSkeleton rows={3} /></tbody>
+
+                        <tbody >
+                          <div className="p-8 text-center   flex flex-row justify-center items-center ">
+                            <ButtonLoaders />
+                          </div>
+
+                        </tbody>
                       </table>
                     </div>
                   </div>
@@ -983,14 +984,19 @@ function Home() {
                 )}
               </div>
 
-              {/* Driver Payments */}
+              {/* Driver Payments /   */}
               {loading.stats ? (
-                <div className="mt-6"><div className="bg-white dark:bg-slate-800 rounded shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"><div className="p-8 text-center"><ButtonLoaders /></div></div></div>
+                <div className="mt-6">
+                  <div className="bg-white  dark:bg-slate-800 rounded  shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="p-8 text-center   flex flex-row justify-center items-center ">
+                      <ButtonLoaders />
+                    </div>
+                  </div>
+                </div>
               ) : error.stats ? (
                 <div className="mt-6"><ErrorState message={error.stats} onRetry={() => fetchDriverMonthlyPayments(dashStartDate, dashEndDate)} /></div>
               ) : driverMonthlyPayments && driverMonthlyPayments.length > 0 ? (
                 <div className="mt-6 pb-20">
-                  <h4 className="text-sm font-black text-slate-900 dark:text-white mb-3 underline decoration-blue-500 decoration-4 underline-offset-8">Driver Transactions (Selected Period)</h4>
                   <div className="bg-white dark:bg-slate-800 rounded shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
@@ -1064,7 +1070,7 @@ function Home() {
                     </button>
                   </div>
                 </div>
-                <div className="flex gap-2 relative new-bilty-dropdown">
+                <div className="flex   gap-2 relative new-bilty-dropdown">
                   <button
                     onClick={() => setShowNewBiltyMenu(!showNewBiltyMenu)}
                     className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-1 text-[10px] font-black shadow-lg w-full sm:w-auto"

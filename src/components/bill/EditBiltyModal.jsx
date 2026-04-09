@@ -5,6 +5,7 @@ import { refreshToken } from "../../api/api";
 import { backendUrl } from "../../utils/backendUrl";
 import AddPumpModal from "../pump/AddPumpModal";
 import SuccessToster from "../toster/SuccessToster";
+import ButtonLoaders from "../loaders/ButtonLoaders";
 
 // FIXED: Manual string manipulation to prevent Date/Month swap
 const convertToInputDate = (dateStr) => {
@@ -338,15 +339,12 @@ const EditBiltyModal = ({ isOpen, onClose, bill, onSuccess, showNotification }) 
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-70 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest rounded-lg flex items-center justify-center gap-2 min-w-[160px]"
+                className=" bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-70 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest rounded-lg flex items-center justify-center gap-2 min-w-[160px]"
               >
                 {loading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    Updating...
-                  </>
+                 <ButtonLoaders/>
                 ) : (
-                  "Update Bilty"
+                  "Update"
                 )}
               </button>
             </div>

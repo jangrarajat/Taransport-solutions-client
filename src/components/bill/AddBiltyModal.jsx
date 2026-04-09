@@ -5,26 +5,27 @@ import { refreshToken } from "../../api/api";
 import { backendUrl } from "../../utils/backendUrl";
 import AddPumpModal from "../pump/AddPumpModal";
 import SuccessToster from "../toster/SuccessToster";
+import ButtonLoaders from "../loaders/ButtonLoaders";
 
 const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
   const initialState = {
-    InvoiceNo: "",
+    InvoiceNo: "0",
     DateOfIssueOfInvoice: "",
     NameOfRecipient: "",
-    GSTINNo: "",
+    GSTINNo: "0",
     Quantity: "",
     Packages: "",
     LRNO: "",
     VehicleNo: "",
     Destination: "",
     challanNO: "",
-    ratePMT: "",
-    advanceCash: "",
-    desilOnRent: "",
+    ratePMT: "0",
+    advanceCash: "0",
+    desilOnRent: "0",
     petrolPump: "",
-    DONo: "",
+    DONo: "0",
     DINo: "",
-    TotalInvoiceValue: ""
+    TotalInvoiceValue: "0"
   };
 
   const [formData, setFormData] = useState(initialState);
@@ -259,9 +260,10 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest"
+                className=" w-10 flex justify-center items-center
+                  bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded font-black shadow-lg shadow-blue-200 dark:shadow-blue-900/50 transition-all active:scale-95 disabled:opacity-50 duration-200 order-1 sm:order-2 uppercase text-xs tracking-widest"
               >
-                {loading ? "Saving..." : "Save Bilty & Trip"}
+                {loading ? (<ButtonLoaders/>) : "Save "}
               </button>
             </div>
           </form>
