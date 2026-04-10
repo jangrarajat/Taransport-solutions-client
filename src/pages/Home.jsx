@@ -4,7 +4,8 @@ import {
   Truck, FileText, Fuel, BarChart3, Menu, X, CircleUserRound, ClipboardPlus,
   ChevronLeft, ChevronRight, Plus, LogOut, Crown,
   TrendingUp, Wallet, Receipt, Search, User as UserIcon, Settings,
-  RotateCcw, AlertCircle, RefreshCw, ListChecks, Upload, PanelLeftClose, PanelLeftOpen
+  RotateCcw, AlertCircle, RefreshCw, ListChecks, Upload, PanelLeftClose, PanelLeftOpen,
+  HelpCircle
 } from "lucide-react";
 import axios from "axios";
 import { refreshToken, fetchLatestUserData } from "../api/api";
@@ -28,6 +29,7 @@ import ButtonLoaders from "../components/loaders/ButtonLoaders";
 import ProfilePage from "../components/ProfilePage";
 import BulkImportModal from "../components/bill/BulkImportModal";
 import BoxLoader from "../components/loaders/BoxLoader";
+import HelpSupport from "../components/HelpSupport";
 
 // Skeleton Loaders
 const DashboardCardSkeleton = () => (
@@ -77,6 +79,7 @@ function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showHelpSupport, setShowHelpSupport] = useState(false);
 
   // Loading states - but we won't show loader for search
   const [loading, setLoading] = useState({
@@ -613,6 +616,8 @@ function Home() {
       getBilty(1, pageSize, true); // Show loader on initial load
     } else if (menuOption === "expantion") {
       getExpenses(1, pageSize, true); // Show loader on initial load
+    } else if (menuOption === "help") {
+      setShowHelpSupport(true);
     }
   }, [menuOption]);
 
@@ -680,8 +685,19 @@ function Home() {
           }
         }}
       />
+      
+      {/* Help & Support Modal */}
+      {showHelpSupport && (
+        <HelpSupport 
+          user={user}
+          onClose={() => {
+            setShowHelpSupport(false);
+            setMenuOption("home");
+          }}
+        />
+      )}
 
-      {/* Sidebar - same as before */}
+      {/* Sidebar */}
       <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 fixed md:relative z-50 h-full bg-white dark:bg-gray-900 text-blue-400 transition-all duration-300 flex flex-col shadow-2xl ${sidebarCollapsed ? 'w-20' : 'w-52'}`}>
         <div className={`p-5 flex items-center justify-between dark:border-slate-900 ${sidebarCollapsed ? 'flex-col gap-3' : ''}`}>
           <button
@@ -725,10 +741,20 @@ function Home() {
             { name: "Reports", icon: <ClipboardPlus size={20} />, label: "Reports" },
             { name: "petrolPump", icon: <Fuel size={20} />, label: "Petrol Pump" },
             { name: "expantion", icon: <Receipt size={20} />, label: "Expenses" },
+            { name: "help", icon: <HelpCircle size={20} setShowHelpSupport={setShowHelpSupport} />, label: "Help & Support" },
           ].map((item) => (
             <button
               key={item.name}
-              onClick={() => { setMenuOption(item.name); setCurrentPage(1); setSearchTerm(""); setSidebarOpen(false); setSelectedPump(null); }}
+              onClick={() => { 
+                setMenuOption(item.name); 
+                setCurrentPage(1); 
+                setSearchTerm(""); 
+                setSidebarOpen(false); 
+                setSelectedPump(null);
+                if (item.name === "help") {
+                  setShowHelpSupport(true);
+                }
+              }}
               className={`w-full flex items-center gap-4 p-2 rounded rounded-tl-xl  [clip-path:polygon(0%_0%,_90%_0%,_100%_50%,_90%_100%,_0%_100%)] transition-all ${menuOption === item.name ? "bg-blue-600 scale-105 text-white shadow-xl shadow-blue-900/40" : "text-slate-400 hover:bg-slate-700 hover:text-white dark:hover:bg-slate-900"} ${sidebarCollapsed ? 'justify-center' : ''} duration-300`}
               title={sidebarCollapsed ? item.label : ""}
             >
@@ -775,7 +801,7 @@ function Home() {
               <Menu size={20} className="dark:text-white" />
             </button>
             <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-slate-800 dark:text-white tracking-tighter truncate max-w-[120px] sm:max-w-[200px] md:max-w-full">
-              {menuOption} Manager
+              {menuOption === "help" ? "Help & Support" : `${menuOption} Manager`}
             </h1>
 
           </div>
@@ -795,7 +821,7 @@ function Home() {
         </header>
 
         <main className="p-3 sm:p-4 md:p-6 lg:p-10 overflow-y-auto grow bg-gray-50/50 dark:bg-slate-900">
-          {/* Dashboard Section - same as before */}
+          {/* Dashboard Section */}
           {menuOption === "home" && (
             <div className="space-y-4  sm:space-y-6 animate-in fade-in duration-500 font-black pb-48">
               {/* Premium Status Banner */}
@@ -890,9 +916,7 @@ function Home() {
                 </h2>
               </div>
 
-
-
-              {/* Dashboard Cards |||||  */}
+              {/* Dashboard Cards */}
               {loading.dashboard || loading.counts ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 lg:grid-cols-5 gap-3 sm:gap-4">
                   <DashboardCardSkeleton />
@@ -937,21 +961,13 @@ function Home() {
                 </div>
               )}
 
-              {/* Pump Summary /  */}
+              {/* Pump Summary */}
               <div className="mt-8">
 
                 {loading.pumpSummary ? (
                   <div className="bg-white dark:bg-slate-800 rounded shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
-
-                        <tbody >
-                          <div className="p-8 text-center   flex flex-row justify-center items-center ">
-                            <ButtonLoaders />
-                          </div>
-
-                        </tbody>
-                      </table>
+                    <div className="p-8 text-center flex flex-row justify-center items-center">
+                      <ButtonLoaders />
                     </div>
                   </div>
                 ) : error.pumpSummary ? (
@@ -984,11 +1000,11 @@ function Home() {
                 )}
               </div>
 
-              {/* Driver Payments /   */}
+              {/* Driver Payments */}
               {loading.stats ? (
                 <div className="mt-6">
-                  <div className="bg-white  dark:bg-slate-800 rounded  shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div className="p-8 text-center   flex flex-row justify-center items-center ">
+                  <div className="bg-white dark:bg-slate-800 rounded shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="p-8 text-center flex flex-row justify-center items-center">
                       <ButtonLoaders />
                     </div>
                   </div>
@@ -1017,6 +1033,16 @@ function Home() {
                   </div>
                 </div>
               ) : null}
+            </div>
+          )}
+
+          {/* Help & Support Section */}
+          {menuOption === "help" && (
+            <div className="animate-in fade-in duration-500">
+              <HelpSupport 
+                user={user}
+                onClose={() => setMenuOption("home")}
+              />
             </div>
           )}
 
@@ -1232,7 +1258,7 @@ function Home() {
           )}
 
           {/* Pagination */}
-          {menuOption !== "home" && menuOption !== "petrolPump" && menuOption !== "Reports" && totalPages > 1 && (
+          {menuOption !== "home" && menuOption !== "petrolPump" && menuOption !== "Reports" && menuOption !== "help" && totalPages > 1 && (
             <div className="flex items-center mb-48 justify-between bg-white dark:bg-slate-800 px-4 py-3 mt-4 rounded border dark:border-slate-700 shadow-sm">
               <div className="flex items-center gap-4">
                 <p className="text-[8px] uppercase text-gray-500 dark:text-slate-400 font-sans font-bold">
