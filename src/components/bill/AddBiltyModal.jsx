@@ -93,29 +93,32 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // ========== ईवेंट क्रैश फिक्स के साथ ==========
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
-    // Validate vehicle exists
     const vehicleExists = vehicleList.some(v => v.vehicleNo.toUpperCase() === formData.VehicleNo.toUpperCase());
     if (!vehicleExists) {
       showInternalNotification(false, "Vehicle number not registered. Please add it in Reports > Vehicles first.");
       return;
     }
 
-    setLoading(true);
-    try {
+    const doSubmit = async () => {
       const response = await axios.post(`${backendUrl}/api/bill/add-bill-entry`, formData, {
         withCredentials: true
       });
+      return response.data;
+    };
 
-      if (response.data.success) {
+    setLoading(true);
+    try {
+      const data = await doSubmit();
+      if (data.success) {
         const updatedUser = {
           ...transportUser,
           biltyCount: (transportUser.biltyCount || 0) + 1
         };
         localStorage.setItem("transportUser", JSON.stringify(updatedUser));
-
         showInternalNotification(true, "Bilty added successfully 🚛");
         setFormData(initialState);
         setTimeout(() => {
@@ -126,11 +129,37 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
     } catch (error) {
       if (error.response?.status === 401) {
         const isRefreshed = await refreshToken();
-        if (isRefreshed) return handleSubmit();
-      }
-      
-      // Handle premium errors
-      if (error.response?.data?.code === "PREMIUM_REQUIRED" || error.response?.data?.code === "PREMIUM_EXPIRED") {
+        if (isRefreshed) {
+          try {
+            const data = await doSubmit();
+            if (data.success) {
+              const updatedUser = {
+                ...transportUser,
+                biltyCount: (transportUser.biltyCount || 0) + 1
+              };
+              localStorage.setItem("transportUser", JSON.stringify(updatedUser));
+              showInternalNotification(true, "Bilty added successfully 🚛");
+              setFormData(initialState);
+              setTimeout(() => {
+                onSuccess("Bilty added successfully 🚛");
+                onClose();
+              }, 1000);
+            }
+          } catch (retryError) {
+            if (retryError.response?.data?.code === "PREMIUM_REQUIRED" || retryError.response?.data?.code === "PREMIUM_EXPIRED") {
+              showInternalNotification(false, retryError.response?.data?.message);
+              setTimeout(() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('openPricing'));
+                }
+                onClose();
+              }, 2000);
+            } else {
+              showInternalNotification(false, retryError.response?.data?.message || "Failed after token refresh");
+            }
+          }
+        }
+      } else if (error.response?.data?.code === "PREMIUM_REQUIRED" || error.response?.data?.code === "PREMIUM_EXPIRED") {
         showInternalNotification(false, error.response?.data?.message);
         setTimeout(() => {
           if (typeof window !== 'undefined') {
@@ -147,7 +176,7 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
   };
 
   const handleAddPumpSuccess = () => {
-    fetchPumps(); // refresh pump list after adding
+    fetchPumps();
     showInternalNotification(true, "Pump added successfully");
   };
 
@@ -182,7 +211,6 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
                   onChange={handleChange}
                   className="w-full border border-slate-200 dark:border-slate-700 rounded px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all bg-slate-50 dark:bg-slate-800 dark:text-white font-medium"
                   placeholder="Enter vehicle number"
-                  // removed required
                 />
                 <datalist id="vehicleList">
                   {fetchingVehicles ? (
@@ -240,7 +268,6 @@ const AddBiltyModal = ({ isOpen, onClose, onSuccess, onError }) => {
                       {key.replace(/([A-Z])/g, ' $1').trim()}
                     </label>
                     <input
-                      // removed required condition
                       type={key === "DateOfIssueOfInvoice" ? "date" : "text"}
                       name={key}
                       value={formData[key]}
