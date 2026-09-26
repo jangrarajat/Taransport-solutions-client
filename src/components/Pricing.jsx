@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, CheckCircle2, ShieldCheck, Zap, Crown } from 'lucide-react';
+import { X, CheckCircle2, ShieldCheck, Zap, Crown, Loader2 } from 'lucide-react';
 import SuccessToster from './toster/SuccessToster';
 import { backendUrl } from '../utils/backendUrl';
 import { getUserFromStorage } from "../utils/userUtils";
@@ -8,11 +8,14 @@ import { getUserFromStorage } from "../utils/userUtils";
 const Pricing = ({ isOpen, onClose }) => {
     const [companyName, setCompanyName] = useState('RM Smart Tms');
     const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
+    const [loadingPlanId, setLoadingPlanId] = useState(null);
 
     useEffect(() => {
-        const user = getUserFromStorage();
-        if (user && user.companyName) {
-            setCompanyName(user.companyName);
+        const data = getUserFromStorage();
+        console.log("from pricing page ");
+        console.log(data);
+        if (data && data.companyName) {
+            setCompanyName(data.companyName);
         }
     }, []);
 
@@ -23,16 +26,16 @@ const Pricing = ({ isOpen, onClose }) => {
         setTimeout(() => setToast(prev => ({ ...prev, show: false })), 5000);
     };
 
-    // Aapke bataye gaye features ke sath updated plans
     const plans = [
         { 
             id: "monthly", 
             name: "Silver Plan", 
             price: "1,000", 
             duration: "1 Month", 
-            icon: <ShieldCheck className="w-6 h-6 text-slate-400" />,
-            badgeBg: "bg-slate-800 text-slate-200 border border-slate-700",
-            btnBg: "bg-slate-800 hover:bg-slate-700 text-white",
+            icon: <ShieldCheck className="w-6 h-6 text-slate-300" />,
+            cardStyle: "bg-gradient-to-b from-slate-900/90 via-slate-900/95 to-slate-950 border-slate-700/60 shadow-slate-900/50",
+            badgeBg: "bg-slate-800 text-slate-200 border border-slate-600",
+            btnBg: "bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 text-white shadow-md shadow-slate-700/30",
             features: [
                 "Bilty Generation Features", 
                 "Vehicle-wise Report Tracking",
@@ -45,9 +48,10 @@ const Pricing = ({ isOpen, onClose }) => {
             name: "Gold Plan", 
             price: "6,000", 
             duration: "6 Months", 
-            icon: <Zap className="w-6 h-6 text-blue-400" />,
-            badgeBg: "bg-blue-600 text-white shadow-lg shadow-blue-500/30",
-            btnBg: "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/25",
+            icon: <Zap className="w-6 h-6 text-amber-300" />,
+            cardStyle: "bg-gradient-to-b from-amber-950/30 via-slate-900/95 to-slate-950 border-amber-500/40 shadow-amber-500/10",
+            badgeBg: "bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-md shadow-amber-500/30",
+            btnBg: "bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black shadow-lg shadow-amber-500/25",
             features: [
                 "Unlimited Bilty Features", 
                 "Petrol Pump Udhari Tracker (Oil & Payment History)",
@@ -61,10 +65,11 @@ const Pricing = ({ isOpen, onClose }) => {
             name: "Platinum Plan", 
             price: "12,000", 
             duration: "1 Year", 
-             popular: true,
-            icon: <Crown className="w-6 h-6 text-amber-400" />,
-            badgeBg: "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-orange-500/30",
-            btnBg: "bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-lg shadow-orange-500/25",
+            popular: true,
+            icon: <Crown className="w-6 h-6 text-cyan-300" />,
+            cardStyle: "bg-gradient-to-b from-cyan-950/40 via-slate-900/95 to-slate-950 border-cyan-400/60 shadow-cyan-500/20 ring-2 ring-cyan-500/30 lg:-translate-y-2",
+            badgeBg: "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30",
+            btnBg: "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/30",
             features: [
                 "Everything in Gold Plan Included", 
                 "Dedicated Account Manager",
@@ -77,9 +82,11 @@ const Pricing = ({ isOpen, onClose }) => {
 
     const handlePayment = async (planId) => {
         try {
+            setLoadingPlanId(planId);
             const rzpKey = import.meta.env.VITE_APIKEY;
             if (!rzpKey) {
                 showNotification(false, "Razorpay Key missing in environment!");
+                setLoadingPlanId(null);
                 return;
             }
 
@@ -93,14 +100,26 @@ const Pricing = ({ isOpen, onClose }) => {
                 description: "Transport Management Software Subscription",
                 order_id: data.order.id,
                 handler: async (response) => {
-                    const verifyRes = await axios.post(`${backendUrl}/api/user/verify-payment`, { ...response, planId }, { withCredentials: true });
-                    if (verifyRes.data.success) {
-                        localStorage.setItem("transportUser", JSON.stringify(verifyRes.data.user));
-                        showNotification(true, "Premium Subscription Activated! 🚛🎉");
-                        setTimeout(() => {
-                            onClose();
-                            window.location.reload();
-                        }, 2000);
+                    try {
+                        const verifyRes = await axios.post(`${backendUrl}/api/user/verify-payment`, { ...response, planId }, { withCredentials: true });
+                        if (verifyRes.data.success) {
+                            localStorage.setItem("transportUser", JSON.stringify(verifyRes.data.user));
+                            showNotification(true, "Premium Subscription Activated! 🚛🎉");
+                            setTimeout(() => {
+                                onClose();
+                                window.location.reload();
+                            }, 2000);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        showNotification(false, "Payment Verification Failed");
+                    } finally {
+                        setLoadingPlanId(null);
+                    }
+                },
+                modal: {
+                    ondismiss: function () {
+                        setLoadingPlanId(null);
                     }
                 },
                 theme: { color: "#2563eb" }
@@ -110,6 +129,7 @@ const Pricing = ({ isOpen, onClose }) => {
         } catch (error) {
             console.error(error);
             showNotification(false, "Payment Initialization Failed");
+            setLoadingPlanId(null);
         }
     };
 
@@ -126,14 +146,14 @@ const Pricing = ({ isOpen, onClose }) => {
                 {/* Close Button */}
                 <button 
                     onClick={onClose} 
-                    className="absolute top-0 right-0 sm:-top-4 sm:right-0 p-2.5 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full transition-all duration-300 hover:rotate-90 shadow-lg border border-slate-700 z-10"
+                    className="absolute top-0 right-0 sm:-top-4 sm:right-0 p-2.5 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full transition-all duration-300 hover:rotate-90 shadow-lg border border-slate-700 z-10 cursor-pointer"
                 >
                     <X size={22} />
                 </button>
 
                 {/* Header Title */}
                 <div className="text-center mb-10 text-white px-4">
-                    <span className="px-4 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20 inline-block mb-3">
+                    <span className="px-4 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase bg-blue-500/15 text-blue-400 border border-blue-500/30 inline-block mb-3">
                         {companyName} - Upgrade Hub
                     </span>
                     <h2 className="text-3xl sm:text-5xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
@@ -149,23 +169,19 @@ const Pricing = ({ isOpen, onClose }) => {
                     {plans.map(plan => (
                         <div 
                             key={plan.id} 
-                            className={`rounded-3xl p-6 sm:p-8 relative flex flex-col transition-all duration-300 hover:translate-y-[-4px] backdrop-blur-xl bg-slate-900/80 border ${
-                                plan.popular 
-                                    ? 'border-blue-500/80 shadow-2xl shadow-blue-500/20 ring-2 ring-blue-500/40 lg:-translate-y-2' 
-                                    : 'border-slate-800 hover:border-slate-700 shadow-xl'
-                            }`}
+                            className={`rounded-3xl p-6 sm:p-6 relative flex flex-col transition-all duration-300 hover:translate-y-[-4px] backdrop-blur-xl border shadow-xl ${plan.cardStyle}`}
                         >
-                            {/* Most Popular Badge */}
+                            {/* Most Popular / Platinum Badge */}
                             {plan.popular && (
-                                <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-widest shadow-md">
-                                    🔥 Most Popular Choice
+                                <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-4 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-widest shadow-lg">
+                                    ✨ Ultimate Platinum Choice
                                 </span>
                             )}
 
                             {/* Plan Header */}
-                            <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center text-sm justify-between mb-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2.5 rounded-2xl bg-slate-800/80 border border-slate-700/60">
+                                    <div className="p-2.5 rounded-2xl bg-slate-800/80 border border-slate-700/60 shadow-inner">
                                         {plan.icon}
                                     </div>
                                     <h3 className="text-xl font-bold text-white tracking-wide">{plan.name}</h3>
@@ -173,15 +189,15 @@ const Pricing = ({ isOpen, onClose }) => {
                             </div>
 
                             {/* Price */}
-                            <div className="flex items-baseline gap-1.5 my-4 pb-6 border-b border-slate-800">
-                                <span className="text-4xl sm:text-5xl font-black text-white tracking-tight">₹{plan.price}</span>
+                            <div className="flex items-baseline gap-1.5 my-4 pb-6 border-b border-slate-800/80">
+                                <span className="text-2 sm:text-3xl font-black text-white tracking-tight">₹{plan.price}</span>
                                 <span className="text-slate-400 text-sm font-medium">/{plan.duration}</span>
                             </div>
 
                             {/* Features List */}
-                            <ul className="flex-1 space-y-3.5 mb-8">
+                            <ul className="flex-1  space-y-3.5 mb-8">
                                 {plan.features.map((f, i) => (
-                                    <li key={i} className="flex items-start gap-3 text-sm text-slate-300 font-normal leading-snug">
+                                    <li key={i} className="flex items-start gap-3 text-xs text-slate-300 font-normal leading-snug">
                                         <CheckCircle2 size={18} className="text-emerald-400 shrink-0 mt-0.5" />
                                         <span>{f}</span>
                                     </li>
@@ -191,12 +207,43 @@ const Pricing = ({ isOpen, onClose }) => {
                             {/* Action Button */}
                             <button 
                                 onClick={() => handlePayment(plan.id)} 
-                                className={`w-full py-4 rounded-xl font-bold uppercase tracking-wider text-xs active:scale-[0.98] transition-all duration-200 cursor-pointer ${plan.btnBg}`}
+                                disabled={loadingPlanId !== null}
+                                className={`w-full py-4 rounded-sm font-bold uppercase tracking-wider text-xs active:scale-[0.98] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 ${plan.btnBg} ${loadingPlanId !== null ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
-                                Activate Plan Now
+                                {loadingPlanId === plan.id ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Processing...
+                                    </>
+                                ) : (
+                                    "Activate Plan Now"
+                                )}
                             </button>
                         </div>
                     ))}
+                </div>
+
+                {/* Footer Policy & Non-Refundable Disclaimer */}
+                <div className="mt-10 text-center space-y-3">
+                    <p className="text-slate-400 text-xs">
+                        ⚠️ <span className="font-semibold text-slate-300">Note:</span> All subscription purchases are final and <strong className="text-slate-200">non-refundable</strong>. Please review plan features before making a payment.
+                    </p>
+                    <div className="flex justify-center items-center gap-4 text-xs text-slate-400 font-medium">
+                        <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors underline">
+                            Terms & Conditions
+                        </a>
+                        <span>•</span>
+                        <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors underline">
+                            Privacy Policy
+                        </a>
+                        <span>•</span>
+                        <a href="/refund" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors underline">
+                            Refund Policy
+                        </a>
+                    </div>
+                    <p className="text-slate-500 text-[11px]">
+                        Secure payments powered by Razorpay.
+                    </p>
                 </div>
             </div>
         </div>
