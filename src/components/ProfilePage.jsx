@@ -387,9 +387,6 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
     gstinNo: user?.gstinNo || "",
     sapCode: user?.sapCode || ""
   });
-  
-  const WHATSAPP_NUMBER = "7357167649";
-  const WHATSAPP_MESSAGE = "Hi this message from RM Smart Tms software enqueary!";
 
   useEffect(() => { injectStyles(); }, []);
 
@@ -512,7 +509,9 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
     { 
       id: "monthly", 
       name: "Silver Plan", 
-      price: "1,000", 
+      price: "1,025", 
+      basePrice: "₹1,000",
+      gatewayFee: "₹25 Transaction Charge + GST",
       duration: "1 Month", 
       versionName: "Silver",
       icon: <ShieldCheck className="w-6 h-6 text-slate-300" />,
@@ -523,7 +522,9 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
     { 
       id: "halfYearly", 
       name: "Gold Plan", 
-      price: "6,000", 
+      price: "6,150", 
+      basePrice: "₹6,000",
+      gatewayFee: "₹150 Transaction Charge + GST",
       duration: "6 Months", 
       versionName: "Gold",
       icon: <Zap className="w-6 h-6 text-amber-300" />,
@@ -534,7 +535,9 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
     { 
       id: "yearly", 
       name: "Platinum Plan", 
-      price: "12,000", 
+      price: "12,300", 
+      basePrice: "₹12,000",
+      gatewayFee: "₹300 Transaction Charge + GST",
       duration: "1 Year", 
       versionName: "Platinum",
       popular: true,
@@ -774,7 +777,7 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
           </div>
         )}
 
-        {/* ── Pricing Cards Section (Added above Logout) ── */}
+        {/* ── Pricing Cards Section ── */}
         <div style={{ marginTop: 10 }}>
           <div style={{ textAlign: 'center', marginBottom: 16 }}>
             <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, color: 'inherit' }}>Upgrade Your Plan</h3>
@@ -809,9 +812,16 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
                     </div>
                   </div>
 
-                  <div className="flex items-baseline gap-1 my-3 pb-4 border-b border-slate-800">
-                    <span className="text-3xl font-black text-white">₹{plan.price}</span>
-                    <span className="text-slate-400 text-xs font-medium">/{plan.duration}</span>
+                  {/* Price & Breakdown */}
+                  <div className="my-3 pb-4 border-b border-slate-800">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-black text-white">₹{plan.price}</span>
+                      <span className="text-slate-400 text-xs font-medium">/{plan.duration}</span>
+                    </div>
+                    <div className="mt-2 text-[11px] text-slate-400 flex flex-col gap-0.5 bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                      <span>Plan Price: {plan.basePrice}</span>
+                      <span className="text-amber-400/90">+ {plan.gatewayFee} (Included)</span>
+                    </div>
                   </div>
 
                   <ul className="flex-1 space-y-2.5 mb-6">
