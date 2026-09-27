@@ -1,6 +1,6 @@
 // components/ProfilePage.jsx
 import React, { useState, useEffect } from "react";
-import { X, User, Building, Mail,ShieldCheck ,CheckCircle2 , Crown, Calendar, Edit2, Save, Clock, LogOut, CheckCircle, Truck, Shield, Zap, ArrowLeft, MapPin, Home, FileText, Hash, Loader2 } from "lucide-react";
+import { X, User, Building, Mail,ShieldCheck ,CheckCircle2 , Crown, Calendar, Edit2, Save, Clock, LogOut, CheckCircle, Truck, Shield, Zap, ArrowLeft, MapPin, Home, FileText, Hash, Loader2, Award } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { backendUrl } from "../utils/backendUrl";
@@ -8,6 +8,7 @@ import { updateUserInStorage, getSubscriptionRemaining, getUserFromStorage } fro
 import ButtonLoaders from "./loaders/ButtonLoaders";
 import SuccessToster from "./toster/SuccessToster";
 import { refreshToken } from "../api/api";
+import { io } from "socket.io-client";
 
 /* ─── Inject Styles ──────────────────────────────────────────────── */
 const PP_STYLE_ID = "profile-page-styles";
@@ -377,6 +378,7 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
   const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [loadingPlanId, setLoadingPlanId] = useState(null);
+  const [successModal, setSuccessModal] = useState({ show: false, planName: "", duration: "" });
   
   const [formData, setFormData] = useState({
     name: user?.name || "",
@@ -389,6 +391,47 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
   });
 
   useEffect(() => { injectStyles(); }, []);
+
+  // Real-time Socket.IO Connection for Live Sync without Relogin
+  useEffect(() => {
+    const socket = io(backendUrl, {
+      withCredentials: true,
+      transports: ['websocket', 'polling']
+    });
+
+    if (user?._id) {
+      socket.emit('join', user._id);
+    }
+
+    socket.on('subscriptionUpdated', (updatedUserData) => {
+      if (updatedUserData) {
+        setUser(updatedUserData);
+        updateUserInStorage(updatedUserData);
+        window.dispatchEvent(new CustomEvent('userUpdated', { detail: updatedUserData }));
+      }
+    });
+
+    // Fallback Polling every 10 seconds to sync instantly if db modified directly
+    const interval = setInterval(async () => {
+      try {
+        const res = await axios.get(`${backendUrl}/api/user/me`, { withCredentials: true });
+        if (res.data.success && res.data.user) {
+          const fetchedUser = res.data.user;
+          if (JSON.stringify(fetchedUser) !== JSON.stringify(user)) {
+            setUser(fetchedUser);
+            updateUserInStorage(fetchedUser);
+          }
+        }
+      } catch (err) {
+        console.error("Polling sync error", err);
+      }
+    }, 10000);
+
+    return () => {
+      socket.disconnect();
+      clearInterval(interval);
+    };
+  }, [user?._id]);
 
   useEffect(() => {
     if (!user?.subscriptionEndDate) return;
@@ -479,8 +522,13 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
             if (verifyRes.data.success) {
               const updatedUser = updateUserInStorage(verifyRes.data.user);
               setUser(updatedUser);
-              internalShowNotification(true, "Premium Subscription Activated! 🚛🎉");
-              setTimeout(() => { window.location.reload(); }, 2000);
+              const selectedPlanObj = plans.find(p => p.id === planId);
+              setSuccessModal({
+                show: true,
+                planName: selectedPlanObj ? selectedPlanObj.name : "Premium Plan",
+                duration: selectedPlanObj ? selectedPlanObj.duration : "Subscription"
+              });
+              setTimeout(() => { window.location.reload(); }, 3500);
             }
           } catch (err) {
             console.error(err);
@@ -559,6 +607,25 @@ const ProfilePage = ({ user: initialUser, onClose, showNotification: parentNotif
   return (
     <div className="pp-root">
       {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
+
+      {/* Congratulatory Success Modal */}
+      {successModal.show && (
+        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-emerald-500/50 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl animate-fade-in">
+            <div className="w-20 h-20 bg-emerald-500/20 border border-emerald-500 rounded-full flex items-center justify-center mx-auto mb-5 text-emerald-400">
+              <Award size={40} />
+            </div>
+            <h3 className="text-2xl font-black text-white mb-2">Congratulations! 🎉</h3>
+            <p className="text-slate-300 text-sm mb-6">
+              Aapka <strong className="text-emerald-400">{successModal.planName}</strong> ({successModal.duration}) successfully activate ho gaya hai! Ab aap saari premium features ka anand le sakte hain.
+            </p>
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+              <Loader2 size={14} className="animate-spin text-emerald-400" />
+              <span>Refreshing your profile...</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Top Bar */}
       <div className="pp-topbar">

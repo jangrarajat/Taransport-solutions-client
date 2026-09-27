@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, CheckCircle2, ShieldCheck, Zap, Crown, Loader2 } from 'lucide-react';
+import { X, CheckCircle2, ShieldCheck, Zap, Crown, Loader2, Award } from 'lucide-react';
 import SuccessToster from './toster/SuccessToster';
 import { backendUrl } from '../utils/backendUrl';
 import { getUserFromStorage } from "../utils/userUtils";
@@ -9,6 +9,7 @@ const Pricing = ({ isOpen, onClose }) => {
     const [companyName, setCompanyName] = useState('RM Smart Tms');
     const [toast, setToast] = useState({ show: false, success: true, msg: "", id: 0 });
     const [loadingPlanId, setLoadingPlanId] = useState(null);
+    const [successModal, setSuccessModal] = useState({ show: false, planName: "", duration: "" });
 
     useEffect(() => {
         const data = getUserFromStorage();
@@ -32,6 +33,7 @@ const Pricing = ({ isOpen, onClose }) => {
             basePrice: "₹1,000",
             gatewayFee: "₹25 Transaction Charge + GST",
             duration: "1 Month", 
+            versionName: "Silver",
             icon: <ShieldCheck className="w-6 h-6 text-slate-300" />,
             cardStyle: "bg-gradient-to-b from-slate-900/90 via-slate-900/95 to-slate-950 border-slate-700/60 shadow-slate-900/50",
             badgeBg: "bg-slate-800 text-slate-200 border border-slate-600",
@@ -50,6 +52,7 @@ const Pricing = ({ isOpen, onClose }) => {
             basePrice: "₹6,000",
             gatewayFee: "₹150 Transaction Charge + GST",
             duration: "6 Months", 
+            versionName: "Gold",
             icon: <Zap className="w-6 h-6 text-amber-300" />,
             cardStyle: "bg-gradient-to-b from-amber-950/30 via-slate-900/95 to-slate-950 border-amber-500/40 shadow-amber-500/10",
             badgeBg: "bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-md shadow-amber-500/30",
@@ -69,6 +72,7 @@ const Pricing = ({ isOpen, onClose }) => {
             basePrice: "₹12,000",
             gatewayFee: "₹300 Transaction Charge + GST",
             duration: "1 Year", 
+            versionName: "Platinum",
             popular: true,
             icon: <Crown className="w-6 h-6 text-cyan-300" />,
             cardStyle: "bg-gradient-to-b from-cyan-950/40 via-slate-900/95 to-slate-950 border-cyan-400/60 shadow-cyan-500/20 ring-2 ring-cyan-500/30 lg:-translate-y-2",
@@ -108,11 +112,16 @@ const Pricing = ({ isOpen, onClose }) => {
                         const verifyRes = await axios.post(`${backendUrl}/api/user/verify-payment`, { ...response, planId }, { withCredentials: true });
                         if (verifyRes.data.success) {
                             localStorage.setItem("transportUser", JSON.stringify(verifyRes.data.user));
-                            showNotification(true, "Premium Subscription Activated! 🚛🎉");
+                            const selectedPlanObj = plans.find(p => p.id === planId);
+                            setSuccessModal({
+                                show: true,
+                                planName: selectedPlanObj ? selectedPlanObj.name : "Premium Plan",
+                                duration: selectedPlanObj ? selectedPlanObj.duration : "Subscription"
+                            });
                             setTimeout(() => {
                                 onClose();
                                 window.location.reload();
-                            }, 2000);
+                            }, 3500);
                         }
                     } catch (err) {
                         console.error(err);
@@ -146,6 +155,25 @@ const Pricing = ({ isOpen, onClose }) => {
         >
             {toast.show && <SuccessToster success={toast.success} msg={toast.msg} id={toast.id} />}
             
+            {/* Congratulatory Success Modal */}
+            {successModal.show && (
+                <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-emerald-500/50 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl animate-fade-in">
+                        <div className="w-20 h-20 bg-emerald-500/20 border border-emerald-500 rounded-full flex items-center justify-center mx-auto mb-5 text-emerald-400">
+                            <Award size={40} />
+                        </div>
+                        <h3 className="text-2xl font-black text-white mb-2">Congratulations! 🎉</h3>
+                        <p className="text-slate-300 text-sm mb-6">
+                            Aapka <strong className="text-emerald-400">{successModal.planName}</strong> ({successModal.duration}) successfully activate ho gaya hai! Ab aap saari premium features ka anand le sakte hain.
+                        </p>
+                        <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+                            <Loader2 size={14} className="animate-spin text-emerald-400" />
+                            <span>Redirecting to your dashboard...</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="max-w-6xl w-full relative my-auto py-8">
                 <button 
                     onClick={onClose} 
